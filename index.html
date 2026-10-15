@@ -180,10 +180,11 @@ function render() {
   if (!S.dev || !S.B) return loginView(A);
   const v = S.r.v; if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'form') return formView(A); if (v === 'queue') return queueView(A); homeView(A);
 }
+function cleanApi(t) { const m = String(t || '').replace(/\s+/g, '').match(/https:\/\/script\.google(?:usercontent)?\.com\/[^?#]*?\/(?:exec|dev)\b/); return m ? m[0].replace(/\/dev$/, '/exec') : ''; }
 function setupView(A) {
   A.innerHTML = `<div class="top"><b>AJI الميداني</b></div><div class="wrap"><div class="card"><h3>رابط البرنامج</h3><div class="muted">الصق رابط البرنامج الذي ينتهي بـ /exec (يعطيك إياه المدير). يُكتب مرة واحدة فقط.</div>
     <input id="api" dir="ltr" placeholder="https://script.google.com/macros/s/…/exec" style="margin-top:8px"><button class="pri big" id="ok" style="width:100%;margin-top:10px">متابعة</button><div class="err" id="er"></div></div></div>`;
-  $('#ok').onclick = async () => { const v = $('#api').value.trim(); if (!/^https:\/\/script\.google(usercontent)?\.com\/.+\/exec/.test(v)) return $('#er').textContent = 'الرابط يجب أن يبدأ بـ https://script.google.com وينتهي بـ /exec'; S.api = v; await DB.set('api', v); render(); };
+  $('#ok').onclick = async () => { const v = cleanApi($('#api').value); if (!v) return $('#er').textContent = 'لم يُتعرّف على الرابط. انسخ «رابط تطبيق الويب» من Apps Script: نشر ← إدارة عمليات النشر (ينتهي بـ exec)'; S.api = v; await DB.set('api', v); render(); };
 }
 function loginView(A) {
   A.innerHTML = `<div class="top"><b>AJI الميداني</b></div><div class="wrap"><div class="card"><h3>تسجيل الدخول</h3><div class="muted">مرة واحدة وفيه إنترنت، ثم يعمل التطبيق بدون إنترنت.</div>
@@ -320,7 +321,8 @@ function formView(A) {
 // ---------- start ----------
 (async () => {
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
-  S.api = (await DB.get('api')) || API_DEFAULT; S.dev = (await DB.get('dev')) || ''; S.user = (await DB.get('user')) || null; S.B = (await DB.get('B')) || null; S.Q = (await DB.qall()) || [];
+  const qa = cleanApi(decodeURIComponent((location.search.match(/[?&]api=([^&]+)/) || [])[1] || '')); if (qa) { await DB.set('api', qa); history.replaceState(null, '', location.pathname); }
+  S.api = qa || (await DB.get('api')) || API_DEFAULT; S.dev = (await DB.get('dev')) || ''; S.user = (await DB.get('user')) || null; S.B = (await DB.get('B')) || null; S.Q = (await DB.qall()) || [];
   history.replaceState(S.r, ''); render(); if (S.dev && navigator.onLine) sync();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
