@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f3a5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AJI الميداني">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>AJI الميداني</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1d2733;--mut:#6b7684;--line:#dde2e8;--pri:#1f3a5f;--ok:#2e7d32;--okbg:#e6f4ea;--dan:#c62828;--danbg:#fdecea;--warn:#a15c00;--warnbg:#fff4e0}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,"Segoe UI",Arial,sans-serif;font-size:15px}
+button,input,select,textarea{font:inherit}button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 14px;cursor:pointer;color:var(--ink)}
+button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}button:disabled{opacity:.5}
+input,select,textarea{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;width:100%}
+.top{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));display:flex;gap:8px;align-items:center}
+.top b{font-size:16px}.top .sp{flex:1}.top .webb{color:#14263F;background:#FFD400;border-radius:10px;padding:6px 10px;text-decoration:none;font-weight:700;font-size:14px;white-space:nowrap}.top button{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25);padding:6px 10px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:#bbb}.dot.on{background:#7ed321}.dot.off{background:#ff6b6b}
+.wrap{padding:12px;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.muted{color:var(--mut);font-size:13px}.err{color:var(--dan);font-size:13px;margin-top:6px}
+.pill{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;background:#eef1f5}.p-ok{background:var(--okbg);color:var(--ok)}.p-w{background:var(--warnbg);color:var(--warn)}.p-d{background:var(--danbg);color:var(--dan)}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tabs button{flex:1}.tabs button.on{background:var(--pri);color:#fff}
+.item{display:block;width:100%;text-align:right}.item .t{font-weight:700}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:8px}.f label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--mut)}.f .full{grid-column:1/-1}
+@media (max-width:520px){.f{grid-template-columns:1fr}}
+h3{margin:12px 0 6px;font-size:16px}
+.fl{display:flex;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}.fl:first-child{border-top:0}.fl .n{flex:1}.fl.rj{background:var(--danbg)}
+.k{display:inline-block;min-width:24px;text-align:center;border-radius:10px;font-weight:700}.k0{color:var(--mut)}.k1{color:var(--warn);background:var(--warnbg)}.k2{color:var(--ok);background:var(--okbg)}
+.ph{display:flex;gap:8px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}.ph .n{flex:1;font-size:14px}
+.th{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.th span{position:relative}.th img{width:62px;height:62px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.th .x{position:absolute;top:-7px;left:-7px;background:#fff;color:var(--dan);border-radius:50%;padding:0 5px;font-weight:700;cursor:pointer;border:1px solid var(--line)}
+.th .loc{outline:2px dashed var(--warn)}
+.cam{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:20px;background:#fff;cursor:pointer}
+.qi{padding:10px 0;border-top:1px solid var(--line)}.qi .tx{font-size:15px}.qi small{display:block;color:var(--mut);direction:ltr;text-align:left;font-size:11px}
+.ab{display:flex;gap:6px;margin-top:8px}.ab button{flex:1;padding:12px 4px;font-size:15px}.ab .on.y{background:var(--ok);color:#fff;border-color:var(--ok)}.ab .on.n{background:var(--dan);color:#fff;border-color:var(--dan)}.ab .on.x{background:#777;color:#fff;border-color:#777}
+.qh{background:#eef3f8;padding:7px 10px;border-radius:8px;font-weight:700;margin-top:10px}
+.sticky{position:sticky;top:calc(52px + env(safe-area-inset-top));z-index:4;background:var(--bg);padding:6px 0;display:flex;gap:8px;align-items:center}
+#toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:12px;display:none;z-index:50;max-width:90%;text-align:center}
+.eq{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:4px 10px;margin:3px;font-size:13px;background:#fff}.eq input{width:auto}
+.it{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:6px}
+.big{font-size:17px;padding:12px}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="toast"></div>
+<script>
+const API_DEFAULT = '';   // رابط البرنامج الذي ينتهي بـ /exec (اختياري: يمكن كتابته عند أول فتح)
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const S = { api: '', dev: '', user: null, B: null, Q: [], r: { v: 'home' }, tab: 'o', q: '', syncing: false, msg: '' };
+const toast = (t, ms) => { const e = $('#toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => e.style.display = 'none', ms || 2600); };
+const now = () => { const d = new Date(), p = n => ('0' + n).slice(-2); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
+const today = () => now().slice(0, 10), hm = () => now().slice(11, 16);
+const phUrl = (id, w) => 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + (w || 200);
+
+// ---------- storage (IndexedDB): kv = settings and the downloaded data, q = work waiting to be sent ----------
+const DB = { db: null,
+  open() { return this.db ? Promise.resolve(this.db) : new Promise((ok, no) => { const r = indexedDB.open('aji-field', 1); r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('kv'); d.createObjectStore('q', { keyPath: 'id', autoIncrement: true }); }; r.onsuccess = () => { this.db = r.result; ok(this.db); }; r.onerror = () => no(r.error); }); },
+  async tx(st, mode, f) { const d = await this.open(); return new Promise((ok, no) => { const t = d.transaction(st, mode), s = t.objectStore(st); let res; const q = f(s); if (q) q.onsuccess = () => res = q.result; t.oncomplete = () => ok(res); t.onerror = () => no(t.error); }); },
+  get(k) { return this.tx('kv', 'readonly', s => s.get(k)); }, set(k, v) { return this.tx('kv', 'readwrite', s => s.put(v, k)); }, delk(k) { return this.tx('kv', 'readwrite', s => s.delete(k)); },
+  qall() { return this.tx('q', 'readonly', s => s.getAll()); }, qadd(o) { return this.tx('q', 'readwrite', s => s.add(o)); }, qput(o) { return this.tx('q', 'readwrite', s => s.put(o)); }, qdel(id) { return this.tx('q', 'readwrite', s => s.delete(id)); }
+};
+// a new choice (network / equipment / work kind) replaces the same unsent choice, so ticking many boxes stays one item
+const SAME = (a, b) => a.t === 'qd' && b.t === 'qd' && a.ref === b.ref && !a.sending && ['net', 'eq', 'mw'].some(k => a.op[k] !== undefined && b.op[k] !== undefined) && Object.keys(a.op).length === 1 && Object.keys(b.op).length === 1;
+async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op));
+  if (old) { old.op = op.op; old.at = op.at; delete old.err; await DB.qput(old); } else { op.id = await DB.qadd(op); S.Q.push(op); }
+  render(); clearTimeout(enqueue.h); enqueue.h = setTimeout(sync, 1500); }
+
+// ---------- server ----------
+async function call(fn, ...args) {
+  let r; const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 90000); try { r = await fetch(S.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, args, dev: S.dev }), redirect: 'follow', signal: ac.signal }); clearTimeout(tm); }
+  catch (e) { const er = new Error('لا يوجد اتصال بالإنترنت'); er.net = 1; throw er; }
+  if (!r.ok) { const er = new Error('الخادم غير متاح (' + r.status + ')'); er.net = 1; throw er; }
+  let j; try { j = await r.json(); } catch (e) { const er = new Error('رد غير متوقع من الخادم. تأكد من رابط البرنامج'); er.net = 1; throw er; }
+  if (j.err) { if (/انتهت الجلسة/.test(j.err)) { S.dev = ''; await DB.delk('dev'); } throw new Error(j.err); }
+  return j.ok;
+}
+async function pull() { const B = await call('fieldPull'); S.B = B; await DB.set('B', B); return B; }
+async function runOp(op) {
+  if (op.t === 'qd') return call('qdSave', op.ref, op.op);
+  if (op.t === 'up') return call('qdUpload', op.ref, op.slot, op.b64, op.mime, op.loc || '');
+  if (op.t === 'del') return call('qdRemove', op.ref, op.slot, op.fid);
+  if (op.t === 'form') {
+    op.done = op.done || [];
+    for (let i = op.done.length; i < op.photos.length; i++) { const p = op.photos[i]; const r = await call('uploadFormPhoto', op.ref, op.kind, p.b64, p.mime, p.loc || ''); op.done.push({ id: r.id, name: r.name, st: r.st, loc: r.loc }); await DB.qput(op); }
+    return call('saveForm', { kind: op.kind, wo: op.ref, data: op.data, photos: op.done });
+  }
+}
+async function sync(manual) {
+  if (S.syncing || !S.dev) return; if (!navigator.onLine && !manual) return render();
+  S.syncing = true; render(); let sent = 0, failed = 0; const tried = new Set();
+  try {
+    let op;
+    while ((op = S.Q.find(x => !tried.has(x.id)))) {
+      tried.add(op.id); op.sending = 1;
+      try { await runOp(op); await DB.qdel(op.id); S.Q = S.Q.filter(x => x.id !== op.id); sent++; render(); }
+      catch (e) { delete op.sending; if (e.net) throw e; op.err = e.message; failed++; await DB.qput(op); }
+    }
+    await pull(); if (!S.noFull && (manual || !S.F || Date.now() - (S.F.got || 0) > 300000)) await pullFull(); S.msg = 'آخر مزامنة ' + now();
+    if (sent || failed) toast('أُرسل ' + sent + (failed ? ' — ' + failed + ' لم يُقبل (افتح «بانتظار الإرسال»)' : ''), failed ? 5000 : 2600);
+  } catch (e) { S.msg = e.message; if (manual) toast(e.message, 4000); }
+  S.Q.forEach(x => delete x.sending); S.syncing = false; render();
+}
+addEventListener('online', () => { render(); sync(); }); addEventListener('offline', render);
+setInterval(() => { if (S.Q.length && navigator.onLine) sync(); }, 60000);
+
+// ---------- the local copy of an order's quality documents = downloaded data + work not sent yet ----------
+const me = () => (S.user || {}).name || '';
+function itemOf(key) {
+  if (/^D9:/.test(key)) { const n = (S.B.notices || []).find(x => 'D9:' + x.d9 === key); if (!n) return null; return { key, d9: 1, type: 'D9', wo: n.d9, office: n.office, contractor: n.contractor, district: n.station, station: n.station, site_engineer: me(), work_desc: n.work_desc, status: n.status, qf_status: n.qf_status }; }
+  const o = (S.B.orders || []).find(x => x.key === key); return o ? Object.assign({ d9: 0 }, o) : null;
+}
+function applyOp(d, op) {
+  const C = S.B.cat;
+  if (op.t === 'qd') { const o = op.op;
+    if (o.net !== undefined) d.net = o.net; if (o.eq) d.eq = o.eq; if (o.mw) d.mw = o.mw;
+    if (o.add) { d.add = [...new Set((d.add || []).concat([o.add]))]; d.drop = (d.drop || []).filter(k => k !== o.add); }
+    if (o.drop) { d.drop = [...new Set((d.drop || []).concat([o.drop]))]; d.add = (d.add || []).filter(k => k !== o.drop); }
+    if (o.form) { d.f = d.f || {}; d.f[o.form.code] = { a: o.form.a, nt: o.form.nt, rm: o.form.rm, hdr: o.form.hdr, by: me(), at: op.at, local: 1 }; d.rej = (d.rej || []).filter(x => x.s !== 'f:' + o.form.code); } }
+  if (op.t === 'up') { const it = { id: 'L' + op.id, local: 1, thumb: op.thumb, mime: op.mime, by: me() }; const m = op.slot.match(/^p:(.+)$/), u = op.slot.match(/^u:(.+)$/);
+    if (m) { d.ph = d.ph || {}; (d.ph[m[1]] = d.ph[m[1]] || []).push(it); } else if (u) { d.up = d.up || {}; (d.up[u[1]] = d.up[u[1]] || []).push(it); } d.rej = (d.rej || []).filter(x => x.s !== op.slot); }
+  if (op.t === 'del') { const m = op.slot.match(/^p:(.+)$/), u = op.slot.match(/^u:(.+)$/); const take = a => (a || []).filter(x => x.id !== op.fid);
+    if (m && d.ph) d.ph[m[1]] = take(d.ph[m[1]]); if (u && d.up) d.up[u[1]] = take(d.up[u[1]]); }
+  return d;
+}
+function docOf(key) { const base = JSON.parse(JSON.stringify(((S.B.qd || {})[key] || {}).d || {})); S.Q.filter(op => op.ref === key && op.t !== 'form').forEach(op => applyOp(base, op)); return base; }
+const uq = a => a.filter((x, i) => a.indexOf(x) === i);
+function guessMw(t) { t = String(t || ''); if (/(mini ?pil|pillar|بيلر|بلر|مني|ميني|لوحة توزيع)/i.test(t)) return 'MPR'; if (/(cable|joint|termin|fault|كابل|كيبل|جوينت|ترمن|عطل)/i.test(t)) return 'CF'; return 'GEN'; }
+function planOf(it, d) {
+  const C = S.B.cat; let mx = C.mx[it.d9 ? 'D9' : String(it.type)] || C.mx['*'], net = '', needNet = false; const hasNet = !!mx.g;
+  if (hasNet) { net = d.net || mx.net || ''; const g = mx.g, o = mx.o; if (net === 'g') mx = g; else if (net === 'o') mx = o; else if (net === 'b') mx = { req: uq(g.req.concat(o.req)), opt: uq(g.opt.concat(o.opt)) }; else { needNet = true; mx = { req: g.req.filter(k => o.req.includes(k)), opt: [] }; } }
+  const drop = d.drop || [], add = d.add || [], set = mx.req.filter(k => !drop.includes(k)).concat(add), req = C.order.filter(k => set.includes(k));
+  let cats; if (it.d9) cats = [d.mw || guessMw(it.work_desc)]; else if (Array.isArray(d.eq)) cats = C.eq.filter(e => d.eq.includes(e)); else { const s = []; req.forEach(k => (C.eq_of[k] || []).forEach(e => { if (!s.includes(e)) s.push(e); })); cats = C.eq.filter(e => s.includes(e)); }
+  return { req, sug: (mx.opt || []).filter(k => !req.includes(k)), net, needNet, hasNet, cats };
+}
+function formsOf(key) { const L = ((S.B.forms || {})[key] || []).map(x => Object.assign({}, x)); S.Q.filter(op => op.t === 'form' && op.ref === key).forEach(op => L.push({ id: 'L' + op.id, kind: op.kind, seq: '…', local: 1, err: op.err })); return L; }
+const nk = s => String(s || '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+function licOf(it, d) { const names = uq([it.site_engineer].concat(Object.keys(d.f || {}).map(k => d.f[k].by)).filter(Boolean)); const n = names[0] || ''; if (!n) return { name: '', has: false };
+  const k = nk(n), L = (S.B.lic || []).map(nk); return { name: n, has: L.some(x => x === k || x.split(' ').slice(0, 2).join(' ') === k.split(' ').slice(0, 2).join(' ')) }; }
+function stateOf(it, d, P) {
+  const C = S.B.cat, st = {}, F = formsOf(it.key), lic = licOf(it, d); let fd = 0, pd = 0, pn = 0, miss = 0;
+  P.req.forEach(k => { const f = C.forms[k]; let s = 'none';
+    if (f.k === 'chk') { const a = ((d.f || {})[k] || {}).a || {}, n = f.items.filter(x => !x.h).length, m = Object.keys(a).filter(i => a[i]).length; s = m >= n ? 'done' : m ? 'part' : 'none'; }
+    else if (f.k === 'up') s = ((d.up || {})[k] || []).length ? 'done' : 'none';
+    else if (f.k === 'site' || f.k === 'meeting') s = F.some(x => x.kind === f.k) ? 'done' : 'none';
+    else if (f.k === 'lic') s = lic.has ? 'done' : 'none';
+    st[k] = s; if (s === 'done') fd++; else miss++; });
+  P.cats.forEach(g => { const G = C.ph[g]; if (G) G.items.forEach((t, i) => { pn++; if (((d.ph || {})[g + ':' + i] || []).length) pd++; else miss++; }); });
+  return { st, lic, prog: fd + '/' + P.req.length + ' · ' + pd + '/' + pn, miss };
+}
+
+// ---------- photos: shrink, stamp (time, location, order, engineer, logo) ----------
+function getLoc() { return new Promise((ok, no) => { if (!navigator.geolocation) return no(new Error('الجهاز لا يدعم تحديد الموقع')); const tm = setTimeout(() => no(new Error('لم يصل الموقع (GPS)')), 30000);
+  navigator.geolocation.getCurrentPosition(p => { clearTimeout(tm); ok({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }); }, e => { clearTimeout(tm); no(new Error(e && e.code === 1 ? 'لم يُسمح بالموقع للتطبيق' : 'تعذّر تحديد الموقع')); }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 30000 }); }); }
+const loadImg = src => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('تعذّر قراءة الصورة')); im.src = src; });
+async function shrink(file, max, q) { const url = URL.createObjectURL(file); try { const im = await loadImg(url); const s = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); return c; } finally { URL.revokeObjectURL(url); } }
+async function stamp(cv, it, locP) {
+  let loc = null; try { loc = await locP; } catch (e) { if (S.B.project && S.B.project.loc && !confirm(e.message + '\nرفع الصورة بلا موقع؟')) throw new Error('أُلغيت الصورة'); }
+  const W = cv.width, H = cv.height, m = Math.min(W, H), pad = Math.max(6, Math.round(m * 0.025)), g = cv.getContext('2d'), ltr = t => '‪' + t + '‬';
+  const lines = [[ltr(now()), 'المهندس: ' + me()].join(' · '), (it.d9 ? 'إشعار D9 ' + ltr(it.wo) : 'أمر العمل ' + ltr(it.wo) + (it.type ? ' · النوع ' + ltr(it.type) : '')) + (it.district ? ' · ' + it.district : ''), 'الموقع: ' + (loc ? ltr(loc.lat.toFixed(6) + ', ' + loc.lng.toFixed(6)) + (loc.acc ? ' (±' + Math.round(loc.acc) + ' م)' : '') : 'غير متاح')];
+  let fs = Math.max(12, Math.round(W / 40)); const font = () => g.font = '600 ' + fs + 'px Tahoma, Arial, sans-serif'; font(); while (fs > 10 && Math.max(...lines.map(t => g.measureText(t).width)) > W - 2 * pad) { fs--; font(); }
+  const lh = Math.round(fs * 1.5), sh = lh * lines.length + pad, oc = document.createElement('canvas'); oc.width = W; oc.height = H + sh; const q = oc.getContext('2d'); q.drawImage(cv, 0, 0); q.fillStyle = '#1f2d3d'; q.fillRect(0, H, W, sh);
+  q.font = g.font; q.fillStyle = '#fff'; q.textBaseline = 'middle'; q.direction = 'rtl'; q.textAlign = 'right'; lines.forEach((t, i) => q.fillText(t, W - pad, H + pad / 2 + lh * i + lh / 2, W - 2 * pad));
+  if (S.B.stampLogo) { try { const lg = await loadImg(S.B.stampLogo), L = Math.max(40, Math.round(m * 0.16)); q.drawImage(lg, pad, pad, L, L); } catch (e) {} }
+  return { cv: oc, loc: loc ? loc.lat.toFixed(7) + ',' + loc.lng.toFixed(7) : '' };
+}
+const thumbOf = cv => { const s = Math.min(1, 200 / Math.max(cv.width, cv.height)), c = document.createElement('canvas'); c.width = Math.round(cv.width * s); c.height = Math.round(cv.height * s); c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.6); };
+async function takePhotos(files, it, cam) { const out = []; const locP = cam ? getLoc() : null; if (locP) locP.catch(() => {});
+  for (const f of files) { let cv = await shrink(f, 1600, 0.75), loc = ''; if (cam) { toast('جارٍ ختم الصورة بالموقع…'); const r = await stamp(cv, it, locP); cv = r.cv; loc = r.loc; }
+    const du = cv.toDataURL('image/jpeg', 0.78); out.push({ b64: du.split(',')[1], mime: 'image/jpeg', loc, thumb: thumbOf(cv) }); } return out; }
+const fileB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(f); });
+
+// ---------- screens ----------
+function go(r) { S.r = r; history.pushState(r, ''); render(); scrollTo(0, 0); }
+addEventListener('popstate', e => { S.r = e.state || { v: 'home' }; render(); });
+function topBar(title, back) { const on = navigator.onLine, n = S.Q.length;
+  return `<div class="top">${back ? '<button id="bk">→</button>' : ''}<b>${esc(title)}</b><span class="sp"></span>${S.api ? `<a id="web" class="webb" href="${esc(S.api)}" target="_blank" rel="noopener" title="فتح البرنامج الرئيسي">🌐 البرنامج</a>` : ''}<span class="dot ${on ? 'on' : 'off'}" title="${on ? 'متصل' : 'بدون إنترنت'}"></span>
+    <button id="sy">${S.syncing ? '⏳ جارٍ الإرسال' : '⟳'}${n ? ' ' + n : ''}</button></div>`; }
+function wire() { if ($('#web')) $('#web').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الرئيسي يحتاج اتصالاً بالإنترنت'); } }; if ($('#bk')) $('#bk').onclick = () => history.back(); if ($('#sy')) $('#sy').onclick = () => sync(true); }
+function render() {
+  const A = $('#app');
+  if (!S.api) return setupView(A);
+  if (!S.dev || !S.B) return loginView(A);
+  const v = S.r.v; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'form') return formView(A); if (v === 'queue') return queueView(A); homeView(A);
+}
+function cleanApi(t) { const m = String(t || '').replace(/\s+/g, '').match(/https:\/\/script\.google(?:usercontent)?\.com\/[^?#]*?\/(?:exec|dev)\b/); return m ? m[0].replace(/\/dev$/, '/exec') : ''; }
+function setupView(A) {
+  A.innerHTML = `<div class="top"><b>AJI الميداني</b></div><div class="wrap"><div class="card"><h3>رابط البرنامج</h3><div class="muted">الصق رابط البرنامج الذي ينتهي بـ /exec (يعطيك إياه المدير). يُكتب مرة واحدة فقط.</div>
+    <input id="api" dir="ltr" placeholder="https://script.google.com/macros/s/…/exec" style="margin-top:8px"><button class="pri big" id="ok" style="width:100%;margin-top:10px">متابعة</button><div class="err" id="er"></div></div></div>`;
+  $('#ok').onclick = async () => { const v = cleanApi($('#api').value); if (!v) return $('#er').textContent = 'لم يُتعرّف على الرابط. انسخ «رابط تطبيق الويب» من Apps Script: نشر ← إدارة عمليات النشر (ينتهي بـ exec)'; S.api = v; await DB.set('api', v); render(); };
+}
+function loginView(A) {
+  A.innerHTML = `<div class="top"><b>AJI الميداني</b></div><div class="wrap"><div class="card"><h3>تسجيل الدخول</h3><div class="muted">مرة واحدة وفيه إنترنت، ثم يعمل التطبيق بدون إنترنت.</div>
+    <div class="f" style="margin-top:8px"><label class="full">رقم الدخول<input id="u" inputmode="numeric" autocomplete="username"></label><label class="full">كلمة السر<input id="p" type="password" autocomplete="current-password"></label></div>
+    <button class="pri big" id="go" style="width:100%;margin-top:10px">دخول</button><div class="err" id="er"></div><div class="muted" style="margin-top:10px">${S.dev ? 'جارٍ تنزيل بياناتك…' : ''}</div>
+    <div style="margin-top:14px"><a href="#" id="chg" class="muted">تغيير رابط البرنامج</a></div></div></div>`;
+  $('#chg').onclick = async e => { e.preventDefault(); S.api = ''; await DB.delk('api'); render(); };
+  $('#go').onclick = async () => { $('#go').disabled = true; $('#er').textContent = '';
+    try { const r = await call('fieldLogin', $('#u').value.trim(), $('#p').value, navigator.userAgent.slice(0, 100)); S.dev = r.dev; S.user = r.user; await DB.set('dev', r.dev); await DB.set('user', r.user); await pull(); go({ v: 'home' }); pullFull().then(render).catch(() => {}); }
+    catch (e) { $('#er').textContent = e.message; $('#go').disabled = false; } };
+  if (S.dev && !S.B && navigator.onLine) pull().then(render).catch(e => { if ($('#er')) $('#er').textContent = e.message; });
+}
+const QFS = { '': ['بلا ملف', ''], 'بانتظار الجودة': ['بانتظار الجودة', 'p-w'], 'معتمد': ['معتمد', 'p-ok'], 'مرفوض': ['مرفوض', 'p-d'] };
+function homeView(A) {
+  const B = S.B, q = S.q.trim(), tab = S.tab, fails = S.Q.filter(x => x.err).length;
+  const L = tab === 'o' ? B.orders.map(o => itemOf(o.key)) : B.notices.map(n => itemOf('D9:' + n.d9));
+  const shown = L.filter(it => !q || [it.wo, it.contractor, it.district, it.office].join(' ').includes(q));
+  A.innerHTML = topBar('AJI الميداني') + `<div class="wrap">
+    <div class="card row"><div style="flex:1"><b>${esc(me())}</b><div class="muted">${navigator.onLine ? 'متصل' : 'بدون إنترنت — يُحفظ عملك على الجوال'} · ${esc(S.msg || ('بيانات ' + (B.at || '')))}</div></div>
+      ${S.Q.length ? `<button id="qv" class="${fails ? '' : 'pri'}">بانتظار الإرسال ${S.Q.length}${fails ? ' · ⚠ ' + fails : ''}</button>` : '<span class="pill p-ok">✓ لا شيء بانتظار الإرسال</span>'}</div>
+    ${S.noFull ? '' : '<button class="pri big" id="full" style="width:100%;margin-bottom:10px">📊 البرنامج كاملاً: الإسنادات، الجودة، الصيانة، التصاريح، أولاب</button>'}<div class="tabs"><button data-t="o" class="${tab === 'o' ? 'on' : ''}">أوامر العمل (${B.orders.length})</button><button data-t="n" class="${tab === 'n' ? 'on' : ''}">إشعارات الصيانة (${B.notices.length})</button></div>
+    <input id="q" placeholder="بحث برقم الأمر أو المقاول أو الحي" value="${esc(q)}" style="margin-bottom:10px">
+    ${shown.map(it => { const d = docOf(it.key), P = planOf(it, d), st = stateOf(it, d, P), qs = QFS[it.qf_status || ''] || QFS[''], rj = (d.rej || []).length;
+      return `<button class="card item" data-k="${esc(it.key)}"><div class="row"><span class="t">${it.d9 ? 'D9 ' : ''}${esc(it.wo)}${it.type && !it.d9 ? '-' + esc(it.type) : ''}</span><span class="pill ${qs[1]}">${esc(qs[0])}</span>${rj ? '<span class="pill p-d">⛔ مرفوض ' + rj + '</span>' : ''}<span style="flex:1"></span><span class="pill">📝 ${esc(st.prog.split(' · ')[0])} · 📷 ${esc(st.prog.split(' · ')[1])}</span></div>
+        <div class="muted">${esc(it.office || '')} · ${esc(it.contractor || '')} · ${esc(it.district || '')}</div>${it.d9 ? `<div class="muted">${esc(it.work_desc || '')}</div>` : `<div class="muted">${esc(it.cur_stage || '')}</div>`}</button>`; }).join('') || '<div class="card muted">لا شيء مسند إليك هنا.</div>'}
+    <div class="row" style="margin:16px 0"><button id="lo" style="color:var(--dan)">تسجيل الخروج</button><span class="muted">الإصدار 1</span></div></div>`;
+  wire(); $$('[data-t]').forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); });
+  $('#q').oninput = e => { S.q = e.target.value; const p = e.target.selectionStart; render(); const i = $('#q'); i.focus(); i.setSelectionRange(p, p); };
+  $$('[data-k]').forEach(b => b.onclick = () => go({ v: 'item', key: b.dataset.k })); if ($('#qv')) $('#qv').onclick = () => go({ v: 'queue' }); if ($('#full')) $('#full').onclick = () => go({ v: 'full', sec: 'dash' });
+  $('#lo').onclick = async () => { if (S.Q.length && !confirm('لديك ' + S.Q.length + ' عملاً لم يُرسل وسيُحذف من الجوال. تسجيل الخروج؟')) return; try { if (navigator.onLine) await call('fieldLogout', S.dev); } catch (e) {} for (const op of S.Q) await DB.qdel(op.id); S.Q = []; S.dev = ''; S.B = null; S.F = null; S.noFull = false; await DB.delk('dev'); await DB.delk('B'); await DB.delk('F'); await DB.delk('nofull'); render(); };
+}
+function queueView(A) {
+  A.innerHTML = topBar('بانتظار الإرسال', 1) + `<div class="wrap">${S.Q.map(op => `<div class="card"><div class="row"><b>${esc(op.ref)}</b><span class="muted">${esc(op.at)}</span><span style="flex:1"></span><button data-dq="${op.id}" style="color:var(--dan)">حذف</button></div>
+    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
+    <button class="pri big" id="sn" style="width:100%">إرسال الآن</button></div>`;
+  wire(); $('#sn').onclick = () => sync(true);
+  $$('[data-dq]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذا العمل من الجوال نهائياً؟')) return; await DB.qdel(+b.dataset.dq); S.Q = S.Q.filter(x => x.id !== +b.dataset.dq); render(); });
+}
+function itemView(A) {
+  const key = S.r.key, it = itemOf(key); if (!it) { go({ v: 'home' }); return; }
+  const C = S.B.cat, d = docOf(key), P = planOf(it, d), ST = stateOf(it, d, P), F = formsOf(key), rj = s => (d.rej || []).find(x => x.s === s);
+  const K = { done: ['✓', 'k2'], part: ['◐', 'k1'], none: ['○', 'k0'] };
+  const thumbs = (L, slot) => `<div class="th">${(L || []).map(x => `<span><img class="${x.local ? 'loc' : ''}" src="${x.local ? x.thumb || '' : phUrl(x.id, 160)}" alt=""><b class="x" data-del="${esc(slot)}" data-id="${esc(x.id)}">✕</b></span>`).join('')}</div>`;
+  const fRow = k => { const f = C.forms[k], s = ST.st[k] || 'none'; let act = '', info = '';
+    if (f.k === 'chk') { const x = (d.f || {})[k]; info = x ? esc(x.by) + (x.local ? ' · بانتظار الإرسال' : '') : ''; act = `<button data-chk="${k}">${x ? 'تعديل' : 'تعبئة'}</button>`; }
+    else if (f.k === 'up') { info = thumbs((d.up || {})[k], 'u:' + k); act = `<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
+    else if (f.k === 'site' || f.k === 'meeting') { const L = F.filter(x => x.kind === f.k); info = L.map(x => (x.local ? '⏳ ' : '') + esc(x.seq)).join('، '); act = `<button data-nf="${f.k}">+ جديد</button>`; }
+    else if (f.k === 'lic') info = ST.lic.has ? 'مرفقة تلقائياً' : '<span class="err">لا توجد إجازة لـ ' + esc(ST.lic.name) + '</span>';
+    return `<div class="fl ${rj('f:' + k) || rj('u:' + k) ? 'rj' : ''}"><span class="k ${K[s][1]}">${K[s][0]}</span><div class="n"><b>${esc(f.name)}</b>${f.no ? ' <span class="muted">' + esc(f.no) + '</span>' : ''}<div class="muted">${info}${rj('f:' + k) ? ' ⛔ مرفوض' : ''}</div></div>${act}${f.k !== 'lic' ? `<b class="x" data-drop="${k}" style="color:var(--mut);cursor:pointer;padding:4px">✕</b>` : ''}</div>`; };
+  const ph = P.cats.map(g => { const G = C.ph[g]; if (!G) return ''; return `<h3>${esc(G.name)}</h3><div class="card">${G.items.map((t, i) => { const s = 'p:' + g + ':' + i, L = (d.ph || {})[g + ':' + i] || [];
+      return `<div class="ph ${rj(s) ? 'rj' : ''}"><span class="k ${L.length ? 'k2' : 'k0'}">${L.length ? '✓' : '○'}</span><div class="n">${esc(t)}${rj(s) ? ' <span class="pill p-d">⛔ مرفوض</span>' : ''}${thumbs(L, s)}</div><label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="${s}" data-cam="1" hidden></label><label class="cam">🖼<input type="file" accept="image/*" data-up="${s}" multiple hidden></label></div>`; }).join('')}</div>`; }).join('');
+  const vio = F.filter(x => x.kind === 'safety' || x.kind === 'quality');
+  const addOpts = C.order.filter(k => !P.req.includes(k));
+  A.innerHTML = topBar((it.d9 ? 'D9 ' : '') + it.wo + (it.type && !it.d9 ? '-' + it.type : ''), 1) + `<div class="wrap">
+    <div class="card"><div class="muted">${esc(it.office || '')} · ${esc(it.contractor || '')} · ${esc(it.district || '')}</div>${it.d9 ? `<div class="muted">${esc(it.work_desc || '')}</div>` : ''}<div class="row" style="margin-top:6px"><span class="pill">📝 ${esc(ST.prog.split(' · ')[0])}</span><span class="pill">📷 ${esc(ST.prog.split(' · ')[1])}</span>${(d.rej || []).length ? `<span class="pill p-d">⛔ مرفوض — ${esc(((S.B.qd || {})[key] || {}).qf_note || '')}</span>` : ''}</div></div>
+    ${P.hasNet ? `<div class="card"><label class="muted">الشبكة<select id="net"><option value="">— اختر —</option><option value="g" ${P.net === 'g' ? 'selected' : ''}>أرضي</option><option value="o" ${P.net === 'o' ? 'selected' : ''}>هوائي</option><option value="b" ${P.net === 'b' ? 'selected' : ''}>أرضي وهوائي</option></select></label>${P.needNet ? '<div class="err">اختر نوع الشبكة لتظهر نماذجها</div>' : ''}</div>` : ''}
+    ${it.d9 ? `<div class="card"><label class="muted">نوع العمل<select id="mw">${C.mw.map(k => `<option value="${k}" ${P.cats[0] === k ? 'selected' : ''}>${esc(C.ph[k].name)}</option>`).join('')}</select></label></div>` : `<div class="card"><div class="muted">المعدّات في هذا الأمر (تحدد الصور المطلوبة)</div>${C.eq.map(e => `<label class="eq"><input type="checkbox" data-eq="${e}" ${P.cats.includes(e) ? 'checked' : ''}>${esc(C.ph[e].name)}</label>`).join('')}</div>`}
+    <h3>النماذج</h3><div class="card">${P.req.map(fRow).join('')}${addOpts.length ? `<select id="add" style="margin-top:8px"><option value="">+ إضافة نموذج…</option>${addOpts.map(k => `<option value="${k}">${P.sug.includes(k) ? '★ ' : ''}${esc(C.forms[k].name)}</option>`).join('')}</select>` : ''}</div>
+    <h3>المخالفات${it.d9 ? '' : ' والمحاضر'}</h3><div class="card"><div class="muted">${vio.length ? vio.map(x => (x.local ? '⏳ ' : '') + (x.kind === 'safety' ? 'سلامة ' : 'جودة ') + esc(x.seq)).join('، ') : 'لا توجد مخالفات'}</div>
+      <div class="row" style="margin-top:8px"><button data-nf="safety">+ مخالفة سلامة</button><button data-nf="quality">+ مخالفة جودة</button>${it.d9 ? '' : '<button data-nf="meeting">+ محضر اجتماع</button>'}</div></div>
+    <h3>الصور المطلوبة</h3>${ph || '<div class="card muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
+    <div class="card muted">إنشاء ملف الجودة (PDF) من البرنامج الرئيسي بعد إرسال كل شيء. <a href="${esc(S.api)}" target="_blank" rel="noopener">فتح البرنامج</a></div></div>`;
+  wire();
+  const save = op => enqueue({ t: 'qd', ref: key, op });
+  if ($('#net')) $('#net').onchange = e => save({ net: e.target.value }); if ($('#mw')) $('#mw').onchange = e => save({ mw: e.target.value });
+  $$('[data-eq]').forEach(c => c.onchange = () => save({ eq: $$('[data-eq]:checked').map(x => x.dataset.eq) }));
+  if ($('#add')) $('#add').onchange = e => { if (e.target.value) save({ add: e.target.value }); };
+  $$('[data-drop]').forEach(b => b.onclick = () => { if (confirm('إزالة «' + C.forms[b.dataset.drop].name + '» من هذا الأمر؟')) save({ drop: b.dataset.drop }); });
+  $$('[data-chk]').forEach(b => b.onclick = () => go({ v: 'chk', key, code: b.dataset.chk }));
+  $$('[data-nf]').forEach(b => b.onclick = () => go({ v: 'form', key, kind: b.dataset.nf }));
+  $$('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذه الصورة؟')) return; const id = b.dataset.id;
+    if (/^L\d+$/.test(id)) { const qid = +id.slice(1); await DB.qdel(qid); S.Q = S.Q.filter(x => x.id !== qid); render(); } else enqueue({ t: 'del', ref: key, slot: b.dataset.del, fid: id }); });
+  $$('input[data-up]').forEach(inp => inp.onchange = async () => { const slot = inp.dataset.up, files = [...inp.files]; if (!files.length) return;
+    try { for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'up', ref: key, slot, b64: await fileB64(f), mime: 'application/pdf', thumb: '' }); }
+        else { const [p] = await takePhotos([f], it, !!inp.dataset.cam); await enqueue({ t: 'up', ref: key, slot, b64: p.b64, mime: p.mime, loc: p.loc, thumb: p.thumb }); } } toast('حُفظت على الجوال' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); }
+    catch (e) { toast(e.message, 4000); } });
+}
+function chkView(A) {
+  const { key, code } = S.r, it = itemOf(key), C = S.B.cat, F = C.forms[code], d = docOf(key), f = (d.f || {})[code] || {}, a = Object.assign({}, f.a || {}), nt = Object.assign({}, f.nt || {});
+  const H = ['date', 'time', 'location'].concat(F.hdr || []), HL = Object.assign({ date: 'التاريخ', time: 'الوقت', location: 'الموقع' }, C.hdr), hv = k => (f.hdr || {})[k] || (k === 'date' ? today() : k === 'time' ? hm() : k === 'location' ? it.district || '' : '');
+  const total = F.items.filter(x => !x.h).length, opts = ['y', 'n'].concat(F.ans === 'ynx' ? ['x'] : []), L = { y: 'نعم', n: 'لا', x: 'لا ينطبق' };
+  A.innerHTML = topBar(F.name, 1) + `<div class="wrap"><div class="card"><div class="muted">${esc(F.no || '')} · ${it.d9 ? 'D9 ' : ''}${esc(it.wo)} · ${esc(it.contractor || '')}</div>
+    <div class="f" style="margin-top:8px">${H.map(k => { const O = (C.opts || {})[k]; return `<label>${esc(HL[k] || k)}${O ? `<select data-h="${k}"><option></option>${O.map(x => `<option ${x === hv(k) ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` : `<input data-h="${k}" value="${esc(hv(k))}" ${k === 'date' ? 'type="date"' : k === 'time' ? 'type="time"' : ''}>`}</label>`; }).join('')}</div></div>
+    <div class="sticky"><button class="pri" id="all">✓ الكل نعم</button><span id="cnt" class="muted"></span><span style="flex:1"></span><button class="pri" id="sv">حفظ</button></div>
+    <div class="card">${F.items.map((x, i) => x.h ? `<div class="qh">${esc(x.t)}</div>` : `<div class="qi"><div class="tx"><b>${esc(x.n || '')}</b> ${esc(x.t)}${x.e ? `<small>${esc(x.e)}</small>` : ''}</div><div class="ab">${opts.map(v => `<button class="${v} ${a[i] === v ? 'on' : ''}" data-i="${i}" data-v="${v}">${L[v]}</button>`).join('')}</div><input data-nt="${i}" placeholder="ملاحظة" value="${esc(nt[i] || '')}" style="margin-top:6px;${F.notes || a[i] === 'n' || nt[i] ? '' : 'display:none'}"></div>`).join('')}</div>
+    <div class="card"><label class="muted">ملاحظات<textarea id="rm" rows="3">${esc(f.rm || '')}</textarea></label></div><button class="pri big" id="sv2" style="width:100%;margin-bottom:20px">حفظ</button></div>`;
+  wire();
+  const cnt = () => $('#cnt').textContent = Object.keys(a).filter(i => a[i]).length + ' / ' + total; cnt();
+  const setv = (i, v) => { a[i] = v; $$('[data-i="' + i + '"]').forEach(b => b.classList.toggle('on', b.dataset.v === v)); const n = $('[data-nt="' + i + '"]'); if (n) n.style.display = (F.notes || v === 'n' || n.value) ? '' : 'none'; cnt(); };
+  $$('[data-i]').forEach(b => b.onclick = () => setv(b.dataset.i, a[b.dataset.i] === b.dataset.v ? '' : b.dataset.v));
+  $('#all').onclick = () => F.items.forEach((x, i) => { if (!x.h && !a[i]) setv(String(i), 'y'); });
+  const save = async () => { const hdr = {}; $$('[data-h]').forEach(e => hdr[e.dataset.h] = e.value.trim()); $$('[data-nt]').forEach(e => { if (e.value.trim()) nt[e.dataset.nt] = e.value.trim(); else delete nt[e.dataset.nt]; });
+    const aa = {}; Object.keys(a).forEach(i => { if (a[i]) aa[i] = a[i]; }); if (Object.keys(aa).length < total && !confirm('لم تُجب على ' + (total - Object.keys(aa).length) + ' بنداً. حفظ ناقصاً؟')) return;
+    S.Q.filter(op => op.ref === key && op.t === 'qd' && op.op.form && op.op.form.code === code).forEach(op => { DB.qdel(op.id); }); S.Q = S.Q.filter(op => !(op.ref === key && op.t === 'qd' && op.op.form && op.op.form.code === code));
+    await enqueue({ t: 'qd', ref: key, op: { form: { code, a: aa, nt, rm: $('#rm').value, hdr } } }); toast('حُفظ النموذج' + (navigator.onLine ? '' : ' على الجوال')); history.back(); };
+  $('#sv').onclick = save; $('#sv2').onclick = save;
+}
+const KN = { safety: 'مخالفة سلامة', quality: 'مخالفة جودة', meeting: 'محضر اجتماع', site: 'بطاقة تسليم موقع' };
+function formView(A) {
+  const { key, kind } = S.r, it = itemOf(key), B = S.B, ct = (B.contracts || []).find(c => c.short === it.contractor || c.name === it.contractor);
+  const d = S.r.d || (S.r.d = { date: today(), time: hm(), contractor: ct ? ct.name : (it.contractor || ''), location: it.district || '', author: me(), stamp: '1', items: [] });
+  if (!S.r.init) { S.r.init = 1; S.r.photos = []; if (kind === 'safety') Object.assign(d, { dept: 'الدمام', circle: it.office || '', contract_no: ct ? ct.no : '', safety_rep: ct ? ct.rep : '', action: 'غرامة مالية', items: [{ rep: '1' }] }); if (kind === 'quality') d.items = [{ qty: '1' }]; if (kind === 'meeting') d.place = it.district || ''; if (kind === 'site') Object.assign(d, { dept: 'الدمام', circle: it.office || '', office: it.office || '', start_date: today(), target_date: it.due_date || '' }); }
+  const inp = (k, l, o = {}) => `<label class="${o.full ? 'full' : ''}">${l}${o.area ? `<textarea data-d="${k}" rows="${o.area}">${esc(d[k] || '')}</textarea>` : `<input data-d="${k}" ${o.type ? 'type="' + o.type + '"' : ''} ${o.list ? 'list="' + o.list + '"' : ''} value="${esc(d[k] || '')}">`}</label>`;
+  const top = { safety: inp('contractor', 'اسم المقاول', { list: 'dlc' }) + inp('contract_no', 'رقم العقد') + inp('location', 'موقع الزيارة') + inp('date', 'التاريخ', { type: 'date' }) + inp('time', 'الوقت', { type: 'time' }) + inp('permit_issuer', 'مصدر تصريح العمل') + inp('permit_receiver', 'مستلم تصريح العمل') + inp('safety_rep', 'ممثل السلامة للمقاول'),
+    quality: inp('contractor', 'المقاول', { list: 'dlc' }) + inp('location', 'الموقع') + inp('date', 'التاريخ', { type: 'date' }) + inp('time', 'الوقت', { type: 'time' }),
+    meeting: inp('contractor', 'المقاول', { list: 'dlc' }) + inp('place', 'المكان') + inp('date', 'تاريخ المحضر', { type: 'date' }) + inp('contractor_rep', 'ممثل المقاول'),
+    site: inp('contractor', 'المقاول', { list: 'dlc' }) + inp('feeder', 'رقم المغذي') + inp('location', 'الموقع') + inp('start_date', 'تاريخ البدء', { type: 'date' }) + inp('target_date', 'تاريخ الانتهاء المستهدف', { type: 'date' }) + inp('actual_date', 'تاريخ الانتهاء الفعلي', { type: 'date' }) + inp('date', 'تاريخ البطاقة', { type: 'date' }) + inp('time', 'الوقت', { type: 'time' }) }[kind];
+  const after = { safety: inp('desc', 'وصف المخالفات', { area: 3, full: 1 }) + inp('action', 'الإجراء المطلوب') + inp('receiver', 'مستلم المحضر للمقاول') + inp('receiver_id', 'هوية المستلم') + inp('contractor_note', 'إفادة / ملاحظة المقاول', { area: 2, full: 1 }),
+    quality: inp('desc', 'وصف المخالفة', { area: 3, full: 1 }) + inp('statement', 'إفادة المقاول', { area: 2, full: 1 }) + inp('contractor_rep', 'ممثل المقاول'),
+    meeting: inp('topics', 'محاور الاجتماع', { area: 6, full: 1 }) + inp('justify', 'مبررات المقاول (إن أفاد بها)', { area: 3, full: 1 }),
+    site: inp('notes', 'الملاحظات', { area: 4, full: 1 }) + inp('contractor_rep', 'ممثل المقاول') + inp('pdc_rep', 'ممثل شركة الكهرباء') }[kind];
+  const FL = kind === 'safety' ? B.fines.safety : kind === 'quality' ? B.fines.quality : [];
+  const items = kind === 'safety' || kind === 'quality' ? `<h3>${kind === 'safety' ? 'تفاصيل المخالفات' : 'بنود الغرامة'}</h3><div class="card">${d.items.map((x, i) => `<div class="it"><select data-fi="${i}"><option value="">— اختر البند —</option>${FL.map((f, j) => `<option value="${j}" ${f.text === x.text ? 'selected' : ''}>${esc((f.code ? f.code + ' — ' : '') + f.text)}${f.price ? ' (' + esc(f.price) + ')' : ''}</option>`).join('')}</select>
+      <div class="row" style="margin-top:6px"><label class="muted">${kind === 'safety' ? 'التكرار' : 'الكمية'}<input data-fq="${i}" value="${esc(kind === 'safety' ? x.rep || '' : x.qty || '')}" inputmode="numeric" style="width:90px"></label><label class="muted">القيمة<input data-fp="${i}" value="${esc(x.price || '')}" inputmode="decimal" style="width:110px"></label><b class="x" data-fx="${i}" style="color:var(--dan);cursor:pointer">✕ حذف</b></div></div>`).join('')}<button id="fadd" style="margin-top:8px">+ بند</button></div>` : '';
+  A.innerHTML = topBar(KN[kind] + ' — جديد', 1) + `<div class="wrap"><div class="card"><div class="muted">${it.d9 ? 'D9 ' : ''}${esc(it.wo)} · ${esc(it.office || '')}</div><div class="f" style="margin-top:8px">${top}</div></div>${items}
+    <div class="card"><div class="f">${after}${inp('author', kind === 'site' || kind === 'meeting' ? 'ممثل الاستشاري' : 'محرر المحضر', { list: 'dls' })}</div></div>
+    <h3>الصور</h3><div class="card"><div class="th">${S.r.photos.map((p, i) => `<span><img src="${p.thumb}"><b class="x" data-px="${i}">✕</b></span>`).join('')}</div><div class="row" style="margin-top:8px"><label class="cam">📷 تصوير<input type="file" accept="image/*" capture="environment" id="pc" hidden></label><label class="cam">🖼 من المعرض<input type="file" accept="image/*" id="pg" multiple hidden></label></div></div>
+    <datalist id="dlc">${(B.contractors || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist><datalist id="dls">${uq((B.people || []).concat(B.sigs || [])).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    <button class="pri big" id="sv" style="width:100%;margin:10px 0 24px">حفظ ${KN[kind]}</button></div>`;
+  wire();
+  const collect = () => { $$('[data-d]').forEach(e => d[e.dataset.d] = e.value.trim()); };
+  $$('[data-fi]').forEach(s => s.onchange = () => { collect(); const x = d.items[+s.dataset.fi], f = FL[+s.value]; if (f) Object.assign(x, { code: f.code || '', text: f.text, cat: f.cat || '', price: f.price || '' }); render(); });
+  $$('[data-fq]').forEach(e => e.oninput = () => { d.items[+e.dataset.fq][kind === 'safety' ? 'rep' : 'qty'] = e.value.trim(); });
+  $$('[data-fp]').forEach(e => e.oninput = () => { d.items[+e.dataset.fp].price = e.value.trim(); });
+  $$('[data-fx]').forEach(e => e.onclick = () => { collect(); d.items.splice(+e.dataset.fx, 1); render(); });
+  if ($('#fadd')) $('#fadd').onclick = () => { collect(); d.items.push(kind === 'safety' ? { rep: '1' } : { qty: '1' }); render(); };
+  $$('[data-px]').forEach(e => e.onclick = () => { collect(); S.r.photos.splice(+e.dataset.px, 1); render(); });
+  const addP = async (inp, cam) => { collect(); try { const ps = await takePhotos([...inp.files], it, cam); S.r.photos.push(...ps); render(); } catch (e) { toast(e.message, 4000); } };
+  $('#pc').onchange = e => addP(e.target, true); $('#pg').onchange = e => addP(e.target, false);
+  $('#sv').onclick = async () => { collect(); if ((kind === 'safety' || kind === 'quality') && !d.items.some(x => x.text)) return toast('اختر بنداً واحداً على الأقل');
+    await enqueue({ t: 'form', ref: key, kind, data: JSON.parse(JSON.stringify(d)), photos: S.r.photos.map(p => ({ b64: p.b64, mime: p.mime, loc: p.loc })) }); toast('حُفظ' + (navigator.onLine ? '' : ' على الجوال — يُرسل عند الاتصال')); history.back(); };
+}
+
+
+// ---------- the whole program (office leads, managers, quality): read on the phone without a network, change when connected ----------
+const LBL = {wo:'رقم أمر العمل',type:'النوع',ccode:'رمز استشاري',office:'المكتب',district:'الحي',contractor:'المقاول',group:'الجهة المنفذة',assign_date:'تاريخ الإسناد',duration:'المدة',due_date:'تاريخ الانتهاء',desc:'التوصيف',engineer:'المهندس المسند',site_engineer:'مهندس الموقع',site_date:'آخر حضور',cost:'التكلفة الفعلية',last_action:'آخر إجراء',oracle:'موقف أولاب',po:'رقم PO',stage:'الإفادة / المرحلة',notes:'ملاحظات',cur_stage:'المرحلة الحالية',cur_owner:'المسؤول الحالي',cur_since:'منذ',blocker:'العائق',blocker_owner:'جهة العائق',next_action:'الخطوة التالية',followup_date:'تاريخ المتابعة',munib_status:'في تقرير المتعثرات',munib_reason:'سبب التعثر',munib_remarks:'ملاحظات المتعثرات',munib_delay:'التأخير (يوم)',munib_permit_date:'تاريخ التصريح',munib_outage:'حالة التطفئات (جهد متوسط)',munib_out_done:'الفصولات المنتهية',munib_out_left:'الفصولات المتبقية',permit:'التصريح',materials:'صرف المواد',match_basket:'السلة الحالية',match_status:'موقف المطابقة',match_value:'قيمة المطابقة',match_required:'المطلوب للمطابقة',match_cert:'شهادة الإنجاز',match_cover:'رقم الكفر',updated_at:'آخر تحديث',updated_by:'بواسطة',left:'الأيام المتبقية',qf:'ملف الجودة',qf_at:'تاريخ رفع الملف',qf_by:'رفعه',qf_note:'ملاحظة الجودة',qf_status:'حالة ملف الجودة',vio:'المخالفات',site:'بطاقات تسليم الموقع',mom:'محاضر الاجتماع',consultant:'الاستشاري',last_action_date:'تاريخ آخر إجراء',olap_holder:'السلة (الجهة الحالية)',jstep:'خطوة الرحلة',jpct:'نسبة الإنجاز %',progress:'نسبة المشروع اليدوية %',days_since:'عدد الأيام منذ الإسناد',att:'المرفقات',permit_n:'عدد طلبات التصاريح',permit_state:'حالة آخر تصريح'};
+const PL={id:'م',req_no:'رقم الطلب',wo:'أمر العمل',kind:'النوع',contractor:'المقاول',assign_date:'تاريخ الإسناد',wo_type:'نوع أمر العمل',status:'الحالة',permit_no:'رقم التصريح',start_date:'بدء العمل في التصريح',end_date:'انتهاء التصريح',stage:'المرحلة',cert:'شهادة إتمام الأعمال',notes:'ملاحظات',file_url:'صورة التصريح',file_name:'اسم الملف',updated_at:'آخر تحديث',updated_by:'بواسطة'};
+const ML={id:'م',date:'التاريخ',d1:'رقم الإشعار D-1',d9:'D9',office:'المكتب',contractor:'المقاول',station:'المحطة',work_type:'نوع العمل',work_desc:'وصف العمل',reason:'السبب',engineer:'مهندس التنفيذ',status:'حالة التنفيذ',inv_status:'حالة الفاتورة',safety:'السلامة',supervision:'الإشراف',exec_p:'ص التنفيذ',cert:'ش الإنجاز',quality:'الجودة',attach:'الإرفاق',inv_aji:'فواتير أرابتك',inv_con:'فواتير المقاول',notes:'ملاحظات'};
+const FK = { safety: 'مخالفة سلامة', quality: 'مخالفة جودة', meeting: 'محضر اجتماع', site: 'بطاقة تسليم موقع' };
+const dU = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; };
+const ymd = d => d.toISOString().slice(0, 10);
+const addWork = (st, n) => { const d = dU(st); n = Math.round(+n); if (!d || !(n > 0)) return ''; let k = 0; while (k < n) { d.setUTCDate(d.getUTCDate() + 1); if (d.getUTCDay() !== 5) k++; } return ymd(d); };
+const workDiff = (from, to) => { const a = dU(from), b = dU(to); if (!a || !b) return ''; const sg = b >= a ? 1 : -1; let lo = sg > 0 ? a : b, hi = sg > 0 ? b : a, n = 0; const d = new Date(lo.getTime()); while (d < hi) { d.setUTCDate(d.getUTCDate() + 1); if (d.getUTCDay() !== 5) n++; } return sg * n; };
+const objs = T => (T && T.headers) ? T.rows.map(r => { const o = {}; T.headers.forEach((k, i) => o[k] = r[i] == null ? '' : r[i]); return o; }) : [];
+async function gunzipB64(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); }
+async function pullFull() {
+  const r = await call('fieldFull', !window.DecompressionStream);
+  if (!r || r.none) { S.F = null; S.noFull = true; await DB.set('nofull', 1); await DB.delk('F'); return; }
+  S.F = JSON.parse(r.gz ? await gunzipB64(r.gz) : r.js); S.F.got = Date.now(); await DB.set('F', S.F); prepF();
+}
+function prepF() {
+  const F = S.F; if (!F) return; const st = F.b.lists.stage || [], pc = F.b.lists.stage_pct || []; F.pct = {}; st.forEach((s, i) => F.pct[s] = +pc[i] || 0);
+  const e = F.pct['تم التنفيذ'] || 0, T = F.b.today || today();
+  F.O = objs(F.orders).map(o => { o.key = o.ccode ? o.wo + '-' + o.ccode : String(o.wo); const due = addWork(o.assign_date, o.duration); if (due) o.due_date = due;
+    o.left = o.due_date ? workDiff(T, o.due_date) : ''; const p = F.pct[o.cur_stage] ?? 0; o.open = p < 100; o.exec = p < 90; o.needsQF = e > 0 && p >= e; return o; });
+  F.M = objs(F.maint); F.P = objs(F.permits); F.L = objs(F.olap); F.FM = F.forms || []; F.LH = (F.olap && F.olap.headers) || [];
+}
+const KP = {
+  all: ['إجمالي الأوامر', o => true], open: ['مفتوحة', o => o.open], late30: ['متأخرة +30 يوماً', o => o.exec && o.left !== '' && o.left < -30],
+  stalled: ['متعثرات PDC', o => !!o.munib_status], qfmiss: ['منفّذة بلا ملف جودة', o => o.needsQF && !o.qf_id], qfwait: ['بانتظار مراجعة الجودة', o => o.qf_status === 'بانتظار الجودة'],
+  qfrej: ['ملفات جودة مرفوضة', o => o.qf_status === 'مرفوض'], confirmed: ['مؤكد بلا مستخلص', o => /مؤكد/.test(o.oracle)] };
+const SECS = [['dash', 'اللوحة'], ['orders', 'الإسنادات'], ['quality', 'ملفات الجودة'], ['maint', 'الصيانة'], ['permits', 'التصاريح'], ['olap', 'أولاب'], ['forms', 'النماذج']];
+function secRows(sec, f) { const F = S.F;
+  if (sec === 'orders') return F.O.filter(KP[f || 'all'] ? KP[f || 'all'][1] : () => true);
+  if (sec === 'quality') return F.O.filter(o => o.qf_status && (!f || o.qf_status === f));
+  return { maint: F.M, permits: F.P, olap: F.L, forms: F.FM }[sec] || []; }
+const offOf = (sec, x) => sec === 'olap' ? '' : x.office || '';
+function cardOf(sec, x, i) {
+  const pill = (t, c) => t ? `<span class="pill ${c || ''}">${esc(t)}</span>` : '';
+  if (sec === 'orders' || sec === 'quality') { const q = QFS[x.qf_status || ''] || QFS[''];
+    return `<div class="row"><span class="t">${esc(x.wo)}${x.ccode ? '-' + esc(x.ccode) : ''}</span>${sec === 'quality' || x.qf_status ? pill(q[0], q[1]) : ''}${x.left !== '' && x.exec ? pill((x.left < 0 ? 'متأخر ' + (-x.left) : 'باقي ' + x.left) + ' يوم', x.left < 0 ? 'p-d' : '') : ''}</div>
+      <div class="muted">${esc(x.office)} · ${esc(x.contractor)} · ${esc(x.district)}</div><div class="muted">${esc(x.cur_stage)}${x.cur_owner ? ' — ' + esc(x.cur_owner) : ''}</div>`; }
+  if (sec === 'maint') return `<div class="row"><span class="t">D9 ${esc(x.d9)}</span>${pill(x.status)}<span class="muted">${esc(x.date)}</span></div><div class="muted">${esc(x.office)} · ${esc(x.contractor)} · ${esc(x.station)}</div><div class="muted">${esc(String(x.work_desc).slice(0, 90))}</div>`;
+  if (sec === 'permits') return `<div class="row"><span class="t">${esc(x.req_no || x.id)}</span>${pill(x.status)}</div><div class="muted">أمر ${esc(x.wo)} · ${esc(x.contractor)} · ${esc(x.kind)}</div><div class="muted">${x.end_date ? 'ينتهي ' + esc(x.end_date) : ''}</div>`;
+  if (sec === 'olap') { const H = S.F.LH; return `<div class="row"><span class="t">${esc(x[H[0]])}</span></div><div class="muted">${H.slice(1, 5).map(h => esc(x[h])).filter(Boolean).join(' · ')}</div>`; }
+  if (sec === 'forms') return `<div class="row"><span class="t">${esc(FK[x.kind] || x.kind)} ${esc(x.seq)}</span>${x.total ? pill(x.total + ' ريال', 'p-w') : ''}<span class="muted">${esc(x.date)}</span></div><div class="muted">أمر ${esc(x.wo)} · ${esc(x.office)} · ${esc(x.contractor)}</div><div class="muted">${esc(String(x.sum || '').slice(0, 100))}</div>`;
+  return '';
+}
+function fullView(A) {
+  const F = S.F, r = S.r, sec = r.sec || 'dash';
+  if (!F) { A.innerHTML = topBar('البرنامج', 1) + `<div class="wrap"><div class="card muted">${navigator.onLine ? 'جارٍ تنزيل بيانات البرنامج…' : 'لم تُنزَّل بيانات البرنامج بعد. اتصل بالإنترنت مرة واحدة.'}</div></div>`; wire(); if (navigator.onLine && !S.syncing) pullFull().then(render).catch(e => toast(e.message, 4000)); return; }
+  const nav = `<div class="tabs" style="overflow-x:auto;flex-wrap:nowrap">${SECS.map(([k, t]) => `<button data-sec="${k}" class="${k === sec ? 'on' : ''}" style="flex:none">${t}</button>`).join('')}</div>`;
+  const head = `<div class="muted" style="margin-bottom:8px">بيانات ${esc(F.at || '')}${navigator.onLine ? '' : ' · بدون إنترنت: عرض فقط'}</div>`;
+  if (sec === 'dash') {
+    const O = F.O, offs = uq(O.map(o => o.office).filter(Boolean));
+    A.innerHTML = topBar('البرنامج', 1) + `<div class="wrap">${nav}${head}<div class="f" style="grid-template-columns:1fr 1fr">${Object.keys(KP).map(k => `<button class="card item" data-kp="${k}" style="margin:0"><div class="muted">${KP[k][0]}</div><div class="t" style="font-size:26px;${['late30', 'qfmiss', 'qfrej'].includes(k) ? 'color:var(--dan)' : ''}">${O.filter(KP[k][1]).length}</div></button>`).join('')}</div>
+      <h3>حسب المكتب</h3><div class="card"><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><th style="text-align:right">المكتب</th><th>الكل</th><th>مفتوحة</th><th>متأخرة +30</th><th>بلا ملف جودة</th></tr>${offs.map(of => { const L = O.filter(o => o.office === of); return `<tr style="border-top:1px solid var(--line)"><td>${esc(of)}</td><td style="text-align:center">${L.length}</td><td style="text-align:center">${L.filter(KP.open[1]).length}</td><td style="text-align:center;color:var(--dan)">${L.filter(KP.late30[1]).length}</td><td style="text-align:center">${L.filter(KP.qfmiss[1]).length}</td></tr>`; }).join('')}</table></div>
+      <h3>الصيانة والتصاريح</h3><div class="card"><div class="row"><span>إشعارات الصيانة: <b>${F.M.length}</b></span><span>طلبات التصاريح: <b>${F.P.length}</b></span><span>النماذج: <b>${F.FM.length}</b></span></div></div></div>`;
+    wire(); $$('[data-sec]').forEach(b => b.onclick = () => { S.r = { v: 'full', sec: b.dataset.sec }; history.replaceState(S.r, ''); render(); });
+    $$('[data-kp]').forEach(b => b.onclick = () => go({ v: 'full', sec: 'orders', f: b.dataset.kp })); return;
+  }
+  const q = (r.q || '').trim(), fo = r.fo || '', all = secRows(sec, r.f), offs = uq(all.map(x => offOf(sec, x)).filter(Boolean));
+  const L = all.filter(x => (!fo || offOf(sec, x) === fo) && (!q || Object.values(x).join(' ').includes(q))), n = r.n || 60;
+  const chips = sec === 'quality' ? `<div class="row" style="margin-bottom:8px">${['', 'بانتظار الجودة', 'مرفوض', 'معتمد'].map(k => `<button data-qf="${k}" class="${(r.f || '') === k ? 'pri' : ''}">${k || 'الكل'}</button>`).join('')}</div>` : (sec === 'orders' && r.f && r.f !== 'all' ? `<div class="row" style="margin-bottom:8px"><span class="pill p-w">${KP[r.f][0]}</span><button data-qf="">إلغاء الفلتر</button></div>` : '');
+  A.innerHTML = topBar('البرنامج', 1) + `<div class="wrap">${nav}${head}${chips}
+    <div class="row" style="margin-bottom:8px"><input id="fq" placeholder="بحث" value="${esc(q)}" style="flex:2">${offs.length > 1 ? `<select id="fo" style="flex:1"><option value="">كل المكاتب</option>${offs.map(o => `<option ${o === fo ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>` : ''}</div>
+    <div class="muted" style="margin-bottom:6px">${L.length} سجلاً</div>
+    ${L.slice(0, n).map(x => `<button class="card item" data-ri="${all.indexOf(x)}">${cardOf(sec, x)}</button>`).join('') || '<div class="card muted">لا شيء.</div>'}
+    ${L.length > n ? '<button id="more" style="width:100%;margin-bottom:20px">عرض المزيد</button>' : ''}</div>`;
+  wire();
+  $$('[data-sec]').forEach(b => b.onclick = () => { S.r = { v: 'full', sec: b.dataset.sec }; history.replaceState(S.r, ''); render(); });
+  $$('[data-qf]').forEach(b => b.onclick = () => { S.r = Object.assign({}, r, { f: b.dataset.qf, n: 60 }); history.replaceState(S.r, ''); render(); });
+  $('#fq').oninput = e => { r.q = e.target.value; r.n = 60; const p = e.target.selectionStart; render(); const i = $('#fq'); i.focus(); i.setSelectionRange(p, p); };
+  if ($('#fo')) $('#fo').onchange = e => { r.fo = e.target.value; render(); };
+  if ($('#more')) $('#more').onclick = () => { r.n = n + 100; render(); };
+  $$('[data-ri]').forEach(b => b.onclick = () => go({ v: 'rec', sec, f: r.f, i: +b.dataset.ri }));
+}
+function recView(A) {
+  const F = S.F, r = S.r, sec = r.sec, x = F && secRows(sec, r.f)[r.i]; if (!x) { history.back(); return; }
+  const isO = sec === 'orders' || sec === 'quality', LB = isO ? LBL : sec === 'maint' ? ML : sec === 'permits' ? PL : {};
+  const ed = F.b.editable || [], canEd = k => isO && (ed.includes(k) || (k === 'cur_stage' && ed.includes('stage')));
+  const skip = ['salt', 'hash', 'folder_id', 'qf_id', 'key', 'open', 'exec', 'needsQF', 'data', 'photos'];
+  const keys = sec === 'olap' ? F.LH : Object.keys(x).filter(k => !skip.includes(k));
+  const val = (k, v) => /^https?:/.test(String(v)) ? `<a href="${esc(v)}" target="_blank" rel="noopener">فتح</a>` : esc(v);
+  const title = isO ? x.wo + (x.ccode ? '-' + x.ccode : '') : sec === 'maint' ? 'D9 ' + x.d9 : sec === 'permits' ? 'طلب ' + (x.req_no || x.id) : sec === 'forms' ? (FK[x.kind] || x.kind) + ' ' + x.seq : String(x[F.LH[0]] || '');
+  const review = isO && x.qf_status === 'بانتظار الجودة' && F.b.qe;
+  A.innerHTML = topBar(title, 1) + `<div class="wrap">
+    ${isO && x.qf_url ? `<a class="card item" href="${esc(x.qf_url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit">📄 فتح ملف الجودة (${esc(x.qf_status || '')})</a>` : ''}
+    ${review ? '<button class="pri big" id="rv" style="width:100%;margin-bottom:10px">✔ مراجعة ملف الجودة: اعتماد أو رفض</button>' : ''}
+    ${(() => { const row = k => `<div class="fl"><div class="n"><div class="muted">${esc(LB[k] || k)}</div><div>${val(k, x[k])}</div></div>${canEd(k) ? `<button data-ed="${esc(k)}" style="padding:6px 10px">✎</button>` : ''}</div>`, full = keys.filter(k => x[k] !== '' && x[k] != null), empty = keys.filter(k => !(x[k] !== '' && x[k] != null) && canEd(k));
+      return `<div class="card">${full.map(row).join('')}</div>${empty.length ? `<details class="card"><summary class="muted">حقول فارغة يمكن تعبئتها (${empty.length})</summary>${empty.map(row).join('')}</details>` : ''}`; })()}
+    ${isO ? '<div class="muted" style="margin-bottom:20px">التعديل يُحفظ مباشرة في البرنامج ويحتاج اتصالاً بالإنترنت.</div>' : ''}</div>`;
+  wire();
+  if ($('#rv')) $('#rv').onclick = () => go({ v: 'review', key: x.key });
+  $$('[data-ed]').forEach(b => b.onclick = () => {
+    if (!navigator.onLine) return toast('التعديل يحتاج اتصالاً بالإنترنت');
+    const k = b.dataset.ed, opts = k === 'cur_stage' ? F.b.lists.stage : (F.b.lists[k] || (['cur_owner', 'site_engineer', 'engineer', 'blocker_owner'].includes(k) ? F.b.people : null)), box = b.closest('.fl');
+    box.innerHTML = `<div class="n"><div class="muted">${esc(LB[k] || k)}</div>${opts ? `<select id="ev"><option></option>${opts.map(o => `<option ${o === x[k] ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>` : `<input id="ev" value="${esc(x[k])}" ${/date/.test(k) ? 'type="date"' : ''}>`}</div><button class="pri" id="es">حفظ</button>`;
+    $('#es').onclick = async () => { const v = $('#ev').value.trim(); $('#es').disabled = true;
+      try { await call('saveCells', [{ wo: x.key, k, v }]); x[k] = v; if (k === 'cur_stage') { const p = F.pct[v] ?? 0; x.open = p < 100; x.exec = p < 90; x.needsQF = (F.pct['تم التنفيذ'] || 0) > 0 && p >= (F.pct['تم التنفيذ'] || 0); }
+        const raw = F.orders, ri = raw.rows.findIndex(rr => (rr[raw.headers.indexOf('ccode')] ? rr[raw.headers.indexOf('wo')] + '-' + rr[raw.headers.indexOf('ccode')] : String(rr[raw.headers.indexOf('wo')])) === x.key);
+        if (ri >= 0 && raw.headers.indexOf(k) >= 0) raw.rows[ri][raw.headers.indexOf(k)] = v; await DB.set('F', F); toast('حُفظ'); render(); }
+      catch (e) { toast(e.message, 4000); $('#es').disabled = false; } };
+  });
+}
+async function reviewView(A) {
+  const key = S.r.key, o = (S.F.O || []).find(x => x.key === key);
+  A.innerHTML = topBar('مراجعة ' + (o ? o.wo : ''), 1) + '<div class="wrap"><div class="card muted">جارٍ تحميل الملف…</div></div>'; wire();
+  if (!navigator.onLine) { $('.wrap').innerHTML = '<div class="card muted">المراجعة تحتاج اتصالاً بالإنترنت.</div>'; return; }
+  let V; try { V = await call('qdGet', key); } catch (e) { $('.wrap').innerHTML = `<div class="card err">${esc(e.message)}</div>`; return; }
+  if (S.r.v !== 'review') return; const C = S.B.cat, P = V.plan, items = [];
+  P.req.forEach(k => { const f = C.forms[k]; if (!f || f.k === 'lic') return; items.push([(f.k === 'chk' ? 'f:' : f.k === 'up' ? 'u:' : 'fm:') + (f.k === 'site' ? 'SITE' : f.k === 'meeting' ? 'MTG' : k), f.name + ((V.st || {})[k] && V.st[k] !== 'done' ? ' (ناقص)' : '')]); });
+  P.cats.forEach(g => { const G = C.ph[g]; if (G) G.items.forEach((t, i) => items.push(['p:' + g + ':' + i, G.name + ': ' + t])); });
+  $('.wrap').innerHTML = `${o && o.qf_url ? `<a class="card item" href="${esc(o.qf_url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit">📄 فتح ملف الجودة PDF</a>` : ''}
+    <div class="card"><b>اعتماد</b><div class="muted">إن كان الملف سليماً.</div><button class="pri big" id="ap" style="width:100%;margin-top:8px">اعتماد الملف</button></div>
+    <div class="card"><b>رفض</b><div class="muted">حدد ما يحتاج تصحيحاً، ويعود كل بند لمن عبّأه أو صوّره.</div>
+      ${items.map(([s, t]) => `<label class="fl" style="cursor:pointer"><input type="checkbox" data-rj="${esc(s)}" style="width:auto"><span class="n">${esc(t)}</span></label>`).join('')}
+      <textarea id="rn" rows="3" placeholder="سبب الرفض" style="margin-top:8px"></textarea><button class="big" id="rj" style="width:100%;margin-top:8px;color:var(--dan)">رفض البنود المحددة</button></div>`;
+  const done = async (action) => { const its = $$('[data-rj]:checked').map(e => e.dataset.rj), note = $('#rn').value.trim();
+    if (action === 'reject' && (!its.length || !note)) return toast('حدد البنود واكتب السبب');
+    try { await call('qdReview', key, action, its, note); if (o) o.qf_status = action === 'approve' ? 'معتمد' : 'مرفوض'; toast(action === 'approve' ? 'اعتُمد الملف' : 'رُفضت البنود وأُعيدت لأصحابها'); history.back(); if (navigator.onLine) pullFull().then(render).catch(() => {}); }
+    catch (e) { toast(e.message, 4000); } };
+  $('#ap').onclick = () => done('approve'); $('#rj').onclick = () => done('reject');
+}
+
+// ---------- start ----------
+(async () => {
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  const qa = cleanApi(decodeURIComponent((location.search.match(/[?&]api=([^&]+)/) || [])[1] || '')); if (qa) { await DB.set('api', qa); history.replaceState(null, '', location.pathname); }
+  S.api = qa || (await DB.get('api')) || API_DEFAULT; S.dev = (await DB.get('dev')) || ''; S.user = (await DB.get('user')) || null; S.B = (await DB.get('B')) || null; S.Q = (await DB.qall()) || []; S.F = (await DB.get('F')) || null; S.noFull = !!(await DB.get('nofull')); try { prepF(); } catch (e) { S.F = null; }
+  history.replaceState(S.r, ''); render(); if (S.dev && navigator.onLine) sync();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
