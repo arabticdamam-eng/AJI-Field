@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f3a5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AJI الميداني">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>AJI الميداني</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1d2733;--mut:#6b7684;--line:#dde2e8;--pri:#1f3a5f;--ok:#2e7d32;--okbg:#e6f4ea;--dan:#c62828;--danbg:#fdecea;--warn:#a15c00;--warnbg:#fff4e0}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,"Segoe UI",Arial,sans-serif;font-size:15px}
+button,input,select,textarea{font:inherit}button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 14px;cursor:pointer;color:var(--ink)}
+button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}button:disabled{opacity:.5}
+input,select,textarea{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;width:100%}
+.top{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));display:flex;gap:8px;align-items:center}
+.top b{font-size:16px}.top .sp{flex:1}.top .webb{color:#14263F;background:#FFD400;border-radius:10px;padding:6px 10px;text-decoration:none;font-weight:700;font-size:14px;white-space:nowrap}.top button{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25);padding:6px 10px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:#bbb}.dot.on{background:#7ed321}.dot.off{background:#ff6b6b}
+.wrap{padding:12px;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.muted{color:var(--mut);font-size:13px}.err{color:var(--dan);font-size:13px;margin-top:6px}
+.pill{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;background:#eef1f5}.p-ok{background:var(--okbg);color:var(--ok)}.p-w{background:var(--warnbg);color:var(--warn)}.p-d{background:var(--danbg);color:var(--dan)}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tabs button{flex:1}.tabs button.on{background:var(--pri);color:#fff}
+.item{display:block;width:100%;text-align:right}.item .t{font-weight:700}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:8px}.f label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--mut)}.f .full{grid-column:1/-1}
+@media (max-width:520px){.f{grid-template-columns:1fr}}
+h3{margin:12px 0 6px;font-size:16px}
+.fl{display:flex;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}.fl:first-child{border-top:0}.fl .n{flex:1}.fl.rj{background:var(--danbg)}
+.k{display:inline-block;min-width:24px;text-align:center;border-radius:10px;font-weight:700}.k0{color:var(--mut)}.k1{color:var(--warn);background:var(--warnbg)}.k2{color:var(--ok);background:var(--okbg)}
+.ph{display:flex;gap:8px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}.ph .n{flex:1;font-size:14px}
+.th{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.th span{position:relative}.th img{width:62px;height:62px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.th .x{position:absolute;top:-7px;left:-7px;background:#fff;color:var(--dan);border-radius:50%;padding:0 5px;font-weight:700;cursor:pointer;border:1px solid var(--line)}
+.th .loc{outline:2px dashed var(--warn)}
+.cam{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:20px;background:#fff;cursor:pointer}
+.qi{padding:10px 0;border-top:1px solid var(--line)}.qi .tx{font-size:15px}.qi small{display:block;color:var(--mut);direction:ltr;text-align:left;font-size:11px}
+.ab{display:flex;gap:6px;margin-top:8px}.ab button{flex:1;padding:12px 4px;font-size:15px}.ab .on.y{background:var(--ok);color:#fff;border-color:var(--ok)}.ab .on.n{background:var(--dan);color:#fff;border-color:var(--dan)}.ab .on.x{background:#777;color:#fff;border-color:#777}
+.qh{background:#eef3f8;padding:7px 10px;border-radius:8px;font-weight:700;margin-top:10px}
+.sticky{position:sticky;top:calc(52px + env(safe-area-inset-top));z-index:4;background:var(--bg);padding:6px 0;display:flex;gap:8px;align-items:center}
+#toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:12px;display:none;z-index:50;max-width:90%;text-align:center}
+.eq{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:4px 10px;margin:3px;font-size:13px;background:#fff}.eq input{width:auto}
+.it{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:6px}
+.big{font-size:17px;padding:12px}
+.wrap.wide{max-width:none}.fgw{overflow:auto;max-height:calc(100vh - 230px);border:1px solid var(--line,#e4e2da);border-radius:10px;background:#fff;-webkit-overflow-scrolling:touch}.fg{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}.fg th,.fg td{white-space:nowrap;padding:7px 9px;border-bottom:1px solid #eee;border-left:1px solid #f1f1f1;text-align:right}.fg thead th{position:sticky;top:0;z-index:2;font-weight:700}.fg th.st{z-index:3}.fg .st{position:sticky;right:0;background:#fff;z-index:1;font-weight:700;box-shadow:-1px 0 0 #e4e2da}.fg thead .st{z-index:3}.fg tbody tr:active td{background:#FFF8D6}.fgb{display:inline-block;margin-right:6px;padding:0 5px;border:1px solid currentColor;border-radius:4px;font-size:11px;cursor:pointer;opacity:.75}.fgb.on{background:#185FA5;color:#fff!important;border-color:#185FA5;opacity:1}.fgm{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:flex;align-items:flex-end}.fgm-b{background:#fff;width:100%;max-height:78vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px}.fgm #gml label{display:flex;gap:8px;align-items:center;padding:7px 2px;border-bottom:1px solid #f2f2f2}.fgm #gml label span:nth-child(2){flex:1}.fgm #gml input{width:auto}
+.mb{background:transparent!important;border:0!important;font-size:22px;padding:2px 6px!important;line-height:1}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s}
+.drw{position:fixed;top:0;right:0;bottom:0;width:min(300px,86vw);background:#fff;z-index:61;transform:translateX(105%);transition:transform .22s ease;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.2);padding-top:env(safe-area-inset-top)}
+body.mopen .scrim{opacity:1;pointer-events:auto}body.mopen .drw{transform:none}
+.drw .dh{background:var(--pri);color:#fff;padding:14px 16px;display:flex;align-items:flex-start;gap:8px}.drw .dh small{display:block;opacity:.8;font-size:12px}.drw .dh button{margin-right:auto;background:transparent;border:0;color:#fff;font-size:20px;padding:0 4px}
+.drw .dn{flex:1;overflow:auto;padding:6px 8px}.drw .grp{font-size:12px;color:var(--mut);font-weight:700;padding:12px 10px 4px}
+.drw .dn a{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:10px;color:var(--ink);text-decoration:none;cursor:pointer;font-size:15px}.drw .dn a.on{background:#e8eef6;color:var(--pri);font-weight:700}.drw .dn a .n{margin-right:auto;font-size:12px;background:#eef1f5;border-radius:10px;padding:0 8px}
+.drw .df{border-top:1px solid var(--line);padding:10px 12px;display:flex;gap:8px;align-items:center}.drw .df span{flex:1;font-size:13px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="toast"></div>
+<script>
+const API_DEFAULT = '';   // رابط البرنامج الذي ينتهي بـ /exec (اختياري: يمكن كتابته عند أول فتح)
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const S = { api: '', dev: '', user: null, B: null, Q: [], r: { v: 'home' }, tab: 'o', q: '', syncing: false, msg: '' };
+const toast = (t, ms) => { const e = $('#toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => e.style.display = 'none', ms || 2600); };
+const now = () => { const d = new Date(), p = n => ('0' + n).slice(-2); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
+const today = () => now().slice(0, 10), hm = () => now().slice(11, 16);
+const phUrl = (id, w) => 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + (w || 200);
+
+// ---------- storage (IndexedDB): kv = settings and the downloaded data, q = work waiting to be sent ----------
+const DB = { db: null,
+  open() { return this.db ? Promise.resolve(this.db) : new Promise((ok, no) => { const r = indexedDB.open('aji-field', 1); r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('kv'); d.createObjectStore('q', { keyPath: 'id', autoIncrement: true }); }; r.onsuccess = () => { this.db = r.result; ok(this.db); }; r.onerror = () => no(r.error); }); },
+  async tx(st, mode, f) { const d = await this.open(); return new Promise((ok, no) => { const t = d.transaction(st, mode), s = t.objectStore(st); let res; const q = f(s); if (q) q.onsuccess = () => res = q.result; t.oncomplete = () => ok(res); t.onerror = () => no(t.error); }); },
+  get(k) { return this.tx('kv', 'readonly', s => s.get(k)); }, set(k, v) { return this.tx('kv', 'readwrite', s => s.put(v, k)); }, delk(k) { return this.tx('kv', 'readwrite', s => s.delete(k)); },
+  qall() { return this.tx('q', 'readonly', s => s.getAll()); }, qadd(o) { return this.tx('q', 'readwrite', s => s.add(o)); }, qput(o) { return this.tx('q', 'readwrite', s => s.put(o)); }, qdel(id) { return this.tx('q', 'readwrite', s => s.delete(id)); }
+};
+// a new choice (network / equipment / work kind) replaces the same unsent choice, so ticking many boxes stays one item
+const SAME = (a, b) => (a.t === 'boq' || a.t === 'draw') ? a.t === b.t && a.ref === b.ref && !a.sending : a.t === 'qd' && b.t === 'qd' && a.ref === b.ref && !a.sending && ['net', 'eq', 'mw'].some(k => a.op[k] !== undefined && b.op[k] !== undefined) && Object.keys(a.op).length === 1 && Object.keys(b.op).length === 1;
+async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op));
+  if (old) { Object.assign(old, op, { id: old.id }); delete old.err; await DB.qput(old); } else { op.id = await DB.qadd(op); S.Q.push(op); }
+  render(); clearTimeout(enqueue.h); enqueue.h = setTimeout(sync, 1500); }
+
+// ---------- server ----------
+async function call(fn, ...args) {
+  let r; const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 90000); try { r = await fetch(S.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, args, dev: S.dev }), redirect: 'follow', signal: ac.signal }); clearTimeout(tm); }
+  catch (e) { const er = new Error('لا يوجد اتصال بالإنترنت'); er.net = 1; throw er; }
+  if (!r.ok) { const er = new Error('الخادم غير متاح (' + r.status + ')'); er.net = 1; throw er; }
+  let j; try { j = await r.json(); } catch (e) { const er = new Error('رد غير متوقع من الخادم. تأكد من رابط البرنامج'); er.net = 1; throw er; }
+  if (j.err) { if (/انتهت الجلسة/.test(j.err)) { S.dev = ''; await DB.delk('dev'); } throw new Error(j.err); }
+  return j.ok;
+}
+async function pull() { const B = await call('fieldPull', S.itv || ''); if (B.items) { S.IT = {}; B.items.forEach(x => S.IT[x[0]] = [x[1], x[2]]); S.itv = B.itemsVer; await DB.set('items', { v: S.itv, m: S.IT }); } delete B.items; S.B = B; await DB.set('B', B); return B; }
+async function runOp(op) {
+  if (op.t === 'qd') return call('qdSave', op.ref, op.op);
+  if (op.t === 'up') return call('qdUpload', op.ref, op.slot, op.b64, op.mime, op.loc || '');
+  if (op.t === 'del') return call('qdRemove', op.ref, op.slot, op.fid);
+  if (op.t === 'boq') return call('boqSave', op.ref, { lines: op.lines });
+  if (op.t === 'draw') return call('boqDraw', op.ref, op.draw, op.png || '');
+  if (op.t === 'form') {
+    op.done = op.done || [];
+    for (let i = op.done.length; i < op.photos.length; i++) { const p = op.photos[i]; const r = await call('uploadFormPhoto', op.ref, op.kind, p.b64, p.mime, p.loc || ''); op.done.push({ id: r.id, name: r.name, st: r.st, loc: r.loc }); await DB.qput(op); }
+    return call('saveForm', { kind: op.kind, wo: op.ref, data: op.data, photos: op.done });
+  }
+}
+async function sync(manual) {
+  if (S.syncing || !S.dev) return; if (!navigator.onLine && !manual) return render();
+  S.syncing = true; render(); let sent = 0, failed = 0; const tried = new Set();
+  try {
+    let op;
+    while ((op = S.Q.find(x => !tried.has(x.id)))) {
+      tried.add(op.id); op.sending = 1;
+      try { await runOp(op); await DB.qdel(op.id); S.Q = S.Q.filter(x => x.id !== op.id); sent++; render(); }
+      catch (e) { delete op.sending; if (e.net) throw e; op.err = e.message; failed++; await DB.qput(op); }
+    }
+    await pull(); if (!S.noFull && (manual || !S.F || Date.now() - (S.F.got || 0) > 300000)) await pullFull(); S.msg = 'آخر مزامنة ' + now();
+    if (sent || failed) toast('أُرسل ' + sent + (failed ? ' — ' + failed + ' لم يُقبل (افتح «بانتظار الإرسال»)' : ''), failed ? 5000 : 2600);
+  } catch (e) { S.msg = e.message; if (manual) toast(e.message, 4000); }
+  S.Q.forEach(x => delete x.sending); S.syncing = false; render();
+}
+addEventListener('online', () => { render(); sync(); }); addEventListener('offline', render);
+setInterval(() => { if (S.Q.length && navigator.onLine) sync(); }, 60000);
+
+// ---------- the local copy of an order's quality documents = downloaded data + work not sent yet ----------
+const me = () => (S.user || {}).name || '';
+function itemOf(key) {
+  if (/^D9:/.test(key)) { const n = (S.B.notices || []).find(x => 'D9:' + x.d9 === key); if (!n) return null; return { key, d9: 1, type: 'D9', wo: n.d9, office: n.office, contractor: n.contractor, district: n.station, station: n.station, site_engineer: me(), work_desc: n.work_desc, status: n.status, qf_status: n.qf_status }; }
+  const o = (S.B.orders || []).find(x => x.key === key); return o ? Object.assign({ d9: 0 }, o) : null;
+}
+function applyOp(d, op) {
+  const C = S.B.cat;
+  if (op.t === 'qd') { const o = op.op;
+    if (o.net !== undefined) d.net = o.net; if (o.eq) d.eq = o.eq; if (o.mw) d.mw = o.mw;
+    if (o.add) { d.add = [...new Set((d.add || []).concat([o.add]))]; d.drop = (d.drop || []).filter(k => k !== o.add); }
+    if (o.drop) { d.drop = [...new Set((d.drop || []).concat([o.drop]))]; d.add = (d.add || []).filter(k => k !== o.drop); }
+    if (o.form) { d.f = d.f || {}; d.f[o.form.code] = { a: o.form.a, nt: o.form.nt, rm: o.form.rm, hdr: o.form.hdr, by: me(), at: op.at, local: 1 }; d.rej = (d.rej || []).filter(x => x.s !== 'f:' + o.form.code); } }
+  if (op.t === 'up') { const it = { id: 'L' + op.id, local: 1, thumb: op.thumb, mime: op.mime, by: me() }; const m = op.slot.match(/^p:(.+)$/), u = op.slot.match(/^u:(.+)$/);
+    if (m) { d.ph = d.ph || {}; (d.ph[m[1]] = d.ph[m[1]] || []).push(it); } else if (u) { d.up = d.up || {}; (d.up[u[1]] = d.up[u[1]] || []).push(it); } d.rej = (d.rej || []).filter(x => x.s !== op.slot); }
+  if (op.t === 'del') { const m = op.slot.match(/^p:(.+)$/), u = op.slot.match(/^u:(.+)$/); const take = a => (a || []).filter(x => x.id !== op.fid);
+    if (m && d.ph) d.ph[m[1]] = take(d.ph[m[1]]); if (u && d.up) d.up[u[1]] = take(d.up[u[1]]); }
+  return d;
+}
+function docOf(key) { const base = JSON.parse(JSON.stringify(((S.B.qd || {})[key] || {}).d || {})); S.Q.filter(op => op.ref === key && op.t !== 'form').forEach(op => applyOp(base, op)); return base; }
+const uq = a => a.filter((x, i) => a.indexOf(x) === i);
+function guessMw(t) { t = String(t || ''); if (/(mini ?pil|pillar|بيلر|بلر|مني|ميني|لوحة توزيع)/i.test(t)) return 'MPR'; if (/(cable|joint|termin|fault|كابل|كيبل|جوينت|ترمن|عطل)/i.test(t)) return 'CF'; return 'GEN'; }
+function planOf(it, d) {
+  const C = S.B.cat; let mx = C.mx[it.d9 ? 'D9' : String(it.type)] || C.mx['*'], net = '', needNet = false; const hasNet = !!mx.g;
+  if (hasNet) { net = d.net || mx.net || ''; const g = mx.g, o = mx.o; if (net === 'g') mx = g; else if (net === 'o') mx = o; else if (net === 'b') mx = { req: uq(g.req.concat(o.req)), opt: uq(g.opt.concat(o.opt)) }; else { needNet = true; mx = { req: g.req.filter(k => o.req.includes(k)), opt: [] }; } }
+  const drop = d.drop || [], add = d.add || [], set = mx.req.filter(k => !drop.includes(k)).concat(add), req = C.order.filter(k => set.includes(k));
+  let cats; if (it.d9) cats = [d.mw || guessMw(it.work_desc)]; else if (Array.isArray(d.eq)) cats = C.eq.filter(e => d.eq.includes(e)); else { const s = []; req.forEach(k => (C.eq_of[k] || []).forEach(e => { if (!s.includes(e)) s.push(e); })); cats = C.eq.filter(e => s.includes(e)); }
+  return { req, sug: (mx.opt || []).filter(k => !req.includes(k)), net, needNet, hasNet, cats };
+}
+function formsOf(key) { const L = ((S.B.forms || {})[key] || []).map(x => Object.assign({}, x)); S.Q.filter(op => op.t === 'form' && op.ref === key).forEach(op => L.push({ id: 'L' + op.id, kind: op.kind, seq: '…', local: 1, err: op.err })); return L; }
+const nk = s => String(s || '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+function licOf(it, d) { const names = uq([it.site_engineer].concat(Object.keys(d.f || {}).map(k => d.f[k].by)).filter(Boolean)); const n = names[0] || ''; if (!n) return { name: '', has: false };
+  const k = nk(n), L = (S.B.lic || []).map(nk); return { name: n, has: L.some(x => x === k || x.split(' ').slice(0, 2).join(' ') === k.split(' ').slice(0, 2).join(' ')) }; }
+function stateOf(it, d, P) {
+  const C = S.B.cat, st = {}, F = formsOf(it.key), lic = licOf(it, d); let fd = 0, pd = 0, pn = 0, miss = 0;
+  P.req.forEach(k => { const f = C.forms[k]; let s = 'none';
+    if (f.k === 'chk') { const a = ((d.f || {})[k] || {}).a || {}, n = f.items.filter(x => !x.h).length, m = Object.keys(a).filter(i => a[i]).length; s = m >= n ? 'done' : m ? 'part' : 'none'; }
+    else if (f.k === 'up') s = ((d.up || {})[k] || []).length ? 'done' : 'none';
+    else if (f.k === 'site' || f.k === 'meeting') s = F.some(x => x.kind === f.k) ? 'done' : 'none';
+    else if (f.k === 'lic') s = lic.has ? 'done' : 'none';
+    st[k] = s; if (s === 'done') fd++; else miss++; });
+  P.cats.forEach(g => { const G = C.ph[g]; if (G) G.items.forEach((t, i) => { pn++; if (((d.ph || {})[g + ':' + i] || []).length) pd++; else miss++; }); });
+  return { st, lic, prog: fd + '/' + P.req.length + ' · ' + pd + '/' + pn, miss };
+}
+
+// ---------- photos: shrink, stamp (time, location, order, engineer, logo) ----------
+function getLoc() { return new Promise((ok, no) => { if (!navigator.geolocation) return no(new Error('الجهاز لا يدعم تحديد الموقع')); const tm = setTimeout(() => no(new Error('لم يصل الموقع (GPS)')), 30000);
+  navigator.geolocation.getCurrentPosition(p => { clearTimeout(tm); ok({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }); }, e => { clearTimeout(tm); no(new Error(e && e.code === 1 ? 'لم يُسمح بالموقع للتطبيق' : 'تعذّر تحديد الموقع')); }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 30000 }); }); }
+const loadImg = src => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('تعذّر قراءة الصورة')); im.src = src; });
+async function shrink(file, max, q) { const url = URL.createObjectURL(file); try { const im = await loadImg(url); const s = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); return c; } finally { URL.revokeObjectURL(url); } }
+async function stamp(cv, it, locP) {
+  let loc = null; try { loc = await locP; } catch (e) { if (S.B.project && S.B.project.loc && !confirm(e.message + '\nرفع الصورة بلا موقع؟')) throw new Error('أُلغيت الصورة'); }
+  const W = cv.width, H = cv.height, m = Math.min(W, H), pad = Math.max(6, Math.round(m * 0.025)), g = cv.getContext('2d'), ltr = t => '‪' + t + '‬';
+  const lines = [[ltr(now()), 'المهندس: ' + me()].join(' · '), (it.d9 ? 'إشعار D9 ' + ltr(it.wo) : 'أمر العمل ' + ltr(it.wo) + (it.type ? ' · النوع ' + ltr(it.type) : '')) + (it.district ? ' · ' + it.district : ''), 'الموقع: ' + (loc ? ltr(loc.lat.toFixed(6) + ', ' + loc.lng.toFixed(6)) + (loc.acc ? ' (±' + Math.round(loc.acc) + ' م)' : '') : 'غير متاح')];
+  let fs = Math.max(12, Math.round(W / 40)); const font = () => g.font = '600 ' + fs + 'px Tahoma, Arial, sans-serif'; font(); while (fs > 10 && Math.max(...lines.map(t => g.measureText(t).width)) > W - 2 * pad) { fs--; font(); }
+  const lh = Math.round(fs * 1.5), sh = lh * lines.length + pad, oc = document.createElement('canvas'); oc.width = W; oc.height = H + sh; const q = oc.getContext('2d'); q.drawImage(cv, 0, 0); q.fillStyle = '#1f2d3d'; q.fillRect(0, H, W, sh);
+  q.font = g.font; q.fillStyle = '#fff'; q.textBaseline = 'middle'; q.direction = 'rtl'; q.textAlign = 'right'; lines.forEach((t, i) => q.fillText(t, W - pad, H + pad / 2 + lh * i + lh / 2, W - 2 * pad));
+  if (S.B.stampLogo) { try { const lg = await loadImg(S.B.stampLogo), L = Math.max(40, Math.round(m * 0.16)); q.drawImage(lg, pad, pad, L, L); } catch (e) {} }
+  return { cv: oc, loc: loc ? loc.lat.toFixed(7) + ',' + loc.lng.toFixed(7) : '' };
+}
+const thumbOf = cv => { const s = Math.min(1, 200 / Math.max(cv.width, cv.height)), c = document.createElement('canvas'); c.width = Math.round(cv.width * s); c.height = Math.round(cv.height * s); c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.6); };
+async function takePhotos(files, it, cam) { const out = []; const locP = cam ? getLoc() : null; if (locP) locP.catch(() => {});
+  for (const f of files) { let cv = await shrink(f, 1600, 0.75), loc = ''; if (cam) { toast('جارٍ ختم الصورة بالموقع…'); const r = await stamp(cv, it, locP); cv = r.cv; loc = r.loc; }
+    const du = cv.toDataURL('image/jpeg', 0.78); out.push({ b64: du.split(',')[1], mime: 'image/jpeg', loc, thumb: thumbOf(cv) }); } return out; }
+const fileB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(f); });
+
+// ---------- screens ----------
+function go(r) { S.r = r; history.pushState(r, ''); render(); scrollTo(0, 0); }
+addEventListener('popstate', e => { menu(false); S.r = e.state || { v: 'home' }; render(); });
+function topBar(title, back) { const on = navigator.onLine, n = S.Q.length;
+  return `<div class="top"><button id="mb" class="mb" title="القائمة" aria-label="القائمة">☰</button>${back ? '<button id="bk">→</button>' : ''}<b>${esc(title)}</b><span class="sp"></span>${S.api ? `<a id="web" class="webb" href="${esc(S.api)}" target="_blank" rel="noopener" title="فتح البرنامج الرئيسي">🌐 البرنامج</a>` : ''}<span class="dot ${on ? 'on' : 'off'}" title="${on ? 'متصل' : 'بدون إنترنت'}"></span>
+    <button id="sy">${S.syncing ? '⏳ جارٍ الإرسال' : '⟳'}${n ? ' ' + n : ''}</button></div>`; }
+// ---------- side menu (☰ at the top right): my work, then the whole program by section, then the account ----------
+const SICO = { where: '📍', dash: '📊', orders: '📋', quality: '✅', maint: '🛠', permits: '📄', olap: '🔎', forms: '⚠️' };
+function menu(on) { document.body.classList.toggle('mopen', on === undefined ? !document.body.classList.contains('mopen') : !!on); }
+function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div'); d.id = 'drw'; document.body.appendChild(d); }
+  const r = S.r, B = S.B || { orders: [], notices: [] }, on = (v, x) => r.v === v && (!x || x(r)) ? 'on' : '';
+  d.innerHTML = `<div class="scrim" id="mscr"></div><aside class="drw"><div class="dh"><div><b>AJI الميداني</b><small>${esc(me())}</small></div><button id="mcl">✕</button></div><div class="dn">
+    <div class="grp">عملي</div>
+    <a data-go="home:o" class="${on('home', () => S.tab === 'o')}">📍 أوامري<span class="n">${B.orders.length}</span></a>
+    <a data-go="home:n" class="${on('home', () => S.tab === 'n')}">🔧 إشعارات الصيانة<span class="n">${B.notices.length}</span></a>
+    <a data-go="queue" class="${on('queue')}">⏳ بانتظار الإرسال<span class="n">${S.Q.length}</span></a>
+    ${S.noFull ? '' : `<div class="grp">البرنامج</div>${SECS.map(([k, t]) => `<a data-go="full:${k}" class="${on('full', x => (x.sec || 'dash') === k)}">${SICO[k] || '•'} ${esc(t)}</a>`).join('')}`}
+    <div class="grp">أخرى</div>
+    ${S.api ? `<a href="${esc(S.api)}" target="_blank" rel="noopener" id="mweb">🌐 البرنامج الرئيسي</a>` : ''}<a data-go="sync">⟳ مزامنة الآن</a></div>
+    <div class="df"><span>${navigator.onLine ? 'متصل' : 'بدون إنترنت'}</span><button id="mlo" style="color:var(--dan)">تسجيل الخروج</button></div></aside>`;
+  $('#mscr').onclick = $('#mcl').onclick = () => menu(false);
+  if ($('#mweb')) $('#mweb').onclick = e => { menu(false); if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الرئيسي يحتاج اتصالاً بالإنترنت'); } };
+  $('#mlo').onclick = () => { menu(false); logoutField(); };
+  d.querySelectorAll('[data-go]').forEach(a => a.onclick = () => { menu(false); const [v, x] = a.dataset.go.split(':');
+    if (v === 'sync') return sync(true); if (v === 'home') { S.tab = x; S.q = ''; return S.r.v === 'home' ? render() : go({ v: 'home' }); }
+    if (v === 'queue') return go({ v: 'queue' }); if (v === 'full') return S.r.v === 'full' ? (S.r = { v: 'full', sec: x }, history.replaceState(S.r, ''), render(), scrollTo(0, 0)) : go({ v: 'full', sec: x }); });
+}
+async function logoutField() { if (S.Q.length && !confirm('لديك ' + S.Q.length + ' عملاً لم يُرسل وسيُحذف من الجوال. تسجيل الخروج؟')) return; try { if (navigator.onLine) await call('fieldLogout', S.dev); } catch (e) {} for (const op of S.Q) await DB.qdel(op.id); S.Q = []; S.dev = ''; S.B = null; S.F = null; S.noFull = false; await DB.delk('dev'); await DB.delk('B'); await DB.delk('F'); await DB.delk('nofull'); render(); }
+function wire() { if ($('#mb')) { drawer(); $('#mb').onclick = () => { drawer(); menu(true); }; } else { const d = $('#drw'); if (d) d.innerHTML = ''; menu(false); } if ($('#web')) $('#web').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الرئيسي يحتاج اتصالاً بالإنترنت'); } }; if ($('#bk')) $('#bk').onclick = () => history.back(); if ($('#sy')) $('#sy').onclick = () => sync(true); }
+function render() {
+  const A = $('#app');
+  if (!S.api) return setupView(A);
+  if (!S.dev || !S.B) return loginView(A);
+  const v = S.r.v; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); homeView(A);
+}
+function cleanApi(t) { const m = String(t || '').replace(/\s+/g, '').match(/https:\/\/script\.google(?:usercontent)?\.com\/[^?#]*?\/(?:exec|dev)\b/); return m ? m[0].replace(/\/dev$/, '/exec') : ''; }
+function setupView(A) {
+  A.innerHTML = `<div class="top"><b>AJI الميداني</b></div><div class="wrap"><div class="card"><h3>رابط البرنامج</h3><div class="muted">الصق رابط البرنامج الذي ينتهي بـ /exec (يعطيك إياه المدير). يُكتب مرة واحدة فقط.</div>
+    <input id="api" dir="ltr" placeholder="https://script.google.com/macros/s/…/exec" style="margin-top:8px"><button class="pri big" id="ok" style="width:100%;margin-top:10px">متابعة</button><div class="err" id="er"></div></div></div>`;
+  $('#ok').onclick = async () => { const v = cleanApi($('#api').value); if (!v) return $('#er').textContent = 'لم يُتعرّف على الرابط. انسخ «رابط تطبيق الويب» من Apps Script: نشر ← إدارة عمليات النشر (ينتهي بـ exec)'; S.api = v; await DB.set('api', v); render(); };
+}
+function loginView(A) {
+  A.innerHTML = `<div class="top"><b>AJI الميداني</b></div><div class="wrap"><div class="card"><h3>تسجيل الدخول</h3><div class="muted">مرة واحدة وفيه إنترنت، ثم يعمل التطبيق بدون إنترنت.</div>
+    <div class="f" style="margin-top:8px"><label class="full">رقم الدخول<input id="u" inputmode="numeric" autocomplete="username"></label><label class="full">كلمة السر<input id="p" type="password" autocomplete="current-password"></label></div>
+    <button class="pri big" id="go" style="width:100%;margin-top:10px">دخول</button><div class="err" id="er"></div><div class="muted" style="margin-top:10px">${S.dev ? 'جارٍ تنزيل بياناتك…' : ''}</div>
+    <div style="margin-top:14px"><a href="#" id="chg" class="muted">تغيير رابط البرنامج</a></div></div></div>`;
+  $('#chg').onclick = async e => { e.preventDefault(); S.api = ''; await DB.delk('api'); render(); };
+  $('#go').onclick = async () => { $('#go').disabled = true; $('#er').textContent = '';
+    try { const r = await call('fieldLogin', $('#u').value.trim(), $('#p').value, navigator.userAgent.slice(0, 100)); S.dev = r.dev; S.user = r.user; await DB.set('dev', r.dev); await DB.set('user', r.user); await pull(); go({ v: 'home' }); pullFull().then(render).catch(() => {}); }
+    catch (e) { $('#er').textContent = e.message; $('#go').disabled = false; } };
+  if (S.dev && !S.B && navigator.onLine) pull().then(render).catch(e => { if ($('#er')) $('#er').textContent = e.message; });
+}
+const QFS = { '': ['بلا ملف', ''], 'بانتظار الجودة': ['بانتظار الجودة', 'p-w'], 'معتمد': ['معتمد', 'p-ok'], 'مرفوض': ['مرفوض', 'p-d'] };
+function homeView(A) {
+  const B = S.B, q = S.q.trim(), tab = S.tab, fails = S.Q.filter(x => x.err).length;
+  const L = tab === 'o' ? B.orders.map(o => itemOf(o.key)) : B.notices.map(n => itemOf('D9:' + n.d9));
+  const shown = L.filter(it => !q || [it.wo, it.contractor, it.district, it.office].join(' ').includes(q));
+  A.innerHTML = topBar('AJI الميداني') + `<div class="wrap">
+    <div class="card row"><div style="flex:1"><b>${esc(me())}</b><div class="muted">${navigator.onLine ? 'متصل' : 'بدون إنترنت — يُحفظ عملك على الجوال'} · ${esc(S.msg || ('بيانات ' + (B.at || '')))}</div></div>
+      ${S.Q.length ? `<button id="qv" class="${fails ? '' : 'pri'}">بانتظار الإرسال ${S.Q.length}${fails ? ' · ⚠ ' + fails : ''}</button>` : '<span class="pill p-ok">✓ لا شيء بانتظار الإرسال</span>'}</div>
+    ${S.noFull ? '' : '<button class="big" id="full" style="width:100%;margin-bottom:10px">☰ البرنامج كاملاً من القائمة: الإسنادات، الجودة، الصيانة، التصاريح، أولاب</button>'}<div class="tabs"><button data-t="o" class="${tab === 'o' ? 'on' : ''}">أوامر العمل (${B.orders.length})</button><button data-t="n" class="${tab === 'n' ? 'on' : ''}">إشعارات الصيانة (${B.notices.length})</button></div>
+    <input id="q" placeholder="بحث برقم الأمر أو المقاول أو الحي" value="${esc(q)}" style="margin-bottom:10px">
+    ${shown.map(it => { const d = docOf(it.key), P = planOf(it, d), st = stateOf(it, d, P), qs = QFS[it.qf_status || ''] || QFS[''], rj = (d.rej || []).length;
+      return `<button class="card item" data-k="${esc(it.key)}"><div class="row"><span class="t">${it.d9 ? 'D9 ' : ''}${esc(it.wo)}${it.type && !it.d9 ? '-' + esc(it.type) : ''}</span><span class="pill ${qs[1]}">${esc(qs[0])}</span>${rj ? '<span class="pill p-d">⛔ مرفوض ' + rj + '</span>' : ''}<span style="flex:1"></span><span class="pill">📝 ${esc(st.prog.split(' · ')[0])} · 📷 ${esc(st.prog.split(' · ')[1])}</span></div>
+        <div class="muted">${esc(it.office || '')} · ${esc(it.contractor || '')} · ${esc(it.district || '')}</div>${it.d9 ? `<div class="muted">${esc(it.work_desc || '')}</div>` : `<div class="muted">${esc(it.cur_stage || '')}</div>`}</button>`; }).join('') || '<div class="card muted">لا شيء مسند إليك هنا.</div>'}
+    <div class="row" style="margin:16px 0"><button id="lo" style="color:var(--dan)">تسجيل الخروج</button><span class="muted">الإصدار 1</span></div></div>`;
+  wire(); $$('[data-t]').forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); });
+  $('#q').oninput = e => { S.q = e.target.value; const p = e.target.selectionStart; render(); const i = $('#q'); i.focus(); i.setSelectionRange(p, p); };
+  $$('[data-k]').forEach(b => b.onclick = () => go({ v: 'item', key: b.dataset.k })); if ($('#qv')) $('#qv').onclick = () => go({ v: 'queue' }); if ($('#full')) $('#full').onclick = () => { drawer(); menu(true); };
+  $('#lo').onclick = logoutField;
+}
+function queueView(A) {
+  A.innerHTML = topBar('بانتظار الإرسال', 1) + `<div class="wrap">${S.Q.map(op => `<div class="card"><div class="row"><b>${esc(op.ref)}</b><span class="muted">${esc(op.at)}</span><span style="flex:1"></span><button data-dq="${op.id}" style="color:var(--dan)">حذف</button></div>
+    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
+    <button class="pri big" id="sn" style="width:100%">إرسال الآن</button></div>`;
+  wire(); $('#sn').onclick = () => sync(true);
+  $$('[data-dq]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذا العمل من الجوال نهائياً؟')) return; await DB.qdel(+b.dataset.dq); S.Q = S.Q.filter(x => x.id !== +b.dataset.dq); render(); });
+}
+function itemView(A) {
+  const key = S.r.key, it = itemOf(key); if (!it) { go({ v: 'home' }); return; }
+  const C = S.B.cat, d = docOf(key), P = planOf(it, d), ST = stateOf(it, d, P), F = formsOf(key), rj = s => (d.rej || []).find(x => x.s === s);
+  const K = { done: ['✓', 'k2'], part: ['◐', 'k1'], none: ['○', 'k0'] };
+  const thumbs = (L, slot) => `<div class="th">${(L || []).map(x => `<span><img class="${x.local ? 'loc' : ''}" src="${x.local ? x.thumb || '' : phUrl(x.id, 160)}" alt=""><b class="x" data-del="${esc(slot)}" data-id="${esc(x.id)}">✕</b></span>`).join('')}</div>`;
+  const fRow = k => { const f = C.forms[k], s = ST.st[k] || 'none'; let act = '', info = '';
+    if (f.k === 'chk') { const x = (d.f || {})[k]; info = x ? esc(x.by) + (x.local ? ' · بانتظار الإرسال' : '') : ''; act = `<button data-chk="${k}">${x ? 'تعديل' : 'تعبئة'}</button>`; }
+    else if (f.k === 'up') { info = thumbs((d.up || {})[k], 'u:' + k); act = `<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
+    else if (f.k === 'site' || f.k === 'meeting') { const L = F.filter(x => x.kind === f.k); info = L.map(x => (x.local ? '⏳ ' : '') + esc(x.seq)).join('، '); act = `<button data-nf="${f.k}">+ جديد</button>`; }
+    else if (f.k === 'lic') info = ST.lic.has ? 'مرفقة تلقائياً' : '<span class="err">لا توجد إجازة لـ ' + esc(ST.lic.name) + '</span>';
+    return `<div class="fl ${rj('f:' + k) || rj('u:' + k) ? 'rj' : ''}"><span class="k ${K[s][1]}">${K[s][0]}</span><div class="n"><b>${esc(f.name)}</b>${f.no ? ' <span class="muted">' + esc(f.no) + '</span>' : ''}<div class="muted">${info}${rj('f:' + k) ? ' ⛔ مرفوض' : ''}</div></div>${act}${f.k !== 'lic' ? `<b class="x" data-drop="${k}" style="color:var(--mut);cursor:pointer;padding:4px">✕</b>` : ''}</div>`; };
+  const ph = P.cats.map(g => { const G = C.ph[g]; if (!G) return ''; return `<h3>${esc(G.name)}</h3><div class="card">${G.items.map((t, i) => { const s = 'p:' + g + ':' + i, L = (d.ph || {})[g + ':' + i] || [];
+      return `<div class="ph ${rj(s) ? 'rj' : ''}"><span class="k ${L.length ? 'k2' : 'k0'}">${L.length ? '✓' : '○'}</span><div class="n">${esc(t)}${rj(s) ? ' <span class="pill p-d">⛔ مرفوض</span>' : ''}${thumbs(L, s)}</div><label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="${s}" data-cam="1" hidden></label><label class="cam">🖼<input type="file" accept="image/*" data-up="${s}" multiple hidden></label></div>`; }).join('')}</div>`; }).join('');
+  const vio = F.filter(x => x.kind === 'safety' || x.kind === 'quality');
+  const addOpts = C.order.filter(k => !P.req.includes(k));
+  A.innerHTML = topBar((it.d9 ? 'D9 ' : '') + it.wo + (it.type && !it.d9 ? '-' + it.type : ''), 1) + `<div class="wrap">
+    <div class="card"><div class="muted">${esc(it.office || '')} · ${esc(it.contractor || '')} · ${esc(it.district || '')}</div>${it.d9 ? `<div class="muted">${esc(it.work_desc || '')}</div>` : ''}<div class="row" style="margin-top:6px"><span class="pill">📝 ${esc(ST.prog.split(' · ')[0])}</span><span class="pill">📷 ${esc(ST.prog.split(' · ')[1])}</span>${(d.rej || []).length ? `<span class="pill p-d">⛔ مرفوض — ${esc(((S.B.qd || {})[key] || {}).qf_note || '')}</span>` : ''}</div></div>
+    ${P.hasNet ? `<div class="card"><label class="muted">الشبكة<select id="net"><option value="">— اختر —</option><option value="g" ${P.net === 'g' ? 'selected' : ''}>أرضي</option><option value="o" ${P.net === 'o' ? 'selected' : ''}>هوائي</option><option value="b" ${P.net === 'b' ? 'selected' : ''}>أرضي وهوائي</option></select></label>${P.needNet ? '<div class="err">اختر نوع الشبكة لتظهر نماذجها</div>' : ''}</div>` : ''}
+    ${it.d9 ? `<div class="card"><label class="muted">نوع العمل<select id="mw">${C.mw.map(k => `<option value="${k}" ${P.cats[0] === k ? 'selected' : ''}>${esc(C.ph[k].name)}</option>`).join('')}</select></label></div>` : `<div class="card"><div class="muted">المعدّات في هذا الأمر (تحدد الصور المطلوبة)</div>${C.eq.map(e => `<label class="eq"><input type="checkbox" data-eq="${e}" ${P.cats.includes(e) ? 'checked' : ''}>${esc(C.ph[e].name)}</label>`).join('')}</div>`}
+    <h3>النماذج</h3><div class="card">${P.req.map(fRow).join('')}${addOpts.length ? `<select id="add" style="margin-top:8px"><option value="">+ إضافة نموذج…</option>${addOpts.map(k => `<option value="${k}">${P.sug.includes(k) ? '★ ' : ''}${esc(C.forms[k].name)}</option>`).join('')}</select>` : ''}</div>
+    <h3>المخالفات${it.d9 ? '' : ' والمحاضر'}</h3><div class="card"><div class="muted">${vio.length ? vio.map(x => (x.local ? '⏳ ' : '') + (x.kind === 'safety' ? 'سلامة ' : 'جودة ') + esc(x.seq)).join('، ') : 'لا توجد مخالفات'}</div>
+      <div class="row" style="margin-top:8px"><button data-nf="safety">+ مخالفة سلامة</button><button data-nf="quality">+ مخالفة جودة</button>${it.d9 ? '' : '<button data-nf="meeting">+ محضر اجتماع</button>'}</div></div>
+    ${it.d9 ? '' : boqCard(key)}
+    <h3>الصور المطلوبة</h3>${ph || '<div class="card muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
+    <div class="card muted">إنشاء ملف الجودة (PDF) من البرنامج الرئيسي بعد إرسال كل شيء. <a href="${esc(S.api)}" target="_blank" rel="noopener">فتح البرنامج</a></div></div>`;
+  wire();
+  const save = op => enqueue({ t: 'qd', ref: key, op });
+  if ($('#net')) $('#net').onchange = e => save({ net: e.target.value }); if ($('#mw')) $('#mw').onchange = e => save({ mw: e.target.value });
+  $$('[data-eq]').forEach(c => c.onchange = () => save({ eq: $$('[data-eq]:checked').map(x => x.dataset.eq) }));
+  if ($('#add')) $('#add').onchange = e => { if (e.target.value) save({ add: e.target.value }); };
+  $$('[data-drop]').forEach(b => b.onclick = () => { if (confirm('إزالة «' + C.forms[b.dataset.drop].name + '» من هذا الأمر؟')) save({ drop: b.dataset.drop }); });
+  $$('[data-chk]').forEach(b => b.onclick = () => go({ v: 'chk', key, code: b.dataset.chk }));
+  $$('[data-nf]').forEach(b => b.onclick = () => go({ v: 'form', key, kind: b.dataset.nf }));
+  if ($('#bqo')) $('#bqo').onclick = () => go({ v: 'boq', key }); if ($('#bqd')) $('#bqd').onclick = () => openDraw(key);
+  $$('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذه الصورة؟')) return; const id = b.dataset.id;
+    if (/^L\d+$/.test(id)) { const qid = +id.slice(1); await DB.qdel(qid); S.Q = S.Q.filter(x => x.id !== qid); render(); } else enqueue({ t: 'del', ref: key, slot: b.dataset.del, fid: id }); });
+  $$('input[data-up]').forEach(inp => inp.onchange = async () => { const slot = inp.dataset.up, files = [...inp.files]; if (!files.length) return;
+    try { for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'up', ref: key, slot, b64: await fileB64(f), mime: 'application/pdf', thumb: '' }); }
+        else { const [p] = await takePhotos([f], it, !!inp.dataset.cam); await enqueue({ t: 'up', ref: key, slot, b64: p.b64, mime: p.mime, loc: p.loc, thumb: p.thumb }); } } toast('حُفظت على الجوال' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); }
+    catch (e) { toast(e.message, 4000); } });
+}
+function chkView(A) {
+  const { key, code } = S.r, it = itemOf(key), C = S.B.cat, F = C.forms[code], d = docOf(key), f = (d.f || {})[code] || {}, a = Object.assign({}, f.a || {}), nt = Object.assign({}, f.nt || {});
+  const H = ['date', 'time', 'location'].concat(F.hdr || []), HL = Object.assign({ date: 'التاريخ', time: 'الوقت', location: 'الموقع' }, C.hdr), hv = k => (f.hdr || {})[k] || (k === 'date' ? today() : k === 'time' ? hm() : k === 'location' ? it.district || '' : '');
+  const total = F.items.filter(x => !x.h).length, opts = ['y', 'n'].concat(F.ans === 'ynx' ? ['x'] : []), L = { y: 'نعم', n: 'لا', x: 'لا ينطبق' };
+  A.innerHTML = topBar(F.name, 1) + `<div class="wrap"><div class="card"><div class="muted">${esc(F.no || '')} · ${it.d9 ? 'D9 ' : ''}${esc(it.wo)} · ${esc(it.contractor || '')}</div>
+    <div class="f" style="margin-top:8px">${H.map(k => { const O = (C.opts || {})[k]; return `<label>${esc(HL[k] || k)}${O ? `<select data-h="${k}"><option></option>${O.map(x => `<option ${x === hv(k) ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` : `<input data-h="${k}" value="${esc(hv(k))}" ${k === 'date' ? 'type="date"' : k === 'time' ? 'type="time"' : ''}>`}</label>`; }).join('')}</div></div>
+    <div class="sticky"><button class="pri" id="all">✓ الكل نعم</button><span id="cnt" class="muted"></span><span style="flex:1"></span><button class="pri" id="sv">حفظ</button></div>
+    <div class="card">${F.items.map((x, i) => x.h ? `<div class="qh">${esc(x.t)}</div>` : `<div class="qi"><div class="tx"><b>${esc(x.n || '')}</b> ${esc(x.t)}${x.e ? `<small>${esc(x.e)}</small>` : ''}</div><div class="ab">${opts.map(v => `<button class="${v} ${a[i] === v ? 'on' : ''}" data-i="${i}" data-v="${v}">${L[v]}</button>`).join('')}</div><input data-nt="${i}" placeholder="ملاحظة" value="${esc(nt[i] || '')}" style="margin-top:6px;${F.notes || a[i] === 'n' || nt[i] ? '' : 'display:none'}"></div>`).join('')}</div>
+    <div class="card"><label class="muted">ملاحظات<textarea id="rm" rows="3">${esc(f.rm || '')}</textarea></label></div><button class="pri big" id="sv2" style="width:100%;margin-bottom:20px">حفظ</button></div>`;
+  wire();
+  const cnt = () => $('#cnt').textContent = Object.keys(a).filter(i => a[i]).length + ' / ' + total; cnt();
+  const setv = (i, v) => { a[i] = v; $$('[data-i="' + i + '"]').forEach(b => b.classList.toggle('on', b.dataset.v === v)); const n = $('[data-nt="' + i + '"]'); if (n) n.style.display = (F.notes || v === 'n' || n.value) ? '' : 'none'; cnt(); };
+  $$('[data-i]').forEach(b => b.onclick = () => setv(b.dataset.i, a[b.dataset.i] === b.dataset.v ? '' : b.dataset.v));
+  $('#all').onclick = () => F.items.forEach((x, i) => { if (!x.h && !a[i]) setv(String(i), 'y'); });
+  const save = async () => { const hdr = {}; $$('[data-h]').forEach(e => hdr[e.dataset.h] = e.value.trim()); $$('[data-nt]').forEach(e => { if (e.value.trim()) nt[e.dataset.nt] = e.value.trim(); else delete nt[e.dataset.nt]; });
+    const aa = {}; Object.keys(a).forEach(i => { if (a[i]) aa[i] = a[i]; }); if (Object.keys(aa).length < total && !confirm('لم تُجب على ' + (total - Object.keys(aa).length) + ' بنداً. حفظ ناقصاً؟')) return;
+    S.Q.filter(op => op.ref === key && op.t === 'qd' && op.op.form && op.op.form.code === code).forEach(op => { DB.qdel(op.id); }); S.Q = S.Q.filter(op => !(op.ref === key && op.t === 'qd' && op.op.form && op.op.form.code === code));
+    await enqueue({ t: 'qd', ref: key, op: { form: { code, a: aa, nt, rm: $('#rm').value, hdr } } }); toast('حُفظ النموذج' + (navigator.onLine ? '' : ' على الجوال')); history.back(); };
+  $('#sv').onclick = save; $('#sv2').onclick = save;
+}
+const KN = { safety: 'مخالفة سلامة', quality: 'مخالفة جودة', meeting: 'محضر اجتماع', site: 'بطاقة تسليم موقع' };
+function formView(A) {
+  const { key, kind } = S.r, it = itemOf(key), B = S.B, ct = (B.contracts || []).find(c => c.short === it.contractor || c.name === it.contractor);
+  const d = S.r.d || (S.r.d = { date: today(), time: hm(), contractor: ct ? ct.name : (it.contractor || ''), location: it.district || '', author: me(), stamp: '1', items: [] });
+  if (!S.r.init) { S.r.init = 1; S.r.photos = []; if (kind === 'safety') Object.assign(d, { dept: 'الدمام', circle: it.office || '', contract_no: ct ? ct.no : '', safety_rep: ct ? ct.rep : '', action: 'غرامة مالية', items: [{ rep: '1' }] }); if (kind === 'quality') d.items = [{ qty: '1' }]; if (kind === 'meeting') d.place = it.district || ''; if (kind === 'site') Object.assign(d, { dept: 'الدمام', circle: it.office || '', office: it.office || '', start_date: today(), target_date: it.due_date || '' }); }
+  const inp = (k, l, o = {}) => `<label class="${o.full ? 'full' : ''}">${l}${o.area ? `<textarea data-d="${k}" rows="${o.area}">${esc(d[k] || '')}</textarea>` : `<input data-d="${k}" ${o.type ? 'type="' + o.type + '"' : ''} ${o.list ? 'list="' + o.list + '"' : ''} value="${esc(d[k] || '')}">`}</label>`;
+  const top = { safety: inp('contractor', 'اسم المقاول', { list: 'dlc' }) + inp('contract_no', 'رقم العقد') + inp('location', 'موقع الزيارة') + inp('date', 'التاريخ', { type: 'date' }) + inp('time', 'الوقت', { type: 'time' }) + inp('permit_issuer', 'مصدر تصريح العمل') + inp('permit_receiver', 'مستلم تصريح العمل') + inp('safety_rep', 'ممثل السلامة للمقاول'),
+    quality: inp('contractor', 'المقاول', { list: 'dlc' }) + inp('location', 'الموقع') + inp('date', 'التاريخ', { type: 'date' }) + inp('time', 'الوقت', { type: 'time' }),
+    meeting: inp('contractor', 'المقاول', { list: 'dlc' }) + inp('place', 'المكان') + inp('date', 'تاريخ المحضر', { type: 'date' }) + inp('contractor_rep', 'ممثل المقاول'),
+    site: inp('contractor', 'المقاول', { list: 'dlc' }) + inp('feeder', 'رقم المغذي') + inp('location', 'الموقع') + inp('start_date', 'تاريخ البدء', { type: 'date' }) + inp('target_date', 'تاريخ الانتهاء المستهدف', { type: 'date' }) + inp('actual_date', 'تاريخ الانتهاء الفعلي', { type: 'date' }) + inp('date', 'تاريخ البطاقة', { type: 'date' }) + inp('time', 'الوقت', { type: 'time' }) }[kind];
+  const after = { safety: inp('desc', 'وصف المخالفات', { area: 3, full: 1 }) + inp('action', 'الإجراء المطلوب') + inp('receiver', 'مستلم المحضر للمقاول') + inp('receiver_id', 'هوية المستلم') + inp('contractor_note', 'إفادة / ملاحظة المقاول', { area: 2, full: 1 }),
+    quality: inp('desc', 'وصف المخالفة', { area: 3, full: 1 }) + inp('statement', 'إفادة المقاول', { area: 2, full: 1 }) + inp('contractor_rep', 'ممثل المقاول'),
+    meeting: inp('topics', 'محاور الاجتماع', { area: 6, full: 1 }) + inp('justify', 'مبررات المقاول (إن أفاد بها)', { area: 3, full: 1 }),
+    site: inp('notes', 'الملاحظات', { area: 4, full: 1 }) + inp('contractor_rep', 'ممثل المقاول') + inp('pdc_rep', 'ممثل شركة الكهرباء') }[kind];
+  const FL = kind === 'safety' ? B.fines.safety : kind === 'quality' ? B.fines.quality : [];
+  const items = kind === 'safety' || kind === 'quality' ? `<h3>${kind === 'safety' ? 'تفاصيل المخالفات' : 'بنود الغرامة'}</h3><div class="card">${d.items.map((x, i) => `<div class="it"><select data-fi="${i}"><option value="">— اختر البند —</option>${FL.map((f, j) => `<option value="${j}" ${f.text === x.text ? 'selected' : ''}>${esc((f.code ? f.code + ' — ' : '') + f.text)}${f.price ? ' (' + esc(f.price) + ')' : ''}</option>`).join('')}</select>
+      <div class="row" style="margin-top:6px"><label class="muted">${kind === 'safety' ? 'التكرار' : 'الكمية'}<input data-fq="${i}" value="${esc(kind === 'safety' ? x.rep || '' : x.qty || '')}" inputmode="numeric" style="width:90px"></label><label class="muted">القيمة<input data-fp="${i}" value="${esc(x.price || '')}" inputmode="decimal" style="width:110px"></label><b class="x" data-fx="${i}" style="color:var(--dan);cursor:pointer">✕ حذف</b></div></div>`).join('')}<button id="fadd" style="margin-top:8px">+ بند</button></div>` : '';
+  A.innerHTML = topBar(KN[kind] + ' — جديد', 1) + `<div class="wrap"><div class="card"><div class="muted">${it.d9 ? 'D9 ' : ''}${esc(it.wo)} · ${esc(it.office || '')}</div><div class="f" style="margin-top:8px">${top}</div></div>${items}
+    <div class="card"><div class="f">${after}${inp('author', kind === 'site' || kind === 'meeting' ? 'ممثل الاستشاري' : 'محرر المحضر', { list: 'dls' })}</div></div>
+    <h3>الصور</h3><div class="card"><div class="th">${S.r.photos.map((p, i) => `<span><img src="${p.thumb}"><b class="x" data-px="${i}">✕</b></span>`).join('')}</div><div class="row" style="margin-top:8px"><label class="cam">📷 تصوير<input type="file" accept="image/*" capture="environment" id="pc" hidden></label><label class="cam">🖼 من المعرض<input type="file" accept="image/*" id="pg" multiple hidden></label></div></div>
+    <datalist id="dlc">${(B.contractors || []).map(c => `<option value="${esc(c)}">`).join('')}</datalist><datalist id="dls">${uq((B.people || []).concat(B.sigs || [])).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    <button class="pri big" id="sv" style="width:100%;margin:10px 0 24px">حفظ ${KN[kind]}</button></div>`;
+  wire();
+  const collect = () => { $$('[data-d]').forEach(e => d[e.dataset.d] = e.value.trim()); };
+  $$('[data-fi]').forEach(s => s.onchange = () => { collect(); const x = d.items[+s.dataset.fi], f = FL[+s.value]; if (f) Object.assign(x, { code: f.code || '', text: f.text, cat: f.cat || '', price: f.price || '' }); render(); });
+  $$('[data-fq]').forEach(e => e.oninput = () => { d.items[+e.dataset.fq][kind === 'safety' ? 'rep' : 'qty'] = e.value.trim(); });
+  $$('[data-fp]').forEach(e => e.oninput = () => { d.items[+e.dataset.fp].price = e.value.trim(); });
+  $$('[data-fx]').forEach(e => e.onclick = () => { collect(); d.items.splice(+e.dataset.fx, 1); render(); });
+  if ($('#fadd')) $('#fadd').onclick = () => { collect(); d.items.push(kind === 'safety' ? { rep: '1' } : { qty: '1' }); render(); };
+  $$('[data-px]').forEach(e => e.onclick = () => { collect(); S.r.photos.splice(+e.dataset.px, 1); render(); });
+  const addP = async (inp, cam) => { collect(); try { const ps = await takePhotos([...inp.files], it, cam); S.r.photos.push(...ps); render(); } catch (e) { toast(e.message, 4000); } };
+  $('#pc').onchange = e => addP(e.target, true); $('#pg').onchange = e => addP(e.target, false);
+  $('#sv').onclick = async () => { collect(); if ((kind === 'safety' || kind === 'quality') && !d.items.some(x => x.text)) return toast('اختر بنداً واحداً على الأقل');
+    await enqueue({ t: 'form', ref: key, kind, data: JSON.parse(JSON.stringify(d)), photos: S.r.photos.map(p => ({ b64: p.b64, mime: p.mime, loc: p.loc })) }); toast('حُفظ' + (navigator.onLine ? '' : ' على الجوال — يُرسل عند الاتصال')); history.back(); };
+}
+
+
+// ---------- the whole program (office leads, managers, quality): read on the phone without a network, change when connected ----------
+const LBL = {wo:'رقم أمر العمل',type:'النوع',ccode:'رمز استشاري',office:'المكتب',district:'الحي',contractor:'المقاول',group:'الجهة المنفذة',assign_date:'تاريخ الإسناد',duration:'المدة',due_date:'تاريخ الانتهاء',desc:'التوصيف',engineer:'المهندس المسند',site_engineer:'مهندس الموقع',site_date:'آخر حضور',cost:'التكلفة الفعلية',last_action:'آخر إجراء',oracle:'موقف أولاب',po:'رقم PO',stage:'الإفادة / المرحلة',notes:'ملاحظات',cur_stage:'المرحلة الحالية',cur_owner:'المسؤول الحالي',cur_since:'منذ',blocker:'العائق',blocker_owner:'جهة العائق',next_action:'الخطوة التالية',followup_date:'تاريخ المتابعة',munib_status:'في تقرير المتعثرات',munib_reason:'سبب التعثر',munib_remarks:'ملاحظات المتعثرات',munib_delay:'التأخير (يوم)',munib_permit_date:'تاريخ التصريح',munib_outage:'حالة التطفئات (جهد متوسط)',munib_out_done:'الفصولات المنتهية',munib_out_left:'الفصولات المتبقية',permit:'التصريح',materials:'صرف المواد',match_basket:'السلة الحالية',match_status:'موقف المطابقة',match_value:'قيمة المطابقة',match_required:'المطلوب للمطابقة',match_cert:'شهادة الإنجاز',match_cover:'رقم الكفر',updated_at:'آخر تحديث',updated_by:'بواسطة',left:'الأيام المتبقية',qf:'ملف الجودة',qf_at:'تاريخ رفع الملف',qf_by:'رفعه',qf_note:'ملاحظة الجودة',qf_status:'حالة ملف الجودة',vio:'المخالفات',site:'بطاقات تسليم الموقع',mom:'محاضر الاجتماع',consultant:'الاستشاري',last_action_date:'تاريخ آخر إجراء',olap_holder:'السلة (الجهة الحالية)',jstep:'خطوة الرحلة',jpct:'نسبة الإنجاز %',progress:'نسبة المشروع اليدوية %',days_since:'عدد الأيام منذ الإسناد',att:'المرفقات',permit_n:'عدد طلبات التصاريح',permit_state:'حالة آخر تصريح'};
+const PL={id:'م',req_no:'رقم الطلب',wo:'أمر العمل',kind:'النوع',contractor:'المقاول',assign_date:'تاريخ الإسناد',wo_type:'نوع أمر العمل',status:'الحالة',permit_no:'رقم التصريح',start_date:'بدء العمل في التصريح',end_date:'انتهاء التصريح',stage:'المرحلة',cert:'شهادة إتمام الأعمال',notes:'ملاحظات',file_url:'صورة التصريح',file_name:'اسم الملف',updated_at:'آخر تحديث',updated_by:'بواسطة'};
+const ML={id:'م',date:'التاريخ',d1:'رقم الإشعار D-1',d9:'D9',office:'المكتب',contractor:'المقاول',station:'المحطة',work_type:'نوع العمل',work_desc:'وصف العمل',reason:'السبب',engineer:'مهندس التنفيذ',status:'حالة التنفيذ',inv_status:'حالة الفاتورة',safety:'السلامة',supervision:'الإشراف',exec_p:'ص التنفيذ',cert:'ش الإنجاز',quality:'الجودة',attach:'الإرفاق',inv_aji:'فواتير أرابتك',inv_con:'فواتير المقاول',notes:'ملاحظات'};
+const FK = { safety: 'مخالفة سلامة', quality: 'مخالفة جودة', meeting: 'محضر اجتماع', site: 'بطاقة تسليم موقع' };
+const dU = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; };
+const ymd = d => d.toISOString().slice(0, 10);
+const addWork = (st, n) => { const d = dU(st); n = Math.round(+n); if (!d || !(n > 0)) return ''; let k = 0; while (k < n) { d.setUTCDate(d.getUTCDate() + 1); if (d.getUTCDay() !== 5) k++; } return ymd(d); };
+const workDiff = (from, to) => { const a = dU(from), b = dU(to); if (!a || !b) return ''; const sg = b >= a ? 1 : -1; let lo = sg > 0 ? a : b, hi = sg > 0 ? b : a, n = 0; const d = new Date(lo.getTime()); while (d < hi) { d.setUTCDate(d.getUTCDate() + 1); if (d.getUTCDay() !== 5) n++; } return sg * n; };
+const objs = T => (T && T.headers) ? T.rows.map(r => { const o = {}; T.headers.forEach((k, i) => o[k] = r[i] == null ? '' : r[i]); return o; }) : [];
+async function gunzipB64(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); }
+async function pullFull() {
+  const r = await call('fieldFull', !window.DecompressionStream);
+  if (!r || r.none) { S.F = null; S.noFull = true; await DB.set('nofull', 1); await DB.delk('F'); return; }
+  S.F = JSON.parse(r.gz ? await gunzipB64(r.gz) : r.js); S.F.got = Date.now(); await DB.set('F', S.F); prepF();
+}
+function prepF() {
+  const F = S.F; if (!F) return; const st = F.b.lists.stage || [], pc = F.b.lists.stage_pct || []; F.pct = {}; st.forEach((s, i) => F.pct[s] = +pc[i] || 0);
+  const e = F.pct['تم التنفيذ'] || 0, T = F.b.today || today();
+  F.O = objs(F.orders).map(o => { o.key = o.ccode ? o.wo + '-' + o.ccode : String(o.wo); const due = addWork(o.assign_date, o.duration); if (due) o.due_date = due;
+    o.left = o.due_date ? workDiff(T, o.due_date) : ''; const p = F.pct[o.cur_stage] ?? 0; o.open = p < 100; o.exec = p < 90; o.needsQF = e > 0 && p >= e; return o; });
+  F.M = objs(F.maint); F.P = objs(F.permits); F.L = objs(F.olap); F.FM = F.forms || []; F.LH = (F.olap && F.olap.headers) || [];
+}
+const wSince = o => { const d = o.cur_owner ? (o.cur_since || o.updated_at || o.assign_date) : (o.assign_date || o.updated_at); const w = d ? workDiff(String(d).slice(0, 10), (S.F && S.F.b.today) || today()) : ''; return w === '' ? '' : Math.max(w, 0); };
+const KP = {
+  all: ['إجمالي الأوامر', o => true], open: ['مفتوحة', o => o.open], late30: ['متأخرة +30 يوماً', o => o.exec && o.left !== '' && o.left < -30],
+  stalled: ['متعثرات PDC', o => !!o.munib_status], qfmiss: ['منفّذة بلا ملف جودة', o => o.needsQF && !o.qf_id], qfwait: ['بانتظار مراجعة الجودة', o => o.qf_status === 'بانتظار الجودة'],
+  qfrej: ['ملفات جودة مرفوضة', o => o.qf_status === 'مرفوض'], confirmed: ['مؤكد بلا مستخلص', o => /مؤكد/.test(o.oracle)] };
+const SECS = [['where', 'أين الطلب'], ['dash', 'اللوحة'], ['orders', 'الإسنادات'], ['quality', 'ملفات الجودة'], ['maint', 'الصيانة'], ['permits', 'التصاريح'], ['olap', 'أولاب'], ['forms', 'النماذج']];
+function secRows(sec, f) { const F = S.F;
+  if (sec === 'orders' && /^own:/.test(f || '')) { const w = f.slice(4); return F.O.filter(o => o.open && (o.cur_owner || 'بدون مسؤول') === w).sort((a, b) => (wSince(b) || 0) - (wSince(a) || 0)); }
+  if (sec === 'orders') return F.O.filter(KP[f || 'all'] ? KP[f || 'all'][1] : () => true);
+  if (sec === 'quality') return F.O.filter(o => o.qf_status && (!f || o.qf_status === f));
+  return { maint: F.M, permits: F.P, olap: F.L, forms: F.FM }[sec] || []; }
+const offOf = (sec, x) => sec === 'olap' ? '' : x.office || '';
+function cardOf(sec, x, i) {
+  const pill = (t, c) => t ? `<span class="pill ${c || ''}">${esc(t)}</span>` : '';
+  if (sec === 'orders' || sec === 'quality') { const q = QFS[x.qf_status || ''] || QFS[''];
+    return `<div class="row"><span class="t">${esc(x.wo)}${x.ccode ? '-' + esc(x.ccode) : ''}</span>${sec === 'quality' || x.qf_status ? pill(q[0], q[1]) : ''}${x.left !== '' && x.exec ? pill((x.left < 0 ? 'متأخر ' + (-x.left) : 'باقي ' + x.left) + ' يوم', x.left < 0 ? 'p-d' : '') : ''}</div>
+      <div class="muted">${esc(x.office)} · ${esc(x.contractor)} · ${esc(x.district)}</div><div class="muted">${esc(x.cur_stage)}${x.cur_owner ? ' — ' + esc(x.cur_owner) : ''}</div>`; }
+  if (sec === 'maint') return `<div class="row"><span class="t">D9 ${esc(x.d9)}</span>${pill(x.status)}<span class="muted">${esc(x.date)}</span></div><div class="muted">${esc(x.office)} · ${esc(x.contractor)} · ${esc(x.station)}</div><div class="muted">${esc(String(x.work_desc).slice(0, 90))}</div>`;
+  if (sec === 'permits') return `<div class="row"><span class="t">${esc(x.req_no || x.id)}</span>${pill(x.status)}</div><div class="muted">أمر ${esc(x.wo)} · ${esc(x.contractor)} · ${esc(x.kind)}</div><div class="muted">${x.end_date ? 'ينتهي ' + esc(x.end_date) : ''}</div>`;
+  if (sec === 'olap') { const H = S.F.LH; return `<div class="row"><span class="t">${esc(x[H[0]])}</span></div><div class="muted">${H.slice(1, 5).map(h => esc(x[h])).filter(Boolean).join(' · ')}</div>`; }
+  if (sec === 'forms') return `<div class="row"><span class="t">${esc(FK[x.kind] || x.kind)} ${esc(x.seq)}</span>${x.total ? pill(x.total + ' ريال', 'p-w') : ''}<span class="muted">${esc(x.date)}</span></div><div class="muted">أمر ${esc(x.wo)} · ${esc(x.office)} · ${esc(x.contractor)}</div><div class="muted">${esc(String(x.sum || '').slice(0, 100))}</div>`;
+  return '';
+}
+// ---------- the program's tables on the phone: an Excel-like grid with a filter ▾ on every column (office leads, managers, quality) ----------
+const GCOLS = { orders: ['wo', 'type', 'office', 'district', 'contractor', 'assign_date', 'due_date', 'left', 'site_engineer', 'cur_stage', 'cur_owner', 'qf_status', 'last_action', 'oracle', 'notes'],
+  quality: ['wo', 'type', 'office', 'contractor', 'site_engineer', 'cur_stage', 'qf_status', 'qf_at', 'qf_by', 'qf_note'],
+  maint: ['id', 'date', 'd9', 'office', 'contractor', 'station', 'work_type', 'work_desc', 'engineer', 'status', 'inv_aji', 'notes'],
+  permits: ['req_no', 'wo', 'kind', 'contractor', 'wo_type', 'status', 'permit_no', 'start_date', 'end_date', 'stage'],
+  forms: ['kind', 'seq', 'wo', 'office', 'contractor', 'date', 'sum', 'total', 'author'] };
+const GCLR = { orders: ['#185FA5', '#E6F1FB'], quality: ['#72243E', '#FBEAF0'], maint: ['#993C1D', '#FAECE7'], permits: ['#8A6D0B', '#FBF3DA'], olap: ['#0B6E8A', '#DFF3F8'], forms: ['#A32D2D', '#FCEBEB'] };
+const GLB = Object.assign({ left: 'الأيام المتبقية', qf_status: 'ملف الجودة', qf_at: 'تاريخ الملف', qf_by: 'رفعه', qf_note: 'ملاحظة الجودة', kind: 'النوع', seq: 'الرقم', sum: 'الملخص', total: 'الغرامة', author: 'الكاتب' });
+function gColsOf(sec) { const F = S.F; if (sec === 'olap') return (F.LH || []).slice(); let all = GCOLS[sec] || [];
+  try { const c = JSON.parse(localStorage.getItem('fg_cols_' + sec) || 'null'); if (Array.isArray(c) && c.length) return c; } catch (e) {} return all.slice(); }
+function gAllCols(sec, rows) { if (sec === 'olap') return (S.F.LH || []).slice(); const ks = uq((GCOLS[sec] || []).concat(rows.length ? Object.keys(rows[0]) : [])); return ks.filter(k => !/^_|^(key|open|exec|needsQF|data|photos|folder_id|qf_id|qf_url|qf_name)$/.test(k)); }
+function gLbl(sec, k) { return sec === 'olap' ? k : (sec === 'maint' ? ML[k] : sec === 'permits' ? PL[k] : null) || GLB[k] || LBL[k] || k; }
+function gVal(sec, x, k) { const v = x[k]; if (sec === 'forms' && k === 'kind') return FK[v] || v; if (k === 'qf_status' && (sec === 'orders' || sec === 'quality')) return v || 'بلا ملف'; if (k === 'left') return x.left === '' || !x.exec ? '' : x.left; return v == null ? '' : String(v); }
+function gState(sec) { S.gs = S.gs || {}; return S.gs[sec] || (S.gs[sec] = { cf: {}, sort: null, q: '', fo: '', n: 150 }); }
+function gRows(sec, all, G, skip) { const q = (G.q || '').trim(), cols = gAllCols(sec, all);
+  return all.filter(x => (!q || cols.some(k => String(x[k] == null ? '' : x[k]).includes(q))) && Object.keys(G.cf).every(k => k === skip || !G.cf[k] || G.cf[k].includes(gVal(sec, x, k)))); }
+function gSort(sec, L, G) { if (!G.sort) return L; const [k, d] = G.sort; return L.slice().sort((a, b) => { const x = gVal(sec, a, k), y = gVal(sec, b, k), nx = +x, ny = +y; return ((x !== '' && y !== '' && !isNaN(nx) && !isNaN(ny)) ? nx - ny : x.localeCompare(y, 'ar')) * d; }); }
+function gMenu(sec, all, G, k) {
+  const cnt = {}; gRows(sec, all, G, k).forEach(x => { const v = gVal(sec, x, k); cnt[v] = (cnt[v] || 0) + 1; });
+  const vals = Object.keys(cnt).sort((a, b) => { const na = +a, nb = +b; return a !== '' && b !== '' && !isNaN(na) && !isNaN(nb) ? na - nb : a.localeCompare(b, 'ar'); });
+  const on = new Set(G.cf[k] || vals), m = document.createElement('div'); m.className = 'fgm';
+  const list = q => vals.filter(v => !q || v.includes(q)).map(v => `<label><input type="checkbox" data-v="${esc(v)}" ${on.has(v) ? 'checked' : ''}><span>${v === '' ? '(فارغ)' : esc(v)}</span><span class="muted">${cnt[v]}</span></label>`).join('') || '<div class="muted">لا نتائج</div>';
+  m.innerHTML = `<div class="fgm-b"><div class="row" style="margin-bottom:6px"><b style="flex:1">${esc(gLbl(sec, k))}</b><button data-s="1">ترتيب ↑</button><button data-s="-1">↓</button></div>
+    <input id="gmq" placeholder="بحث في القيم" style="width:100%"><div class="row" style="margin:6px 0"><button id="gma">الكل</button><button id="gmn">لا شيء</button><span style="flex:1"></span><button id="gmc">مسح الفلتر</button></div>
+    <div id="gml">${list('')}</div><div class="row" style="margin-top:8px"><button class="pri" id="gmo" style="flex:1">تطبيق</button><button id="gmx">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  const wl = () => m.querySelectorAll('[data-v]').forEach(c => c.onchange = () => { if (c.checked) on.add(c.dataset.v); else on.delete(c.dataset.v); });
+  const q = m.querySelector('#gmq'), re = () => { m.querySelector('#gml').innerHTML = list(q.value.trim()); wl(); }; wl(); q.oninput = re;
+  m.querySelector('#gma').onclick = () => { vals.filter(v => !q.value || v.includes(q.value.trim())).forEach(v => on.add(v)); re(); };
+  m.querySelector('#gmn').onclick = () => { vals.filter(v => !q.value || v.includes(q.value.trim())).forEach(v => on.delete(v)); re(); };
+  const done = () => { m.remove(); G.n = 150; render(); };
+  m.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { G.sort = [k, +b.dataset.s]; done(); });
+  m.querySelector('#gmc').onclick = () => { delete G.cf[k]; done(); }; m.querySelector('#gmx').onclick = () => m.remove();
+  m.querySelector('#gmo').onclick = () => { const v = [...on]; if (!v.length || v.length === vals.length) delete G.cf[k]; else G.cf[k] = v; done(); };
+  m.onclick = e => { if (e.target === m) m.remove(); };
+}
+function gColsMenu(sec, all) { const cur = gColsOf(sec), A = uq(cur.concat(gAllCols(sec, all))), m = document.createElement('div'); m.className = 'fgm';
+  m.innerHTML = `<div class="fgm-b"><b>الأعمدة الظاهرة</b><div id="gml" style="margin-top:8px">${A.map(k => `<label><input type="checkbox" data-k="${esc(k)}" ${cur.includes(k) ? 'checked' : ''}><span>${esc(gLbl(sec, k))}</span></label>`).join('')}</div>
+    <div class="row" style="margin-top:8px"><button class="pri" id="gmo" style="flex:1">تطبيق</button><button id="gmd">الافتراضي</button><button id="gmx">إلغاء</button></div></div>`;
+  document.body.appendChild(m); m.onclick = e => { if (e.target === m) m.remove(); }; m.querySelector('#gmx').onclick = () => m.remove();
+  m.querySelector('#gmd').onclick = () => { try { localStorage.removeItem('fg_cols_' + sec); } catch (e) {} m.remove(); render(); };
+  m.querySelector('#gmo').onclick = () => { const c = [...m.querySelectorAll('[data-k]:checked')].map(x => x.dataset.k); if (c.length) try { localStorage.setItem('fg_cols_' + sec, JSON.stringify(c)); } catch (e) {} m.remove(); render(); }; }
+function gridHtml(sec, all, G) {
+  const cols = gColsOf(sec).filter(k => sec === 'olap' || true), L = gSort(sec, gRows(sec, all, G), G), n = G.n || 150, c = GCLR[sec] || ['#185FA5', '#E6F1FB'];
+  const chips = Object.keys(G.cf).map(k => `<span class="pill">${esc(gLbl(sec, k))}: ${esc(G.cf[k].length > 2 ? G.cf[k].length + ' قيم' : G.cf[k].join('، ') || '(فارغ)')} <b data-gx="${esc(k)}" style="cursor:pointer">✕</b></span>`).join('');
+  const cell = (x, k) => { const v = gVal(sec, x, k); if (k === 'qf_status' && (sec === 'orders' || sec === 'quality')) { const q = QFS[x.qf_status || ''] || QFS['']; return `<span class="pill ${q[1]}">${esc(q[0])}</span>`; }
+    if (k === 'left' && v !== '') return `<span style="color:${+v < 0 ? 'var(--dan)' : 'inherit'}">${esc(v)}</span>`; return esc(String(v).length > 60 ? String(v).slice(0, 60) + '…' : v); };
+  return `<div class="row" style="margin-bottom:6px"><input id="fq" placeholder="بحث سريع" value="${esc(G.q || '')}" style="flex:1"><button id="gcols">الأعمدة</button></div>
+    ${chips ? `<div class="row" style="margin-bottom:6px;gap:4px">${chips}<button id="gclr">مسح الكل</button></div>` : ''}<div class="muted" style="margin-bottom:4px">${L.length} سجلاً${G.sort ? ' · مرتبة حسب ' + esc(gLbl(sec, G.sort[0])) : ''}</div>
+    <div class="fgw"><table class="fg"><thead><tr>${cols.map((k, i) => `<th class="${i === 0 ? 'st' : ''}" style="background:${c[1]};color:${c[0]};border-top:3px solid ${c[0]}"><span>${esc(gLbl(sec, k))}</span><b class="fgb ${G.cf[k] ? 'on' : ''}" data-gf="${esc(k)}">▾</b></th>`).join('')}</tr></thead>
+    <tbody>${L.slice(0, n).map(x => `<tr data-ri="${all.indexOf(x)}">${cols.map((k, i) => `<td class="${i === 0 ? 'st' : ''}">${cell(x, k)}</td>`).join('')}</tr>`).join('')}</tbody></table>${L.length ? '' : '<div class="muted" style="padding:16px">لا نتائج بهذه الفلاتر.</div>'}</div>
+    ${L.length > n ? `<button id="more" style="width:100%;margin:8px 0 20px">عرض المزيد (${L.length - n})</button>` : ''}`;
+}
+function gridWire(sec, all, G, open) {
+  $('#fq').oninput = e => { G.q = e.target.value; G.n = 150; const p = e.target.selectionStart; render(); const i = $('#fq'); i.focus(); i.setSelectionRange(p, p); };
+  $$('[data-gf]').forEach(b => b.onclick = e => { e.stopPropagation(); gMenu(sec, all, G, b.dataset.gf); });
+  $$('[data-gx]').forEach(b => b.onclick = () => { delete G.cf[b.dataset.gx]; render(); }); if ($('#gclr')) $('#gclr').onclick = () => { G.cf = {}; render(); };
+  $('#gcols').onclick = () => gColsMenu(sec, all); if ($('#more')) $('#more').onclick = () => { G.n = (G.n || 150) + 300; render(); };
+  $$('.fg tbody tr').forEach(tr => tr.onclick = () => open(+tr.dataset.ri));
+}
+function fullView(A) {
+  const F = S.F, r = S.r, sec = r.sec || 'dash';
+  if (!F) { A.innerHTML = topBar('البرنامج', 1) + `<div class="wrap"><div class="card muted">${navigator.onLine ? 'جارٍ تنزيل بيانات البرنامج…' : 'لم تُنزَّل بيانات البرنامج بعد. اتصل بالإنترنت مرة واحدة.'}</div></div>`; wire(); if (navigator.onLine && !S.syncing) pullFull().then(render).catch(e => toast(e.message, 4000)); return; }
+  const nav = '', secT = (SECS.find(x => x[0] === sec) || [, 'البرنامج'])[1];
+  const head = `<div class="muted" style="margin-bottom:8px">بيانات ${esc(F.at || '')}${navigator.onLine ? '' : ' · بدون إنترنت: عرض فقط'}</div>`;
+  if (sec === 'where') { const O = F.O.filter(o => o.open), P = {}, CL = ['#3B6D11', '#C27A0E', '#A32D2D'];
+    O.forEach(o => { const k = o.cur_owner || 'بدون مسؤول', d = wSince(o), g = P[k] = P[k] || { n: 0, b: [0, 0, 0], mx: 0 }; g.n++; g.b[d === '' || d <= 7 ? 0 : d <= 30 ? 1 : 2]++; if (d !== '') g.mx = Math.max(g.mx, d); });
+    const L = Object.entries(P).sort((a, b) => (a[0] === 'بدون مسؤول') - (b[0] === 'بدون مسؤول') || b[1].b[2] - a[1].b[2] || b[1].n - a[1].n);
+    A.innerHTML = topBar(secT, 1) + `<div class="wrap">${head}<div class="muted" style="margin-bottom:8px">${O.length} أمراً مفتوحاً · مع مَن الآن ومنذ كم يوم عمل. الأكثر تأخراً أولاً.</div>
+      ${L.map(([k, g]) => `<button class="card item" data-own="${esc(k)}"><div class="row"><span class="t">${esc(k)}</span><span style="flex:1"></span><b style="font-size:20px">${g.n}</b></div>
+        <div style="display:flex;height:8px;border-radius:5px;overflow:hidden;margin:8px 0 4px;background:#eee">${g.b.map((n, i) => n ? `<i style="flex:${n};background:${CL[i]}"></i>` : '').join('')}</div>
+        <div class="muted">${g.b.map((n, i) => `<span style="color:${CL[i]}">● ${['≤7', '8–30', '+30'][i]}: ${n}</span>`).join(' ')} · أقدمها ${g.mx} يوم</div></button>`).join('') || '<div class="card muted">لا أوامر مفتوحة.</div>'}</div>`;
+    wire(); $$('[data-own]').forEach(b => b.onclick = () => go({ v: 'full', sec: 'orders', f: 'own:' + b.dataset.own })); return; }
+  if (sec === 'dash') {
+    const O = F.O, offs = uq(O.map(o => o.office).filter(Boolean));
+    A.innerHTML = topBar(secT, 1) + `<div class="wrap">${nav}${head}<div class="f" style="grid-template-columns:1fr 1fr">${Object.keys(KP).map(k => `<button class="card item" data-kp="${k}" style="margin:0"><div class="muted">${KP[k][0]}</div><div class="t" style="font-size:26px;${['late30', 'qfmiss', 'qfrej'].includes(k) ? 'color:var(--dan)' : ''}">${O.filter(KP[k][1]).length}</div></button>`).join('')}</div>
+      <h3>حسب المكتب</h3><div class="card"><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><th style="text-align:right">المكتب</th><th>الكل</th><th>مفتوحة</th><th>متأخرة +30</th><th>بلا ملف جودة</th></tr>${offs.map(of => { const L = O.filter(o => o.office === of); return `<tr style="border-top:1px solid var(--line)"><td>${esc(of)}</td><td style="text-align:center">${L.length}</td><td style="text-align:center">${L.filter(KP.open[1]).length}</td><td style="text-align:center;color:var(--dan)">${L.filter(KP.late30[1]).length}</td><td style="text-align:center">${L.filter(KP.qfmiss[1]).length}</td></tr>`; }).join('')}</table></div>
+      <h3>الصيانة والتصاريح</h3><div class="card"><div class="row"><span>إشعارات الصيانة: <b>${F.M.length}</b></span><span>طلبات التصاريح: <b>${F.P.length}</b></span><span>النماذج: <b>${F.FM.length}</b></span></div></div></div>`;
+    wire(); $$('[data-sec]').forEach(b => b.onclick = () => { S.r = { v: 'full', sec: b.dataset.sec }; history.replaceState(S.r, ''); render(); });
+    $$('[data-kp]').forEach(b => b.onclick = () => go({ v: 'full', sec: 'orders', f: b.dataset.kp })); return;
+  }
+  const all = secRows(sec, r.f), G = gState(sec + (r.f ? ':' + r.f : ''));
+  const chips = sec === 'quality' ? `<div class="row" style="margin-bottom:8px">${['', 'بانتظار الجودة', 'مرفوض', 'معتمد'].map(k => `<button data-qf="${k}" class="${(r.f || '') === k ? 'pri' : ''}">${k || 'الكل'}</button>`).join('')}</div>` : (sec === 'orders' && r.f && r.f !== 'all' ? `<div class="row" style="margin-bottom:8px"><span class="pill p-w">${esc(/^own:/.test(r.f) ? 'مع: ' + r.f.slice(4) : (KP[r.f] || [''])[0])}</span><button data-qf="">إلغاء</button></div>` : '');
+  A.innerHTML = topBar(secT, 1) + `<div class="wrap wide">${nav}${head}${chips}${gridHtml(sec, all, G)}</div>`;
+  wire();
+  $$('[data-sec]').forEach(b => b.onclick = () => { S.r = { v: 'full', sec: b.dataset.sec }; history.replaceState(S.r, ''); render(); });
+  $$('[data-qf]').forEach(b => b.onclick = () => { S.r = Object.assign({}, r, { f: b.dataset.qf }); history.replaceState(S.r, ''); render(); });
+  gridWire(sec, all, G, i => go({ v: 'rec', sec, f: r.f, i }));
+}
+function recView(A) {
+  const F = S.F, r = S.r, sec = r.sec, x = F && secRows(sec, r.f)[r.i]; if (!x) { history.back(); return; }
+  const isO = sec === 'orders' || sec === 'quality', LB = isO ? LBL : sec === 'maint' ? ML : sec === 'permits' ? PL : {};
+  const ed = F.b.editable || [], canEd = k => isO && (ed.includes(k) || (k === 'cur_stage' && ed.includes('stage')));
+  const skip = ['salt', 'hash', 'folder_id', 'qf_id', 'key', 'open', 'exec', 'needsQF', 'data', 'photos'];
+  const keys = sec === 'olap' ? F.LH : Object.keys(x).filter(k => !skip.includes(k));
+  const val = (k, v) => /^https?:/.test(String(v)) ? `<a href="${esc(v)}" target="_blank" rel="noopener">فتح</a>` : esc(v);
+  const title = isO ? x.wo + (x.ccode ? '-' + x.ccode : '') : sec === 'maint' ? 'D9 ' + x.d9 : sec === 'permits' ? 'طلب ' + (x.req_no || x.id) : sec === 'forms' ? (FK[x.kind] || x.kind) + ' ' + x.seq : String(x[F.LH[0]] || '');
+  const review = isO && x.qf_status === 'بانتظار الجودة' && F.b.qe;
+  A.innerHTML = topBar(title, 1) + `<div class="wrap">
+    ${isO && x.qf_url ? `<a class="card item" href="${esc(x.qf_url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit">📄 فتح ملف الجودة (${esc(x.qf_status || '')})</a>` : ''}
+    ${review ? '<button class="pri big" id="rv" style="width:100%;margin-bottom:10px">✔ مراجعة ملف الجودة: اعتماد أو رفض</button>' : ''}
+    ${(() => { const row = k => `<div class="fl"><div class="n"><div class="muted">${esc(LB[k] || k)}</div><div>${val(k, x[k])}</div></div>${canEd(k) ? `<button data-ed="${esc(k)}" style="padding:6px 10px">✎</button>` : ''}</div>`, full = keys.filter(k => x[k] !== '' && x[k] != null), empty = keys.filter(k => !(x[k] !== '' && x[k] != null) && canEd(k));
+      return `<div class="card">${full.map(row).join('')}</div>${empty.length ? `<details class="card"><summary class="muted">حقول فارغة يمكن تعبئتها (${empty.length})</summary>${empty.map(row).join('')}</details>` : ''}`; })()}
+    ${isO ? '<div class="muted" style="margin-bottom:20px">التعديل يُحفظ مباشرة في البرنامج ويحتاج اتصالاً بالإنترنت.</div>' : ''}</div>`;
+  wire();
+  if ($('#rv')) $('#rv').onclick = () => go({ v: 'review', key: x.key });
+  $$('[data-ed]').forEach(b => b.onclick = () => {
+    if (!navigator.onLine) return toast('التعديل يحتاج اتصالاً بالإنترنت');
+    const k = b.dataset.ed, opts = k === 'cur_stage' ? F.b.lists.stage : (F.b.lists[k] || (['cur_owner', 'site_engineer', 'engineer', 'blocker_owner'].includes(k) ? F.b.people : null)), box = b.closest('.fl');
+    box.innerHTML = `<div class="n"><div class="muted">${esc(LB[k] || k)}</div>${opts ? `<select id="ev"><option></option>${opts.map(o => `<option ${o === x[k] ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>` : `<input id="ev" value="${esc(x[k])}" ${/date/.test(k) ? 'type="date"' : ''}>`}</div><button class="pri" id="es">حفظ</button>`;
+    $('#es').onclick = async () => { const v = $('#ev').value.trim(); $('#es').disabled = true;
+      try { await call('saveCells', [{ wo: x.key, k, v }]); x[k] = v; if (k === 'cur_stage') { const p = F.pct[v] ?? 0; x.open = p < 100; x.exec = p < 90; x.needsQF = (F.pct['تم التنفيذ'] || 0) > 0 && p >= (F.pct['تم التنفيذ'] || 0); }
+        const raw = F.orders, ri = raw.rows.findIndex(rr => (rr[raw.headers.indexOf('ccode')] ? rr[raw.headers.indexOf('wo')] + '-' + rr[raw.headers.indexOf('ccode')] : String(rr[raw.headers.indexOf('wo')])) === x.key);
+        if (ri >= 0 && raw.headers.indexOf(k) >= 0) raw.rows[ri][raw.headers.indexOf(k)] = v; await DB.set('F', F); toast('حُفظ'); render(); }
+      catch (e) { toast(e.message, 4000); $('#es').disabled = false; } };
+  });
+}
+async function reviewView(A) {
+  const key = S.r.key, o = (S.F.O || []).find(x => x.key === key);
+  A.innerHTML = topBar('مراجعة ' + (o ? o.wo : ''), 1) + '<div class="wrap"><div class="card muted">جارٍ تحميل الملف…</div></div>'; wire();
+  if (!navigator.onLine) { $('.wrap').innerHTML = '<div class="card muted">المراجعة تحتاج اتصالاً بالإنترنت.</div>'; return; }
+  let V; try { V = await call('qdGet', key); } catch (e) { $('.wrap').innerHTML = `<div class="card err">${esc(e.message)}</div>`; return; }
+  if (S.r.v !== 'review') return; const C = S.B.cat, P = V.plan, items = [];
+  P.req.forEach(k => { const f = C.forms[k]; if (!f || f.k === 'lic') return; items.push([(f.k === 'chk' ? 'f:' : f.k === 'up' ? 'u:' : 'fm:') + (f.k === 'site' ? 'SITE' : f.k === 'meeting' ? 'MTG' : k), f.name + ((V.st || {})[k] && V.st[k] !== 'done' ? ' (ناقص)' : '')]); });
+  P.cats.forEach(g => { const G = C.ph[g]; if (G) G.items.forEach((t, i) => items.push(['p:' + g + ':' + i, G.name + ': ' + t])); });
+  $('.wrap').innerHTML = `${o && o.qf_url ? `<a class="card item" href="${esc(o.qf_url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit">📄 فتح ملف الجودة PDF</a>` : ''}
+    <div class="card"><b>اعتماد</b><div class="muted">إن كان الملف سليماً.</div><button class="pri big" id="ap" style="width:100%;margin-top:8px">اعتماد الملف</button></div>
+    <div class="card"><b>رفض</b><div class="muted">حدد ما يحتاج تصحيحاً، ويعود كل بند لمن عبّأه أو صوّره.</div>
+      ${items.map(([s, t]) => `<label class="fl" style="cursor:pointer"><input type="checkbox" data-rj="${esc(s)}" style="width:auto"><span class="n">${esc(t)}</span></label>`).join('')}
+      <textarea id="rn" rows="3" placeholder="سبب الرفض" style="margin-top:8px"></textarea><button class="big" id="rj" style="width:100%;margin-top:8px;color:var(--dan)">رفض البنود المحددة</button></div>`;
+  const done = async (action) => { const its = $$('[data-rj]:checked').map(e => e.dataset.rj), note = $('#rn').value.trim();
+    if (action === 'reject' && (!its.length || !note)) return toast('حدد البنود واكتب السبب');
+    try { await call('qdReview', key, action, its, note); if (o) o.qf_status = action === 'approve' ? 'معتمد' : 'مرفوض'; toast(action === 'approve' ? 'اعتُمد الملف' : 'رُفضت البنود وأُعيدت لأصحابها'); history.back(); if (navigator.onLine) pullFull().then(render).catch(() => {}); }
+    catch (e) { toast(e.message, 4000); } };
+  $('#ap').onclick = () => done('approve'); $('#rj').onclick = () => done('reject');
+}
+
+// ---------- site drawing (مخطط الموقع): a grid in metres, symbols tied to contract items, quantities from the drawing ----------
+// Shared by the program and the field app. Sketch.open(opts) shows a full-screen editor; opts:
+//   data {v,n,s:[shapes]}, items {code:[desc,uom]}, meta {wo,office,district,eng,date,logo}, ro (read only),
+//   onSave(data, pngBase64, qty) -> Promise, onQty(qty) (move quantities to the BOQ). Sketch.qty(data) -> [{c,q,u}]
+(function () {
+  const L = 'L', P = 'P';
+  const SYM = {
+    dig: { k: L, n: 'حفر ترابي', fam: ['3010101'], d: '301010101', col: '#8B5A2B', w: .22, dash: '.7 .3' },
+    asph: { k: L, n: 'حفر أسفلت + سفلتة', fam: ['3010101'], d: '301010107', area: { fam: ['3060100'], d: '306010001' }, bw: .5, col: '#3A3F47', w: .45, hatch: 1 },
+    tile: { k: L, n: 'حفر بلاط / رصيف', fam: ['3010101'], d: '301010105', area: { fam: ['3060200'], d: '306020001' }, bw: .6, col: '#8E99A6', w: .45, tiles: 1 },
+    lv: { k: L, n: 'كابل ج.منخفض', fam: ['3040101'], d: '304010101', col: '#185FA5', w: .16, lab: '4×185' },
+    mv: { k: L, n: 'كابل ج.متوسط', fam: ['3040102'], d: '304010201', col: '#B3261E', w: .16, lab: 'MV' },
+    pipe: { k: L, n: 'ماسورة حماية', fam: ['5050200', '3020100'], d: '505020002', col: '#2E7D4F', w: .08, dbl: 1 },
+    hdd: { k: L, n: 'ثقب أفقي / عبور', fam: ['3020200'], d: '302020001', col: '#714B67', w: .2, dash: '.15 .25' },
+    rr: { k: L, n: 'إزاحة كابل قائم', fam: ['3040200'], d: '304020001', col: '#E07A00', w: .2, dash: '.05 .3', cap: 1 },
+    ex: { k: L, n: 'كابل / شبكة قائمة', col: '#9AA3AE', w: .1 },
+    st: { k: L, n: 'شارع (مرجع)', col: '#D9DDE2', w: 3, ref: 1 },
+    m1: { k: P, n: 'صندوق بعداد آحادي', fam: ['50101'], d: '501010001' },
+    m2: { k: P, n: 'صندوق بعدادين', fam: ['50101'], d: '501010003' },
+    ct: { k: P, n: 'صندوق عداد CT', fam: ['50101'], d: '501010002' },
+    cab: { k: P, n: 'كبينة خدمة', fam: ['50101'], d: '501010006' },
+    mp: { k: P, n: 'ميني بيلر', fam: ['3080101'], d: '308010101' },
+    lvb: { k: P, n: 'لوحة رئيسية LV', fam: ['3080101'], d: '308010103' },
+    sub: { k: P, n: 'محطة / محول', fam: ['3080202'], d: '308020203' },
+    rmu: { k: P, n: 'وحدة حلقية RMU', fam: ['3080201'], d: '308020101' },
+    jt: { k: P, n: 'وصلة كابل', fam: ['30501'], d: '305010101' },
+    term: { k: P, n: 'مرابط رأس', fam: ['3050104', '3050103'], d: '305010401' },
+    earth: { k: P, n: 'تأريض', fam: ['507', '309'], d: '507000001' },
+    pole: { k: P, n: 'عمود', fam: ['20101'], d: '201010101' },
+    rem: { k: P, n: 'إزالة صندوق', fam: ['504'], d: '504010001' },
+    rep: { k: P, n: 'استبدال عداد', fam: ['502'], d: '502020002' },
+    mov: { k: P, n: 'إزاحة صندوق/لوحة', fam: ['503', '3080103'], d: '503010001' },
+    plot: { k: P, n: 'قطعة / مبنى', ref: 1 },
+    txt: { k: P, n: 'نص', ref: 1 }
+  };
+  const ORDER = ['dig', 'asph', 'tile', 'lv', 'mv', 'pipe', 'hdd', 'rr', 'ex', 'st', 'm1', 'm2', 'ct', 'cab', 'mp', 'lvb', 'sub', 'rmu', 'jt', 'term', 'earth', 'pole', 'rem', 'rep', 'mov', 'plot', 'txt'];
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const r2 = x => Math.round(x * 100) / 100;
+  const segLen = p => { let t = 0; for (let i = 1; i < p.length; i++) t += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); return t; };
+  // point symbols, drawn around (0,0), about 1.6 m wide
+  function pt(t, lab) {
+    const B = 'stroke="#14263F" stroke-width=".12"', box = (w, h, f) => `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx=".15" fill="${f || '#fff'}" ${B}/>`;
+    const tx = (s, c, z) => `<text x="0" y=".22" font-size="${z || .6}" font-weight="700" text-anchor="middle" fill="${c || '#14263F'}" font-family="Arial">${s}</text>`;
+    switch (t) {
+      case 'm1': return box(1.4, 1.4) + '<circle r=".3" fill="#14263F"/>';
+      case 'm2': return box(1.7, 1.3) + '<circle cx="-.4" r=".28" fill="#14263F"/><circle cx=".4" r=".28" fill="#14263F"/>';
+      case 'ct': return box(1.5, 1.4) + tx('CT');
+      case 'cab': return box(1, 1.7) + '<line x1="0" y1="-.75" x2="0" y2=".75" stroke="#14263F" stroke-width=".08"/>';
+      case 'mp': return `<rect x="-1.1" y="-.65" width="2.2" height="1.3" rx=".4" fill="#FFD400" ${B}/>` + tx('MP');
+      case 'lvb': return box(2.2, 1.4, '#FFD400') + tx('LV');
+      case 'sub': return '<rect x="-.9" y="-.9" width="1.8" height="1.8" fill="#fff" stroke="#B3261E" stroke-width=".12"/><line x1="-.9" y1=".9" x2=".9" y2="-.9" stroke="#B3261E" stroke-width=".12"/><text x="-.45" y="-.25" font-size=".55" font-weight="700" fill="#B3261E" font-family="Arial">T</text>';
+      case 'rmu': return '<rect x="-1.1" y="-.7" width="2.2" height="1.4" fill="#fff" stroke="#B3261E" stroke-width=".12"/>' + tx('RMU', '#B3261E', .5);
+      case 'jt': return '<circle r=".45" fill="#fff" stroke="#185FA5" stroke-width=".12"/><path d="M-.3 -.3L.3 .3M.3 -.3L-.3 .3" stroke="#185FA5" stroke-width=".12"/>';
+      case 'term': return '<line x1="-.5" y1="-.6" x2="-.5" y2=".6" stroke="#185FA5" stroke-width=".18"/><g fill="#185FA5"><circle cx=".1" cy="-.45" r=".14"/><circle cx=".1" cy="-.15" r=".14"/><circle cx=".1" cy=".15" r=".14"/><circle cx=".1" cy=".45" r=".14"/></g>';
+      case 'earth': return '<g stroke="#2E7D4F" stroke-width=".14" stroke-linecap="round"><line x1="0" y1="-.8" x2="0" y2="-.1"/><line x1="-.7" y1="-.1" x2=".7" y2="-.1"/><line x1="-.45" y1=".25" x2=".45" y2=".25"/><line x1="-.2" y1=".6" x2=".2" y2=".6"/></g>';
+      case 'pole': return '<circle r=".6" fill="#3A3F47"/><circle r=".22" fill="#fff"/>';
+      case 'rem': return box(1.4, 1.4) + '<circle r=".3" fill="#9AA3AE"/><path d="M-.9 -.9L.9 .9M.9 -.9L-.9 .9" stroke="#B3261E" stroke-width=".2"/>';
+      case 'rep': return box(1.4, 1.4) + '<circle r=".3" fill="#14263F"/><path d="M.95 -.2A.75 .75 0 1 1 .45 -.85" fill="none" stroke="#E07A00" stroke-width=".14"/><path d="M.25 -1.1L.65 -.85L.25 -.6Z" fill="#E07A00"/>';
+      case 'mov': return '<rect x="-.7" y="-.7" width="1.4" height="1.4" rx=".15" fill="#fff" stroke="#14263F" stroke-width=".1" stroke-dasharray=".2 .15"/><path d="M-1.9 0H-.85" stroke="#E07A00" stroke-width=".14"/><path d="M-.75 0L-1.1 -.25V.25Z" fill="#E07A00"/>';
+      case 'plot': return '<rect x="-2" y="-1.4" width="4" height="2.8" fill="#EEF1F5" stroke="#5B6B7F" stroke-width=".08"/>' + `<text x="0" y=".2" font-size=".6" text-anchor="middle" fill="#5B6B7F">${esc(lab || 'قطعة')}</text>`;
+      case 'txt': return `<text x="0" y=".2" font-size=".7" text-anchor="middle" fill="#14263F" font-weight="700">${esc(lab || 'نص')}</text>`;
+    }
+    return '';
+  }
+  // a line: its points as drawn by hand; the length is written by the engineer (s.len), nothing is measured
+  const mid = p => { let t = segLen(p) / 2; for (let i = 1; i < p.length; i++) { const a = p[i - 1], b = p[i], d = Math.hypot(b[0] - a[0], b[1] - a[1]); if (t <= d && d > 0) { const f = t / d; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI]; } t -= d; } const a = p[0]; return [a[0], a[1], 0]; };
+  function lineSvg(s, sel) {
+    const S = SYM[s.t] || SYM.ex, k = +s.k || 1, p = s.pts.map(q => q.join(',')).join(' '); if (s.pts.length < 2) return '';
+    const W = S.w * k; let g = '';
+    if (s.t === 'st') g += `<polyline points="${p}" fill="none" stroke="${S.col}" stroke-width="${W}" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.1 * k}" stroke-dasharray="${.8 * k} ${.6 * k}"/>`;
+    else if (S.dbl) g += `<polyline points="${p}" fill="none" stroke="${S.col}" stroke-width="${.32 * k}" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.16 * k}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    else g += `<polyline points="${p}" fill="none" stroke="${S.col}" stroke-width="${W}" stroke-linejoin="round" stroke-linecap="round"${S.dash ? ` stroke-dasharray="${S.dash.split(' ').map(x => r2(x * k)).join(' ')}"` : ''}/>`;
+    if (S.hatch) g += `<polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.3 * k}" stroke-dasharray="${.08 * k} ${.35 * k}"/>`;
+    if (S.tiles) g += `<polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.25 * k}" stroke-dasharray="${.25 * k} ${.25 * k}"/>`;
+    if (s.t === 'hdd') { const a = s.pts[0], b = s.pts[s.pts.length - 1]; g += `<circle cx="${a[0]}" cy="${a[1]}" r="${.3 * k}" fill="${S.col}"/><circle cx="${b[0]}" cy="${b[1]}" r="${.3 * k}" fill="${S.col}"/>`; }
+    if (sel) g = `<polyline points="${p}" fill="none" stroke="#FFD400" stroke-width="${Math.max(W, .2) + .6}" stroke-opacity=".55" stroke-linejoin="round" stroke-linecap="round"/>` + g;
+    if (s.len || s.lab) { const [mx, my, ang] = mid(s.pts), up = ang > 90 || ang < -90 ? ang + 180 : ang, fz = .6 * Math.max(1, Math.sqrt(k)), fc = s.t === 'st' || s.t === 'ex' ? '#5B6B7F' : S.col;
+      const T = (t, y, b) => `<text transform="translate(${r2(mx)} ${r2(my)}) rotate(${r2(up)})" y="${r2(y)}" font-size="${r2(fz)}"${b ? ' font-weight="700"' : ''} text-anchor="middle" direction="rtl" fill="${fc}" stroke="#fff" stroke-width=".12" paint-order="stroke">${esc(t)}</text>`;
+      if (s.len) g += T('\u200F' + s.len + ' م', -(.4 + W / 2), 1); if (s.lab) g += T(s.lab, .4 + W / 2 + fz * .8, 0); }
+    return g;
+  }
+  function shapeSvg(s, i, sel) {
+    const S = SYM[s.t]; if (!S) return '';
+    if (S.k === L) return `<g data-i="${i}">${lineSvg(s, sel)}<polyline points="${s.pts.map(q => q.join(',')).join(' ')}" fill="none" stroke="transparent" stroke-width="${Math.max(1.4, S.w * (+s.k || 1) + 1)}" data-i="${i}"/></g>`;
+    const k = +s.k || 1;
+    return `<g data-i="${i}" transform="translate(${s.x} ${s.y}) scale(${k})">${sel ? '<circle r="1.5" fill="#FFD400" fill-opacity=".45"/>' : ''}${pt(s.t, s.lab)}${s.lab && s.t !== 'txt' && s.t !== 'plot' ? `<text y="1.35" font-size=".5" text-anchor="middle" fill="#14263F">${esc(s.lab)}</text>` : ''}<rect x="-1.3" y="-1.3" width="2.6" height="2.6" fill="transparent" data-i="${i}"/></g>`;
+  }
+
+  const CSS = `.sk-ov{position:fixed;inset:0;z-index:9999;background:#fff;display:flex;flex-direction:column;font-family:inherit;direction:rtl;color:#1b1f27}
+  .sk-top{display:flex;gap:6px;align-items:center;padding:8px 10px;background:#14263F;color:#fff}.sk-top b{font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sk-ov button{font:inherit;border:1px solid #cfd5dd;background:#fff;color:#1b1f27;border-radius:8px;padding:6px 10px;cursor:pointer}.sk-ov button.on{background:#FFD400;border-color:#14263F;font-weight:700}
+  .sk-ov button.pri{background:#185FA5;color:#fff;border-color:#185FA5}.sk-top button{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.3)}.sk-top button.pri{background:#FFD400;color:#14263F;border-color:#FFD400;font-weight:700}
+  .sk-tools{display:flex;gap:5px;overflow-x:auto;padding:6px 8px;border-bottom:1px solid #e3e6ea;background:#F6F7F9;flex:0 0 auto}.sk-tools button{display:flex;flex-direction:column;align-items:center;gap:2px;width:76px;flex:0 0 76px;font-size:10.5px;line-height:1.2;padding:4px 3px;white-space:normal;text-align:center}
+  .sk-tools svg{width:34px;height:22px}.sk-sep{width:1px;background:#cfd5dd;margin:0 3px;flex:0 0 1px}
+  .sk-main{flex:1;position:relative;overflow:hidden;touch-action:none;background:#fff}.sk-main svg{width:100%;height:100%;display:block;user-select:none}
+  .sk-zoom{position:absolute;left:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}.sk-zoom button{width:40px;height:40px;font-size:20px;padding:0}
+  .sk-north{position:absolute;right:12px;top:10px;width:54px;height:54px;border-radius:50%;background:#fff;border:1px solid #cfd5dd;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .sk-hint{pointer-events:none;position:absolute;right:10px;bottom:10px;background:rgba(20,38,63,.88);color:#fff;border-radius:8px;padding:6px 10px;font-size:13px;max-width:70%}
+  .sk-panel{border-top:1px solid #e3e6ea;padding:8px 10px;max-height:38vh;overflow:auto;background:#fff;font-size:13px}.sk-panel select,.sk-panel input{font:inherit;padding:5px;border:1px solid #cfd5dd;border-radius:6px;max-width:100%}
+  .sk-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}.sk-q{width:100%;border-collapse:collapse}.sk-q td,.sk-q th{border-bottom:1px solid #eef0f3;padding:4px;text-align:right}.sk-q th{color:#5B6B7F;font-weight:600}
+  .sk-q code{direction:ltr;unicode-bidi:embed;color:#714B67}`;
+  function css() { if (!document.getElementById('sk-css')) { const st = document.createElement('style'); st.id = 'sk-css'; st.textContent = CSS; document.head.appendChild(st); } }
+  function icon(t) { const S = SYM[t];
+    if (S.k === L) return `<svg viewBox="-3 -1.2 6 2.4">${lineSvg({ t, pts: [[-2.6, .5], [2.6, -.5]] }, false)}</svg>`;
+    return `<svg viewBox="-2.2 -1.4 4.4 2.8">${pt(t, t === 'plot' ? '25' : t === 'txt' ? 'نص' : '')}</svg>`; }
+  const bbox = sh => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; sh.forEach(s => { const k = (+s.k || 1) * 1.6; (s.pts || [[s.x, s.y]]).forEach(p => { x0 = Math.min(x0, p[0] - (s.pts ? 0 : k)); y0 = Math.min(y0, p[1] - (s.pts ? 0 : k)); x1 = Math.max(x1, p[0] + (s.pts ? 0 : k)); y1 = Math.max(y1, p[1] + (s.pts ? 0 : k)); }); }); return [x0, y0, x1, y1]; };
+  // the drawing as a picture, with a header (order, place, engineer, date) and the names of the symbols used
+  function toPng(data, meta) {
+    const sh = data.s || []; let [x0, y0, x1, y1] = bbox(sh);
+    if (x0 > x1) { x0 = 0; y0 = 0; x1 = 20; y1 = 14; }
+    x0 -= 3; y0 -= 6; x1 += 7; y1 += 3; let w = x1 - x0, h = y1 - y0; if (w < 20) { x0 -= (20 - w) / 2; w = 20; } if (h < 12) { y0 -= (12 - h) / 2; h = 12; }
+    const used = ORDER.filter(t => !SYM[t].ref && sh.some(s => s.t === t)), px = Math.max(8, Math.min(60, 1500 / w)), W = Math.round(w * px), Hm = Math.round(h * px), top = 110, rows = Math.ceil(used.length / 3), bottom = used.length ? 50 + rows * 34 : 20, H = top + Hm + bottom;
+    const grid = []; for (let gx = Math.ceil(x0); gx <= x1; gx++) grid.push(`<line x1="${gx}" y1="${y0}" x2="${gx}" y2="${y1}" stroke="${gx % 5 ? '#F1F3F6' : '#E1E5EA'}" stroke-width="${gx % 5 ? .03 : .05}"/>`);
+    for (let gy = Math.ceil(y0); gy <= y1; gy++) grid.push(`<line x1="${x0}" y1="${gy}" x2="${x1}" y2="${gy}" stroke="${gy % 5 ? '#F1F3F6' : '#E1E5EA'}" stroke-width="${gy % 5 ? .03 : .05}"/>`);
+    const cw = (W - 40) / 3, leg = used.map((t, i) => { const c = i % 3, r = Math.floor(i / 3), x = W - 20 - c * cw, y = top + Hm + 46 + r * 34;
+      return `<svg x="${x - 60}" y="${y - 20}" width="56" height="28" viewBox="${SYM[t].k === L ? '-3 -1.2 6 2.4' : '-2.2 -1.4 4.4 2.8'}">${SYM[t].k === L ? lineSvg({ t, pts: [[-2.6, 0], [2.6, 0]] }, false) : pt(t, '')}</svg><text x="${x - 68}" y="${y}" font-size="15" direction="rtl" text-anchor="start" fill="#1b1f27">${esc(SYM[t].n)}</text>`; }).join('');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#fff"/>
+      <rect width="${W}" height="${top - 10}" fill="#14263F"/>${meta.logo ? `<image href="${meta.logo}" x="16" y="12" width="76" height="76"/>` : ''}
+      <text x="${W - 20}" y="42" font-size="26" font-weight="700" fill="#fff" direction="rtl" text-anchor="start">مخطط الموقع — أمر العمل ${esc(meta.wo)}</text>
+      <text x="${W - 20}" y="78" font-size="16" fill="#FFD400" direction="rtl" text-anchor="start">${esc([meta.office, meta.district, meta.eng, meta.date].filter(Boolean).join(' · '))}</text>
+      <svg x="0" y="${top}" width="${W}" height="${Hm}" viewBox="${x0} ${y0} ${w} ${h}" font-family="Arial">${grid.join('')}${sh.map((s, i) => shapeSvg(s, i, false)).join('')}
+      <g transform="translate(${x1 - 2.5} ${y0 + 3}) rotate(${data.n || 0})"><path d="M0 -1.6L.7 1.2L0 .7L-.7 1.2Z" fill="#14263F"/><text y="-1.9" font-size=".8" font-weight="700" text-anchor="middle" fill="#14263F">N</text></g></svg>
+      ${used.length ? `<line x1="20" y1="${top + Hm + 10}" x2="${W - 20}" y2="${top + Hm + 10}" stroke="#D9DEE5"/>${leg}` : ''}</svg>`;
+    return new Promise((ok, no) => { const im = new Image(); im.onload = () => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(im, 0, 0); ok(cv.toDataURL('image/png').split(',')[1]); };
+      im.onerror = () => no(new Error('تعذّر تجهيز صورة المخطط')); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+  }
+  function open(o) {
+    css(); const items = o.items || {}, meta = o.meta || {}, ro = !!o.ro;
+    let D = JSON.parse(JSON.stringify(o.data || { v: 1, n: 0, s: [] })); D.s = D.s || []; D.n = D.n || 0;
+    const hist = []; let tool = 'sel', sel = -1, vb = null, dirty = false, drag = null, pins = {}, lp = null;
+    const ov = document.createElement('div'); ov.className = 'sk-ov'; document.body.appendChild(ov);
+    const main = () => ov.querySelector('.sk-main');
+    const fit = () => { let [x0, y0, x1, y1] = bbox(D.s); const box = main().getBoundingClientRect(), ar = (box.width || 360) / (box.height || 400);
+      if (x0 > x1) { x0 = 0; y0 = 0; x1 = 24; y1 = 24 / ar; } x0 -= 3; y0 -= 3; x1 += 3; y1 += 3; let w = x1 - x0, h = y1 - y0; if (w / h < ar) { const nw = h * ar; x0 -= (nw - w) / 2; w = nw; } else { const nh = w / ar; y0 -= (nh - h) / 2; h = nh; } vb = [x0, y0, w, h]; };
+    const push = () => { hist.push(JSON.stringify(D)); if (hist.length > 60) hist.shift(); dirty = true; };
+    const opts = (fam, cur) => { const L2 = Object.keys(items).filter(c => fam.some(f => c.indexOf(f) === 0)).sort(); if (cur && L2.indexOf(cur) < 0) L2.unshift(cur);
+      return L2.map(c => `<option value="${c}" ${c === cur ? 'selected' : ''}>${c} — ${esc(((items[c] || [])[0] || '').replace(/^\s*الاشراف على\s*/, '').slice(0, 70))}</option>`).join(''); };
+    ov.innerHTML = `<div class="sk-top"><b>مخطط الموقع — أمر ${esc(meta.wo || '')}</b>${ro ? '' : '<button id="sk-un" title="تراجع">↶</button><button class="pri" id="sk-sv">حفظ</button>'}<button id="sk-x">إغلاق</button></div>
+      ${ro ? '' : `<div class="sk-tools"><button data-t="sel" class="on">✋<span>تحديد / تحريك</span></button><span class="sk-sep"></span>${ORDER.map(t => `<button data-t="${t}" title="${esc(SYM[t].n)}">${icon(t)}<span>${esc(SYM[t].n)}</span></button>`).join('')}</div>`}
+      <div class="sk-main"><svg id="sk-svg"></svg><div class="sk-north" id="sk-n" title="اتجاه الشمال: اضغط للتدوير"></div><div class="sk-zoom"><button id="sk-zi">+</button><button id="sk-zo">−</button><button id="sk-fit" style="font-size:13px">⤢</button></div><div class="sk-hint" id="sk-h"></div></div>
+      <div class="sk-panel" id="sk-p"></div>`;
+    const $ = s => ov.querySelector(s), svg = $('#sk-svg');
+    const hint = t => { $('#sk-h').style.display = t ? '' : 'none'; $('#sk-h').textContent = t || ''; };
+    let live = null; // the stroke being drawn
+    function draw() {
+      if (!vb) fit(); svg.setAttribute('viewBox', vb.join(' '));
+      const [x0, y0, w, h] = vb, g = [], step = w > 120 ? 5 : 1, sw = Math.max(1, w / 40);
+      for (let x = Math.floor(x0 / step) * step; x <= x0 + w; x += step) g.push(`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + h}" stroke="${x % 5 ? '#EEF1F4' : '#D3D9E1'}" stroke-width="${(x % 5 ? .025 : .05) * sw}"/>`);
+      for (let y = Math.floor(y0 / step) * step; y <= y0 + h; y += step) g.push(`<line x1="${x0}" y1="${y}" x2="${x0 + w}" y2="${y}" stroke="${y % 5 ? '#EEF1F4' : '#D3D9E1'}" stroke-width="${(y % 5 ? .025 : .05) * sw}"/>`);
+      svg.innerHTML = g.join('') + D.s.map((s, i) => shapeSvg(s, i, i === sel)).join('') + (live && live.pts.length > 1 ? lineSvg(live, false) : '');
+      $('#sk-n').innerHTML = `<svg viewBox="-2 -2 4 4" width="44" height="44" style="transform:rotate(${D.n}deg)"><path d="M0 -1.5L.6 1.1L0 .65L-.6 1.1Z" fill="#14263F"/><text y="-1.55" font-size=".7" font-weight="700" text-anchor="middle" fill="#B3261E" font-family="Arial">N</text></svg>`;
+      panel();
+    }
+    function panel() {
+      const p = $('#sk-p');
+      if (sel >= 0 && D.s[sel]) { const s = D.s[sel], S = SYM[s.t];
+        p.innerHTML = `<div class="sk-row"><b>${esc(S.n)}</b>${ro ? '' : `<span>الحجم</span><button id="sk-km" title="تصغير">－</button><b>${Math.round((+s.k || 1) * 100)}%</b><button id="sk-kp" title="تكبير">＋</button><span style="flex:1"></span><button id="sk-del" style="color:#B3261E">حذف</button>`}</div>
+          ${S.k === L && !S.ref ? `<div class="sk-row"><span>الطول (م)</span><input id="sk-len" type="number" step="0.1" min="0" inputmode="decimal" style="width:100px" value="${esc(s.len || '')}" placeholder="اكتب الطول" ${ro ? 'disabled' : ''}></div>` : ''}
+          ${S.fam ? `<div class="sk-row"><span>البند</span><select id="sk-c" ${ro ? 'disabled' : ''}>${opts(S.fam, s.c || S.d)}</select></div>` : ''}
+          ${S.area ? `<div class="sk-row"><span>بند الإعادة</span><select id="sk-c2" ${ro ? 'disabled' : ''}>${opts(S.area.fam, s.c2 || S.area.d)}</select></div>` : ''}
+          <div class="sk-row"><span>${s.t === 'txt' ? 'النص' : s.t === 'plot' ? 'رقم القطعة / المبنى' : s.t === 'st' ? 'اسم الشارع' : 'ملاحظة / مقاس'}</span><input id="sk-l" value="${esc(s.lab || '')}" style="flex:1;min-width:120px" ${ro ? 'disabled' : ''}></div>`;
+        if (!ro) { $('#sk-del').onclick = () => { push(); D.s.splice(sel, 1); sel = -1; draw(); };
+          const K = f => { push(); s.k = Math.round(Math.min(6, Math.max(.3, (+s.k || 1) * f)) * 100) / 100; draw(); };
+          $('#sk-kp').onclick = () => K(1.25); $('#sk-km').onclick = () => K(.8);
+          if ($('#sk-len')) $('#sk-len').onchange = e => { push(); const v = +String(e.target.value).replace(',', '.'); if (v > 0) s.len = r2(v); else delete s.len; draw(); };
+          if ($('#sk-c')) $('#sk-c').onchange = e => { push(); s.c = e.target.value; draw(); };
+          if ($('#sk-c2')) $('#sk-c2').onchange = e => { push(); s.c2 = e.target.value; draw(); };
+          $('#sk-l').onchange = e => { push(); s.lab = e.target.value.slice(0, 60); draw(); }; }
+        return; }
+      p.innerHTML = `<div style="color:#5B6B7F">${ro ? 'عرض فقط.' : 'الخطوط: اختر نوع الخط ثم اسحب بإصبعك من البداية إلى النهاية فيُرسم خط مستقيم. للانعطاف ابدأ خطاً جديداً من نهاية الخط السابق فيتصل به. الرموز: اختر الرمز ثم اضغط مكانه. اضغط مطوّلاً على أي عنصر ثم اسحبه لتحريكه، واضغط عليه لتعديل حجمه وطوله وبنده. كل مربع = 1 متر تقريباً.'}</div>`;
+    }
+    const toM = e => { const r = svg.getBoundingClientRect(); return [vb[0] + (e.clientX - r.left) / r.width * vb[2], vb[1] + (e.clientY - r.top) / r.height * vb[3]]; };
+    const snap = p => [Math.round(p[0] * 4) / 4, Math.round(p[1] * 4) / 4];
+    const hitOf = e => { const t = e.target.closest && e.target.closest('[data-i]'); return t ? +t.dataset.i : -1; };
+    function setTool(t) { tool = t; sel = -1; ov.querySelectorAll('.sk-tools button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+      hint(t === 'sel' ? 'اضغط على عنصر لتعديله، أو اسحب الشبكة لتحريكها' : SYM[t].k === L ? 'اسحب من بداية ' + SYM[t].n + ' إلى نهايته — وللانعطاف ابدأ من نهاية الخط' : 'اضغط مكان ' + SYM[t].n + ' على الشبكة'); draw(); }
+    ov.querySelectorAll('.sk-tools button').forEach(b => b.onclick = () => setTool(b.dataset.t));
+    const startMove = (i, m) => { sel = i; drag = { mv: 1, m, orig: JSON.stringify(D.s[i]), pre: JSON.stringify(D) }; live = null; try { navigator.vibrate && navigator.vibrate(30); } catch (e) {} hint('اسحب العنصر إلى مكانه'); draw(); };
+    svg.addEventListener('pointerdown', e => { svg.setPointerCapture(e.pointerId); pins[e.pointerId] = [e.clientX, e.clientY]; e.preventDefault();
+      const ids = Object.keys(pins);
+      if (ids.length === 2) { clearTimeout(lp); live = null; const a = pins[ids[0]], b = pins[ids[1]], d0 = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        drag = drag && drag.el != null ? { pinchEl: drag.el, d0, k0: +D.s[drag.el].k || 1, pre: JSON.stringify(D) } : (sel >= 0 && drag && drag.onSel ? { pinchEl: sel, d0, k0: +D.s[sel].k || 1, pre: JSON.stringify(D) } : { pinch: d0, vb: vb.slice() }); return; }
+      const m = toM(e), hit = hitOf(e); clearTimeout(lp);
+      if (!ro && hit >= 0) lp = setTimeout(() => { if (drag && !drag.moved) startMove(hit, drag.m0); }, 450);
+      if (ro || tool === 'sel') { drag = { pan: 1, c: [e.clientX, e.clientY], vb: vb.slice(), m0: m, tapHit: hit, el: hit >= 0 ? hit : null, onSel: hit >= 0 && hit === sel }; return; }
+      if (SYM[tool].k === L) { // a straight line from here; starting at the end of a line of the same kind continues it
+        const tol = Math.max(.8, vb[2] / 14); let join = null, st = [r2(m[0]), r2(m[1])];
+        D.s.forEach((x, i) => { if (x.t !== tool || !x.pts || join) return; const a = x.pts[0], b = x.pts[x.pts.length - 1];
+          if (Math.hypot(b[0] - m[0], b[1] - m[1]) <= tol) { join = { i, end: 1 }; st = b; } else if (Math.hypot(a[0] - m[0], a[1] - m[1]) <= tol) { join = { i, end: 0 }; st = a; } });
+        live = { t: tool, pts: [st.slice(), st.slice()] }; drag = { line: 1, join, m0: m, c: [e.clientX, e.clientY], el: hit >= 0 ? hit : null }; return; }
+      drag = { tap: 1, m0: m, c: [e.clientX, e.clientY], el: hit >= 0 ? hit : null }; });
+    svg.addEventListener('pointermove', e => { if (!pins[e.pointerId]) return; pins[e.pointerId] = [e.clientX, e.clientY]; if (!drag) return; const ids = Object.keys(pins);
+      if (drag.pinchEl != null && ids.length === 2) { const a = pins[ids[0]], b = pins[ids[1]], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (!drag.moved) { hist.push(drag.pre); dirty = true; drag.moved = 1; }
+        D.s[drag.pinchEl].k = Math.round(Math.min(6, Math.max(.3, drag.k0 * d / Math.max(drag.d0, 1))) * 100) / 100; sel = drag.pinchEl; draw(); return; }
+      if (drag.pinch && ids.length === 2) { const a = pins[ids[0]], b = pins[ids[1]], d = Math.hypot(a[0] - b[0], a[1] - b[1]); const k = drag.pinch / Math.max(d, 1), cx = drag.vb[0] + drag.vb[2] / 2, cy = drag.vb[1] + drag.vb[3] / 2;
+        const w = Math.min(400, Math.max(6, drag.vb[2] * k)), h = drag.vb[3] * w / drag.vb[2]; vb = [cx - w / 2, cy - h / 2, w, h]; draw(); return; }
+      const far = drag.c && Math.hypot(e.clientX - drag.c[0], e.clientY - drag.c[1]) > 8;
+      if (drag.mv) { const m = toM(e), dx = Math.round((m[0] - drag.m[0]) * 4) / 4, dy = Math.round((m[1] - drag.m[1]) * 4) / 4; if (!dx && !dy && !drag.moved) return;
+        if (!drag.moved) { hist.push(drag.pre); dirty = true; drag.moved = 1; } const s = D.s[sel], o2 = JSON.parse(drag.orig);
+        if (o2.pts) s.pts = o2.pts.map(p => [r2(p[0] + dx), r2(p[1] + dy)]); else { s.x = o2.x + dx; s.y = o2.y + dy; } draw(); return; }
+      if (far) { clearTimeout(lp); drag.moved = 1; }
+      if (drag.line && live) { const m = toM(e), a = live.pts[0]; let dx = m[0] - a[0], dy = m[1] - a[1]; const len = Math.hypot(dx, dy), ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        const near = [-180, -90, 0, 90, 180].find(q => Math.abs(ang - q) <= 4); if (near !== undefined) { const r = near * Math.PI / 180; dx = Math.round(Math.cos(r)) * len; dy = Math.round(Math.sin(r)) * len; }
+        live.pts[1] = [r2(a[0] + dx), r2(a[1] + dy)]; draw(); return; }
+      if (drag.pan && far) { const r = svg.getBoundingClientRect(); vb[0] = drag.vb[0] - (e.clientX - drag.c[0]) / r.width * vb[2]; vb[1] = drag.vb[1] - (e.clientY - drag.c[1]) / r.height * vb[3]; draw(); } });
+    const up = e => { delete pins[e.pointerId]; if (Object.keys(pins).length) return; clearTimeout(lp); const was = drag; drag = null; if (!was) return;
+      if (was.mv) { hint(''); if (!was.moved) draw(); return; }
+      if (was.pinchEl != null || was.pinch) return;
+      if (was.line) { const s = live; live = null; if (s && segLen(s.pts) >= .4) { push();
+          if (was.join && D.s[was.join.i]) { const x = D.s[was.join.i]; if (was.join.end) x.pts.push(s.pts[1]); else x.pts.unshift(s.pts[1]); sel = was.join.i; }
+          else { const n = { t: s.t, pts: s.pts }; if (SYM[s.t].lab) n.lab = SYM[s.t].lab; D.s.push(n); sel = D.s.length - 1; } }
+        else if (was.el != null && !was.moved) sel = was.el; draw(); return; }
+      if (was.pan) { if (!was.moved) { sel = was.tapHit; draw(); } return; }
+      if (was.tap && !was.moved) { if (was.el != null) { sel = was.el; draw(); return; } const p = snap(was.m0); push(); const s = { t: tool, x: p[0], y: p[1] };
+        if (tool === 'txt' || tool === 'plot') { const v = window.prompt(tool === 'txt' ? 'النص' : 'رقم القطعة / المبنى', ''); if (!v) { hist.pop(); return; } s.lab = v.slice(0, 60); }
+        D.s.push(s); draw(); } };
+    svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+    svg.addEventListener('contextmenu', e => e.preventDefault());
+    svg.addEventListener('wheel', e => { e.preventDefault(); const m = toM(e), k = e.deltaY > 0 ? 1.15 : 1 / 1.15, w = Math.min(400, Math.max(6, vb[2] * k)), f = w / vb[2]; vb = [m[0] - (m[0] - vb[0]) * f, m[1] - (m[1] - vb[1]) * f, w, vb[3] * f]; draw(); }, { passive: false });
+    const zoom = k => { const cx = vb[0] + vb[2] / 2, cy = vb[1] + vb[3] / 2, w = Math.min(400, Math.max(6, vb[2] * k)), h = vb[3] * w / vb[2]; vb = [cx - w / 2, cy - h / 2, w, h]; draw(); };
+    $('#sk-zi').onclick = () => zoom(1 / 1.4); $('#sk-zo').onclick = () => zoom(1.4); $('#sk-fit').onclick = () => { vb = null; draw(); };
+    $('#sk-n').onclick = () => { if (ro) return; push(); D.n = (D.n + 45) % 360; draw(); };
+    const close = () => { window.removeEventListener('resize', rs); ov.remove(); };
+    const rs = () => { const v = vb; vb = null; fit(); if (v) { const c = [v[0] + v[2] / 2, v[1] + v[3] / 2]; vb = [c[0] - v[2] / 2, c[1] - v[2] * vb[3] / vb[2] / 2, v[2], v[2] * vb[3] / vb[2]]; } draw(); };
+    window.addEventListener('resize', rs);
+    $('#sk-x').onclick = () => { if (dirty && !ro && !window.confirm('لم يُحفظ المخطط. إغلاق بدون حفظ؟')) return; close(); };
+    if (!ro) {
+      $('#sk-un').onclick = () => { const h = hist.pop(); if (h) { D = JSON.parse(h); sel = -1; draw(); } };
+      $('#sk-sv').onclick = async () => { const b = $('#sk-sv'); b.disabled = true; b.textContent = 'جارٍ الحفظ…';
+        try { const png = D.s.length ? await toPng(D, meta) : ''; await o.onSave(D, png); dirty = false; close(); } catch (er) { b.disabled = false; b.textContent = 'حفظ'; window.alert(er.message || er); } };
+    }
+    hint(ro ? '' : 'اختر رمزاً أو نوع خط من الشريط في الأعلى'); draw(); setTimeout(() => { vb = null; draw(); }, 50);
+    return { close };
+  }
+  window.Sketch = { open, SYM, toPng };
+})();
+// ---------- المقايسة on the phone: planned quantities from the office, executed quantities written on site, the site drawing ----------
+const UOM = u => ({ M: 'م', M2: 'م²', M3: 'م³', EA: 'عدد', ASM: 'مجموعة', KIT: 'طقم', ST: 'طقم', '%': '%' })[String(u || '').trim().toUpperCase()] || u || '';
+const bqDesc = d => String(d || '').replace(/^\s*الاشراف على\s*/, '');
+function boqOf(key) { const b = JSON.parse(JSON.stringify(((S.B.boq || {})[key]) || { lines: [], draw: null, draw_id: '', status: '', appr_by: '' }));
+  S.Q.forEach(op => { if (op.ref !== key) return; if (op.t === 'boq') { b.lines = JSON.parse(JSON.stringify(op.lines)); b.local = 1; } if (op.t === 'draw') { b.draw = op.draw; b.drawLocal = 1; } }); return b; }
+function boqCard(key) { const b = boqOf(key), n = b.lines.length, ent = b.lines.filter(l => l.d !== '' && l.d != null).length;
+  return `<h3>المقايسة ومخطط الموقع</h3><div class="card"><div class="row"><span class="pill">📋 ${n ? ent + '/' + n + ' بنداً' : 'لا بنود'}</span>${b.status ? `<span class="pill ${b.status === 'فرق' ? 'p-d' : ''}">${esc(b.status)}</span>` : ''}${b.local ? '<span class="pill">⏳ بانتظار الإرسال</span>' : ''}${b.draw || b.draw_id ? `<span class="pill">🗺 مخطط${b.drawLocal ? ' ⏳' : ''}</span>` : ''}</div>
+    <div class="row" style="margin-top:8px"><button id="bqo">📋 المقايسة</button><button id="bqd">🗺 مخطط الموقع</button></div></div>`; }
+function openDraw(key, after) { const it = itemOf(key), b = boqOf(key);
+  if (!S.IT) toast('جدول البنود لم يُنزّل بعد. اتصل بالإنترنت واضغط ⟳ مرة', 4000);
+  Sketch.open({ data: b.draw, items: S.IT || {}, ro: !!b.appr_by, meta: { wo: it.wo + (it.type ? '-' + it.type : ''), office: it.office, district: it.district, eng: me(), date: today(), logo: S.B.stampLogo },
+    onSave: async (d, png) => { await enqueue({ t: 'draw', ref: key, draw: d, png }); toast('حُفظ المخطط على الجوال' + (navigator.onLine ? '' : ' — يُرسل عند الاتصال')); } }); }
+function boqView(A) {
+  const key = S.r.key, it = itemOf(key); if (!it) { go({ v: 'home' }); return; }
+  const b = boqOf(key), L = b.lines, ro = !!b.appr_by, IT = S.IT || {};
+  const row = (l, i) => { const x = IT[l.c] || ['(بند غير معروف)', ''], d = l.d === '' || l.d == null ? '' : +l.d, df = d === '' ? '' : Math.round((d - (+l.p || 0)) * 1000) / 1000;
+    return `<div class="fl ${df !== '' && df !== 0 ? 'rj' : ''}" style="flex-wrap:wrap"><div class="n" style="flex:1 1 100%"><b>${esc(bqDesc(x[0]))}</b> <span class="muted">${esc(l.c)} · ${esc(UOM(x[1]))}${l.x ? ' · إضافي' : ''}</span></div>
+      <div class="row" style="width:100%;gap:6px;align-items:center"><span class="muted">المخطط <b>${esc(l.p)}</b></span><label class="muted" style="display:flex;gap:4px;align-items:center">المنفذ <input data-d="${i}" value="${esc(d)}" inputmode="decimal" style="width:80px" ${ro ? 'disabled' : ''}></label>
+      ${df !== '' && df !== 0 ? `<b style="color:${df > 0 ? '#185FA5' : 'var(--dan)'}">${df > 0 ? '+' : ''}${df}</b>` : ''}${!ro && l.x ? `<b class="x" data-rm="${i}" style="cursor:pointer;color:var(--mut);padding:4px">✕</b>` : ''}</div>
+      ${!ro ? `<input data-r="${i}" value="${esc(l.r || '')}" placeholder="${df !== '' && df !== 0 ? 'سبب الفرق' : 'ملاحظة'}" style="width:100%;margin-top:4px">` : (l.r ? `<div class="muted">${esc(l.r)}</div>` : '')}</div>`; };
+  A.innerHTML = topBar('المقايسة · ' + it.wo + (it.type ? '-' + it.type : ''), 1) + `<div class="wrap">
+    <div class="card"><div class="muted">${esc(it.office || '')} · ${esc(it.contractor || '')} · ${esc(it.district || '')}</div><div class="row" style="margin-top:6px">${b.status ? `<span class="pill">${esc(b.status)}</span>` : ''}${ro ? `<span class="pill">✓ معتمدة — ${esc(b.appr_by)}</span>` : ''}${b.local ? '<span class="pill">⏳ بانتظار الإرسال</span>' : ''}</div>
+    <div class="row" style="margin-top:8px"><button id="bqd">🗺 مخطط الموقع${b.draw || b.draw_id ? ' ✓' : ''}</button>${!ro && L.length ? '<button id="bqall">المنفذ = المخطط</button>' : ''}</div></div>
+    <div class="card">${L.length ? L.map(row).join('') : '<div class="muted">لا توجد بنود. أضف البنود المنفذة، أو ارسمها في مخطط الموقع ثم «نقل الكميات».</div>'}</div>
+    ${ro ? '<div class="card muted">المقايسة معتمدة، والتعديل لقائد المكتب أو المطابقة.</div>' : `<div class="card"><input id="bqadd" list="bqdl" placeholder="إضافة بند: الرمز أو جزء من الوصف" style="width:100%"><datalist id="bqdl">${Object.keys(IT).map(c => `<option value="${c}">${esc(bqDesc(IT[c][0]).slice(0, 80))}</option>`).join('')}</datalist><div class="row" style="margin-top:6px"><button id="bqaddb">+ إضافة</button></div></div>
+    <button class="pri big" id="bqsv" style="width:100%">حفظ</button>`}</div>`;
+  wire();
+  const Lw = L.map(l => Object.assign({}, l));
+  $$('[data-d]').forEach(x => x.oninput = () => { const v = x.value.trim().replace(',', '.'); Lw[+x.dataset.d].d = v === '' || isNaN(+v) ? '' : +v; });
+  $$('[data-r]').forEach(x => x.oninput = () => { Lw[+x.dataset.r].r = x.value; });
+  const saveNow = async () => { await enqueue({ t: 'boq', ref: key, lines: Lw }); toast('حُفظت على الجوال' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); };
+  $$('[data-rm]').forEach(x => x.onclick = async () => { Lw.splice(+x.dataset.rm, 1); await saveNow(); });
+  if ($('#bqall')) $('#bqall').onclick = async () => { Lw.forEach(l => { if (l.d === '' || l.d == null) l.d = +l.p || 0; }); await saveNow(); };
+  if ($('#bqaddb')) $('#bqaddb').onclick = async () => { const v = $('#bqadd').value.trim(), c = (v.match(/\d{6,12}/) || [])[0] || Object.keys(IT).find(k => bqDesc(IT[k][0]).includes(v));
+    if (!c || !IT[c]) return toast('البند غير موجود في جدول الأسعار'); if (Lw.some(l => l.c === c)) return toast('البند موجود'); Lw.push({ c, p: 0, d: '', r: '', x: 1 }); await saveNow(); };
+  if ($('#bqsv')) $('#bqsv').onclick = async () => { await saveNow(); go({ v: 'item', key }); };
+  $('#bqd').onclick = () => openDraw(key, render);
+}
+
+// ---------- start ----------
+(async () => {
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  const qa = cleanApi(decodeURIComponent((location.search.match(/[?&]api=([^&]+)/) || [])[1] || '')); if (qa) { await DB.set('api', qa); history.replaceState(null, '', location.pathname); }
+  S.api = qa || (await DB.get('api')) || API_DEFAULT; S.dev = (await DB.get('dev')) || ''; S.user = (await DB.get('user')) || null; S.B = (await DB.get('B')) || null; { const it = await DB.get('items'); if (it) { S.IT = it.m; S.itv = it.v; } } S.Q = (await DB.qall()) || []; S.F = (await DB.get('F')) || null; S.noFull = !!(await DB.get('nofull')); try { prepF(); } catch (e) { S.F = null; }
+  history.replaceState(S.r, ''); render(); if (S.dev && navigator.onLine) sync();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
