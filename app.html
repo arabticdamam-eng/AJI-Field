@@ -97,6 +97,7 @@ table.gs th .fbtn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 .fmenu .fm-q{width:100%;margin:6px 0}.fmenu .fm-l{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:4px}
 .fmenu label{display:flex;gap:6px;align-items:center;padding:2px 4px;font-size:13px}.fmenu .fm-b{margin-top:8px;display:flex;gap:6px}
 .chip[data-x]{cursor:pointer}.go{cursor:pointer}.kpi.go:hover{border-color:var(--acc)}tr.go:hover td{background:var(--accbg)}
+#colsw{max-height:62vh;overflow:auto;margin-bottom:10px;padding-inline-end:4px}#colsw .colsl{max-height:none;overflow:visible;margin-bottom:4px}.colg{margin-top:10px}.colgh{display:flex;align-items:center;gap:6px;padding:5px 2px;border-bottom:2px solid var(--line);position:sticky;top:0;background:#fff;z-index:1}.colgh button{padding:2px 10px;font-size:12px}.colgl label{cursor:pointer}
 .colsl{display:flex;flex-direction:column;gap:2px;max-height:55vh;overflow:auto;margin-bottom:10px}.colsl label{padding:4px 8px;border:1px solid var(--line);border-radius:6px;cursor:grab;display:flex;gap:6px}
 .qdm .kv{margin:6px 0}.qdt td{vertical-align:middle;padding:6px}.qdt tr.qdrj td,.qdp.qdrj{background:var(--danbg)}.qdk{display:inline-block;min-width:22px;text-align:center;font-weight:700;border-radius:10px;padding:0 6px}.qdk0{color:var(--mut)}.qdk1{color:var(--warn);background:var(--warnbg)}.qdk2{color:var(--ok);background:var(--okbg)}
 .qdx{cursor:pointer;color:var(--dan);margin-inline-start:4px}.qdfile{display:inline-block;margin:2px 6px 2px 0}.qdup,.qdcam{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:4px 10px;background:var(--card,#fff)}
@@ -395,15 +396,49 @@ function sortList(list, ST, A){ ST=ST||S; A=A||GRID0; const val=A.val;
     return ((x!==''&&y!==''&&!isNaN(nx)&&!isNaN(ny)) ? nx-ny : String(x).localeCompare(String(y),'ar'))*d; });
 }
 
+// Every grid offers every column of every file: the order's own columns (prefix «o:») in tabs whose rows point to an order,
+// and every column of the last OLAP file (prefix «ol:»). OLAP stays read-only; the order's columns edit and save as in their own tab.
+function olapIx(){ const R=S.olap; if(!R||!R.headers||!R.headers.length) return null; if(R._ix) return R._ix;
+  const m=olapHdr(R.headers), wi=R.headers.indexOf(m.wo), ci=R.headers.indexOf(m.ccode), by={}, byW={}, cl=x=>String(x==null?'':x).replace(/\.0$/,'').trim();
+  (R.rows||[]).forEach(x=>{ const w=cl(x[wi]), c=ci>=0?cl(x[ci]):''; if(c&&!((w+'-'+c) in by)) by[w+'-'+c]=x; if(!(w in byW)) byW[w]=x; });
+  const skip=new Set(['wo','ccode','last_action','last_action_date','olap_holder','oracle','last_action_con'].map(k=>m[k]).filter(Boolean)), hi={};
+  R.headers.forEach((h,i)=>{ if(!(h in hi)) hi[h]=i; });
+  return R._ix={by,byW,hi,keys:[...new Set(R.headers.filter(h=>h&&!skip.has(h)))].map(h=>'ol:'+h)}; }
+function olapRowOf(o){ const X=olapIx(); if(!X||!o||!o.wo) return null; return X.by[o.wo+'-'+(o.ccode||'')]||(!o.ccode?X.byW[o.wo]:null)||null; }
+function olapEnsure(){ if(S.olap||S.olapBusy||S.olapFail||!tabOn('olap')) return; S.olapBusy=1; const v=S.view;
+  api('listOlap',S.tok).then(r=>{ S.olap=S.olap||r; S.olapBusy=0; if(S.view===v&&olapIx()) shell(); }).catch(()=>{ S.olapBusy=0; S.olapFail=1; }); }
+const isOK=k=>typeof k==='string'&&k.slice(0,2)==='o:', isLK=k=>typeof k==='string'&&k.slice(0,3)==='ol:';
+function gridAugment(A){
+  const native=!A.all&&A.orders!==false, ordOf=native?(o=>o):A.ordOf; if(!ordOf) return [];
+  if(A.file!=='olap') olapEnsure(); const OX=A.file==='olap'?null:olapIx();
+  const oKeys=native?[]:Object.keys(LBL).concat(['since']).filter(k=>k!=='wo'&&k!=='boq'&&!(A.noO||[]).includes(k)).map(k=>'o:'+k), lKeys=OX?OX.keys:[];
+  const B=Object.assign({},A), ik=k=>k.slice(2), DM=new WeakMap(), D=o=>{ if(!o||typeof o!=='object') return null; if(DM.has(o)) return DM.get(o); let d=null; try{ d=ordOf(o)||null; }catch(e){} DM.set(o,d); return d; };
+  A.lbl=k=>isOK(k)?GRID0.lbl(ik(k)):isLK(k)?k.slice(3):B.lbl(k);
+  A.val=(o,k)=>{ if(isOK(k)){ const d=D(o); return d?GRID0.val(d,ik(k)):''; } if(isLK(k)){ const r=olapRowOf(D(o)), i=OX?OX.hi[k.slice(3)]:undefined; return r&&i!==undefined&&r[i]!=null?r[i]:''; } return B.val(o,k); };
+  A.can=(o,k)=>{ if(isLK(k)) return false; if(isOK(k)){ const d=D(o); return !!d&&!!GRID0.can(d,ik(k)); } return B.can(o,k); };
+  A.opts=(o,k)=>{ if(isLK(k)) return undefined; if(isOK(k)){ const d=D(o); return d?GRID0.opts(d,ik(k)):undefined; } return B.opts(o,k); };
+  A.norm=(o,k,v)=>isOK(k)?GRID0.norm(D(o),ik(k),v):isLK(k)?v:B.norm(o,k,v);
+  A.put=(o,k,v)=>isOK(k)?{_o:GRID0.put(D(o),ik(k),v)}:B.put(o,k,v);
+  A.save=recs=>{ const a=recs.filter(r=>r&&r._o).map(r=>r._o), b=recs.filter(r=>!(r&&r._o)); return Promise.all([a.length?GRID0.save(a):null, b.length?B.save(b):null]); };
+  A.src=k=>isOK(k)?(GRID0.src(ik(k))||'الإسنادات'):isLK(k)?'أولاب':B.src(k);
+  A.clr=k=>isOK(k)?GRID0.clr(ik(k)):isLK(k)?(TABC.olap||null):B.clr(k);
+  A.chip=k=>isOK(k)?GRID0.chip(ik(k)):isLK(k)?'':B.chip(k);
+  A.cell=(o,k,v)=>{ if(isOK(k)){ const d=D(o); return d?GRID0.cell(d,ik(k),v):''; } return isLK(k)?esc(v):B.cell(o,k,v); };
+  A.cls=(o,k)=>isOK(k)||isLK(k)?'':B.cls(o,k);
+  if(!native){ const P=a=>(a||[]).map(k=>'o:'+k); A.dates=(A.dates||[]).concat(P(GRID0.dates)); A.wrap=(A.wrap||[]).concat(P(GRID0.wrap)); A.free=(A.free||[]).concat(P(GRID0.free)); }
+  return oKeys.concat(lKeys); }
+// groups in the column chooser, in this order after the tab's own file
+const COL_GRP=['الإسنادات','أولاب','المتعثرات','المطابقة والصرف','الجدول اليومي','ملفات الجودة','المخالفات والمحاضر','التصاريح','المقايسة','رحلة أمر العمل','البرنامج','الصيانة والطوارئ'];
 function sheet(base, defCols, opt={}){
   const A = Object.assign({}, GRID0, opt.ad||{}), ST = A.st || S, RO = roView(); ST.cf=ST.cf||{}; ST.f=ST.f||{}; if(RO){ A.can=()=>false; A.undo=null; A.bar=''; }
-  const roMsg=k=>OLAP_F.includes(k)||A.file==='olap'?OLAP_RO:'هذا العمود للقراءة فقط بصلاحيتك';
-  const allCols = A.all ? [...new Set(defCols.concat(A.all))] : [...new Set(defCols.concat(Object.keys(LBL)).concat(['since']))];
+  const roMsg=k=>OLAP_F.includes(String(k).replace(/^o:/,''))||isLK(k)||A.file==='olap'?OLAP_RO:'هذا العمود للقراءة فقط بصلاحيتك';
+  const EXTRA=gridAugment(A);
+  const allCols = [...new Set((A.all ? defCols.concat(A.all) : defCols.concat(Object.keys(LBL)).concat(['since'])).concat(EXTRA))];
   let cols = getCols(defCols).filter(k=>allCols.includes(k)); if(!cols.length) cols=defCols.slice();
   const lbl=A.lbl, val=A.val, canEditCell=A.can, optsFor=A.opts;
   const canAdd = S.B.admin || S.B.user.role==='قائد مكتب';
   const DEL = A.del!==undefined ? A.del : (!opt.ad ? ORD_DEL : null);
-  const EDITABLE = !RO && base.slice(0,80).some(o=>defCols.concat(A.all||[]).some(k=>canEditCell(o,k)));
+  const EDITABLE = !RO && base.slice(0,80).some(o=>defCols.concat(A.all||[],cols).some(k=>canEditCell(o,k)));
   const GBULK = opt.ad && EDITABLE && A.bulk!==false, LUNDO = opt.ad && EDITABLE && !A.undo;
   ST.hist=ST.hist||[];
   $('#main').innerHTML = (opt.kpis||'') + (RO?'<div class="muted" style="margin-bottom:8px"><span class="pill p-w">للقراءة فقط</span> هذا التبويب مُنح لك للاطلاع: تختار أعمدته وتفلتر وتصدّر، ولا تعدّل فيه.</div>':'') + (opt.intro&&!RO?`<div class="muted" style="margin-bottom:8px">${opt.intro}</div>`:'') +
@@ -625,10 +660,23 @@ function sheet(base, defCols, opt={}){
   if($('#xall')) $('#xall').onclick=()=>exportUnified(); if($('#gimp')) $('#gimp').onclick=()=>goImport($('#gimp').dataset.k);
   if($('#gtall')) $('#gtall').onclick=()=>{ S.tall=!S.tall; try{ localStorage.setItem('wo_tall',S.tall?'1':''); }catch(e){} $('#tbox').classList.toggle('tall',S.tall); $('#gtall').classList.toggle('on',S.tall); };
   if($('#gundo')) $('#gundo').onclick=()=>undoForm();
+  const colGrp=k=>A.src(k)||tabName(S.view)||'هذا التبويب';
+  const colLbl=(k,on)=>`<label ${on?'draggable="true" ':''}data-k="${esc(k)}"><input type="checkbox" ${on?'checked':''}> ${esc(lbl(k))}<span class="sp"></span>${A.chip(k)||(()=>{ const n=A.src(k), c=A.clr(k); return n?`<span class="srcchip" style="background:${c?c[1]:'#F1EFE8'};color:${c?c[0]:'#444441'}">${esc(n)}</span>`:''; })()}</label>`;
+  const colGroups=()=>{ const own=tabName(S.view), G={}; allCols.filter(k=>!cols.includes(k)).forEach(k=>{ const g=colGrp(k); (G[g]=G[g]||[]).push(k); });
+    const rank=g=>g===own||g==='هذا التبويب'?-1:(COL_GRP.indexOf(g)<0?99:COL_GRP.indexOf(g)); return Object.entries(G).sort((a,b)=>rank(a[0])-rank(b[0])); };
   $('#gcols').onclick=()=>{ modal(`<h3 style="margin-top:0">الأعمدة الظاهرة</h3><div class="muted" style="margin-bottom:8px">رتّبها بالسحب، والاختيار يُحفظ على هذا الجهاز. بجانب كل عمود الملف الذي تأتي منه بياناته.${S.B.admin?' «حفظ كافتراضي للجميع» يجعل هذا الترتيب ما يراه كل المستخدمين في هذا التبويب.':''}${admCols()?' الافتراضي الحالي حفظه '+esc(admCols().by||'المدير')+' في '+esc(admCols().v)+'.':''}</div>
-      <div id="colsl" class="colsl">${cols.concat(allCols.filter(k=>!cols.includes(k))).map(k=>`<label draggable="true" data-k="${k}"><input type="checkbox" ${cols.includes(k)?'checked':''}> ${esc(lbl(k))}<span class="sp"></span>${A.chip(k)||(()=>{ const n=A.src(k), c=A.clr(k); return n?`<span class="srcchip" style="background:${c?c[1]:'#F1EFE8'};color:${c?c[0]:'#444441'}">${esc(n)}</span>`:''; })()}</label>`).join('')}</div>
+      <div id="colsw"><div class="muted" style="margin:4px 0"><b>الظاهرة في الجدول</b> (${cols.length}) — اسحب لترتيبها، وأزل علامة العمود لإخفائه</div>
+      <div id="colsl" class="colsl">${cols.map(k=>colLbl(k,true)).join('')}</div>
+      <div id="colsg">${colGroups().map(([g,ks])=>`<div class="colg" data-g="${esc(g)}"><div class="colgh"><b>${esc(g)}</b> <span class="muted">(${ks.length})</span><span class="sp"></span><button data-gall="${esc(g)}">إظهار الكل</button></div><div class="colsl colgl">${ks.map(k=>colLbl(k,false)).join('')}</div></div>`).join('')}</div></div>
       <button class="pri" id="csave">تطبيق</button> <button id="cdef">الافتراضي</button> <button onclick="closeModal()">إلغاء</button>${S.B.admin?' <button id="call" style="margin-inline-start:14px">حفظ كافتراضي للجميع</button>':''}`);
-    let dragEl=null; document.querySelectorAll('#colsl label').forEach(l=>{ l.ondragstart=()=>dragEl=l; l.ondragover=e=>{e.preventDefault(); if(dragEl&&dragEl!==l) l.parentNode.insertBefore(dragEl, l);}; });
+    let dragEl=null; const wireDrag=l=>{ l.ondragstart=()=>dragEl=l; l.ondragover=e=>{ e.preventDefault(); if(dragEl&&dragEl!==l&&l.parentNode.id==='colsl'&&dragEl.parentNode.id==='colsl') l.parentNode.insertBefore(dragEl, l); }; };
+    document.querySelectorAll('#colsl label').forEach(wireDrag);
+    const grpOf=k=>[...document.querySelectorAll('.colg')].find(g=>g.dataset.g===colGrp(k));
+    const showK=l=>{ l.querySelector('input').checked=true; l.draggable=true; $('#colsl').appendChild(l); wireDrag(l); cnt2(); };
+    const hideK=l=>{ const g=grpOf(l.dataset.k); l.querySelector('input').checked=false; l.draggable=false; if(g) g.querySelector('.colgl').prepend(l); cnt2(); };
+    const cnt2=()=>document.querySelectorAll('.colg').forEach(g=>{ const n=g.querySelectorAll('label').length; g.style.display=n?'':'none'; g.querySelector('.colgh .muted').textContent='('+n+')'; });
+    $('#mdl').addEventListener('change',e=>{ const l=e.target.closest('label[data-k]'); if(!l) return; if(e.target.checked&&l.parentNode.id!=='colsl') showK(l); else if(!e.target.checked&&l.parentNode.id==='colsl') hideK(l); });
+    document.querySelectorAll('[data-gall]').forEach(b=>b.onclick=()=>{ const g=b.closest('.colg'); [...g.querySelectorAll('label')].forEach(showK); });
     $('#csave').onclick=()=>{ const c=[...document.querySelectorAll('#colsl label')].filter(l=>l.querySelector('input').checked).map(l=>l.dataset.k); try{localStorage.setItem(colsKey(),JSON.stringify(c));}catch(e){} closeModal(); shell(); };
     $('#cdef').onclick=()=>{ try{localStorage.removeItem(colsKey());}catch(e){} closeModal(); shell(); };
     if($('#call')) $('#call').onclick=async()=>{ const c=[...document.querySelectorAll('#colsl label')].filter(l=>l.querySelector('input').checked).map(l=>l.dataset.k); if(!c.length) return toast('اختر عموداً واحداً على الأقل');
@@ -1081,7 +1129,7 @@ async function vDaily(){
   if(S.view!=='daily') return;
   const L=r.rows.map(x=>{const o={};r.headers.forEach((k,i)=>o[k]=x[i]);return o;}); const tc=TABC.daily, names=S.B.people.map(p=>p.name);
   S.gst=S.gst||{}; const ST=S.gst.daily||(S.gst.daily={cf:{},sort:null,xf:null,f:{q:''}});
-  const AD={ st:ST, unit:'صفاً', stk:'wo', file:'الجدول_اليومي', orders:false, all:Object.keys(DL), lbl:k=>DL[k]||k, val:(o,k)=>o[k]==null?'':o[k],
+  const AD={ st:ST, unit:'صفاً', stk:'wo', file:'الجدول_اليومي', orders:false, ordOf:x=>x.wo?byRef(x.wo):null, all:Object.keys(DL), lbl:k=>DL[k]||k, val:(o,k)=>o[k]==null?'':o[k],
     can:(o,k)=>can&&DL_EDIT.includes(k)&&!!o.id, opts:(o,k)=>k==='office'?S.B.lists.office:k==='engineer'?names:k==='contractor'?CONTR():undefined, dates:['date'], wrap:['work','note'], free:['engineer','contractor'],
     src:()=>'الجدول اليومي', clr:()=>tc, chip:()=>'', cls:(o,k)=>k==='wo'?'wo':'',
     cell:(o,k,v)=>k==='wo'?esc(woNum(v)):k==='location'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener">الخريطة</a>`:k==='engineer'?'<b>'+esc(v)+'</b>':(k==='work'||k==='note')?richHtml(v):esc(v),
@@ -1681,7 +1729,7 @@ async function vForms(){
     return multi?toks.some(t=>{ const T=t.toUpperCase(); return /^[SQMT]/.test(T)?String(x.id).toUpperCase()===T:(String(x.seq)===T||String(x.wo)===T||String(x.wo).indexOf(T+'-')===0); }):[x.wo,x.sum,x.author,x.contractor,x.seq,x.id,(FK[x.kind]||{}).t].join(' ').includes(q); };
   S.gst=S.gst||{}; const ST=S.gst.forms||(S.gst.forms={cf:{},sort:['date',-1],xf:null,f:{q:''}}); const tc=TABC.forms;
   const LB=Object.assign({pick:'✓',seq:'الرقم',cno:'رقم المقاول',month:'الشهر',by_name:'أدخله',act:''},FFL);
-  const AD={ del:{kind:'forms',name:'نموذج',key:x=>x.id,ref:x=>((FK[x.kind]||{}).t||x.kind)+' '+x.seq+(x.wo?' · '+x.wo:''),done:keys=>{ const K=new Set(keys); for(let i=L.length-1;i>=0;i--) if(K.has(L[i].id)) L.splice(i,1); S.fmList=null; S.fxList=null; }}, st:ST, unit:'نموذجاً', stk:'seq', file:'المخالفات_والمحاضر', orders:false, all:['pick','kind','seq','wo','office','contractor','date','month','sum','total','author','n_ph','cno','by_name','act'],
+  const AD={ del:{kind:'forms',name:'نموذج',key:x=>x.id,ref:x=>((FK[x.kind]||{}).t||x.kind)+' '+x.seq+(x.wo?' · '+x.wo:''),done:keys=>{ const K=new Set(keys); for(let i=L.length-1;i>=0;i--) if(K.has(L[i].id)) L.splice(i,1); S.fmList=null; S.fxList=null; }}, st:ST, unit:'نموذجاً', stk:'seq', file:'المخالفات_والمحاضر', orders:false, ordOf:x=>x.wo?byRef(x.wo):null, all:['pick','kind','seq','wo','office','contractor','date','month','sum','total','author','n_ph','cno','by_name','act'],
     lbl:k=>LB[k]||k, val:(x,k)=>k==='kind'?(FK[x.kind]||{}).t||x.kind:k==='month'?(x.date||'').slice(0,7):k==='pick'?(F.pick[x.id]?'محدد':''):k==='act'?'':(x[k]==null?'':x[k]), can:()=>false,
     opts:()=>undefined, dates:[], wrap:['sum'], free:[], src:k=>k==='pick'||k==='act'?'البرنامج':'المخالفات والمحاضر', clr:k=>k==='pick'||k==='act'?TABC.mine:tc, chip:()=>'',
     cell:(x,k,v)=>k==='pick'?`<span class="pkb" data-pk="${esc(x.id)}" style="cursor:pointer;font-size:16px">${F.pick[x.id]?'☑':'☐'}</span>`:k==='kind'?`${(FK[x.kind]||{}).i||''} ${esc(v)}`:k==='seq'?`<b>${esc(v)}</b>`:k==='total'?money(v):k==='sum'?`<span>${esc(v)}</span>`:k==='act'?`<span style="white-space:nowrap"><button data-fo="${esc(x.id)}">فتح</button> <button data-fp="${esc(x.id)}">🖨</button></span>`:esc(v),
@@ -1852,7 +1900,7 @@ async function vPermits(){
   const u=k=>[...new Set(L.map(x=>x[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'ar'));
   S.gst=S.gst||{}; const ST=S.gst.permits||(S.gst.permits={cf:{},sort:['end_date',-1],xf:null,f:{q:''}}); const tc=TABC.permits;
   const expired=o=>o.status==='تم صدور التصريح'&&o.end_date&&o.end_date<today&&o.cert!=='تم';
-  const AD={ del:{kind:'permits',name:'طلب تصريح',key:o=>o.id,ref:o=>(o.req_no||'بلا رقم طلب')+' · '+(o.wo||'')+' · '+(o.contractor||''),done:()=>{ S.pm=null; }}, st:ST, unit:'طلباً', stk:'wo', file:'التصاريح', orders:false, all:Object.keys(PL), lbl:k=>PL[k]||k, val:(o,k)=>o[k]==null?'':o[k], can:(o,k)=>!!R.can&&!PM_RO.includes(k),
+  const AD={ del:{kind:'permits',name:'طلب تصريح',key:o=>o.id,ref:o=>(o.req_no||'بلا رقم طلب')+' · '+(o.wo||'')+' · '+(o.contractor||''),done:()=>{ S.pm=null; }}, st:ST, unit:'طلباً', stk:'wo', file:'التصاريح', orders:false, ordOf:x=>x.wo?byRef(x.wo):null, all:Object.keys(PL), lbl:k=>PL[k]||k, val:(o,k)=>o[k]==null?'':o[k], can:(o,k)=>!!R.can&&!PM_RO.includes(k),
     opts:(o,k)=>k==='status'?R.statuses:k==='cert'?['تم','رفض']:k==='contractor'?CONTR():k==='stage'?['تم ادخال جميع المراحل','تم رفع جميع المراحل']:undefined,
     dates:['assign_date','start_date','end_date'], wrap:['notes'], free:['contractor','stage','cert'], src:()=>'التصاريح', clr:()=>tc, chip:()=>'',
     cell:(o,k,v)=>k==='notes'?richHtml(v):k==='wo'&&v?`<span class="wo">${esc(v)}</span>`:k==='file_url'?((v?`<a class="atb2" href="${esc(v)}" target="_blank" rel="noopener">📄 فتح</a> `:'')+(R.can?`<button class="pmu" data-pm="${esc(o.id)}" title="رفع صورة التصريح أو PDF">${v?'استبدال':'📎 رفع'}</button>`+(v?` <button class="pmx" data-pm="${esc(o.id)}" title="حذف الملف">✕</button>`:''):'')):esc(v), cls:(o,k)=>(k==='end_date'||k==='status')&&expired(o)?'late':'',
@@ -2056,7 +2104,7 @@ async function vOlap(){
   if(!R.L){ const first=olapFirst(R.headers);
     const IN='في البرنامج', wi=R.headers.indexOf(olapHdr(R.headers).wo), mine=new Set(S.orders.map(o=>o.wo)); R.H=first.concat([IN], R.headers.filter(h=>!first.includes(h))); R.L=R.rows.map(x=>{ const o={}; R.headers.forEach((h,i)=>o[h]=x[i]==null?'':x[i]); o[IN]=mine.has(String(x[wi]))?'نعم':'لا'; o._s=x.join(' '); return o; }); }
   const H=R.H, tc=TABC.olap; S.gst=S.gst||{}; const ST=S.gst.olap||(S.gst.olap={cf:{},sort:null,xf:null,f:{q:''}});
-  const AD={ st:ST, unit:'صفاً', stk:H[0], file:'olap', orders:false, all:H, limit:400, lbl:k=>k, val:(o,k)=>o[k]==null?'':o[k], can:()=>false, opts:()=>undefined, dates:[], wrap:[], free:[],
+  const AD={ st:ST, unit:'صفاً', stk:H[0], file:'olap', orders:false, ordOf:o=>{ if(R.OMs!==S.orders){ R.OM=null; R.OMs=S.orders; } const OM=R.OM||(R.OM=(()=>{ const m={}; S.orders.forEach(x=>{ if(!m[x.wo+'|'+x.ccode]) m[x.wo+'|'+x.ccode]=x; if(!m[x.wo+'|'+x.type]) m[x.wo+'|'+x.type]=x; }); return m; })()); return OM[o['رقم أمر العمل']+'|'+o['رمز نوع أمر العمل']]||null; }, all:H, limit:400, lbl:k=>k, val:(o,k)=>o[k]==null?'':o[k], can:()=>false, opts:()=>undefined, dates:[], wrap:[], free:[],
     src:()=>'أولاب', clr:()=>tc, chip:()=>'', cell:(o,k,v)=>esc(v), cls:()=>'', search:o=>o._s, undo:null, norm:(o,k,v)=>v, put:()=>null, save:()=>Promise.resolve(),
     open:o=>{ const w=o['رقم أمر العمل'], t=o['رمز نوع أمر العمل']; const hit=S.orders.find(x=>x.wo===w&&(x.ccode===t||x.type===t))||S.orders.find(x=>x.wo===w); if(hit) openOrder(hit.key); },
     bar:S.B.admin?'<button class="pri" id="oimp">استيراد ملف أولاب</button> <button id="orev" title="يعيد كل أعمدة أولاب في الأوامر إلى قيم آخر ملف مستورد">↺ إرجاع أعمدة أولاب لقيم الملف</button>':'',
@@ -2870,7 +2918,7 @@ async function vBoq(){
   const G=(o,k)=>{ const r=by[o.key]; return k==='wo'?o.wo+(o.type?'-'+o.type:''):k==='cur_stage'?stLbl(o.cur_stage):k==='boq_st'?(BQS[o.boq_st||'']||[o.boq_st])[0]:k==='n'?(r?r.lines.length:''):k==='df'?(r?r.lines.filter(x=>x.d!==''&&x.d!=null&&+x.d!==+(x.p||0)).length||'':''):k==='pv'?(r?val(r,'p'):''):k==='dv'?(r?val(r,'d'):''):k==='draw'?(r&&r.draw?'له مخطط':''):k==='upd'?(r?((r.upd_by||'')+' '+(r.upd_at||'').slice(0,10)).trim():''):k==='appr'?(r?r.appr_by||'':''):(GL[k]?(o[k]==null?'':o[k]):GV(o,k)); };
   S.gst=S.gst||{}; const ST=S.gst.boq||(S.gst.boq={cf:{},sort:null,xf:null,f:{q:''}}); const tc=TABC.boq;
   const cols=Object.keys(GL).filter(k=>pr||!['pv','dv'].includes(k));
-  const AD={ st:ST, unit:'أمراً', stk:'wo', file:'المقايسة', orders:false, all:cols.concat(Object.keys(LBL).filter(k=>!cols.includes(k)&&!GL[k]&&k!=='boq')), lbl:k=>GL[k]||LBL[k]||k, val:G, can:()=>false, opts:()=>undefined, dates:[], wrap:[], free:[],
+  const AD={ st:ST, unit:'أمراً', stk:'wo', file:'المقايسة', orders:false, all:cols, ordOf:o=>o, noO:Object.keys(GL), lbl:k=>GL[k]||k, val:G, can:()=>false, opts:()=>undefined, dates:[], wrap:[], free:[],
     src:k=>['wo','office','district','contractor','site_engineer'].includes(k)?(COL_SRC[k]||'الإسنادات'):k==='cur_stage'?'البرنامج':'المقايسة', clr:k=>['wo','office','district','contractor','site_engineer'].includes(k)?(srcClr(k)||TABC.orders):k==='cur_stage'?TABC.mine:tc, chip:()=>'', cls:()=>'',
     cell:(o,k,v)=>k==='wo'?`<b style="color:var(--acc)">${esc(v)}</b>`:k==='boq_st'?boqCell(o):k==='draw'?(v?'🗺':''):(k==='pv'||k==='dv')?money(v):esc(v),
     search:o=>[o.wo,o.district,o.site_engineer,o.contractor,o.office].join(' '), open:o=>boqModal(o.key), undo:null, norm:(o,k,v)=>v, put:()=>({}), save:()=>Promise.resolve(),
@@ -3105,7 +3153,7 @@ function vMatchRec(inv,top,wireTop){
   const R=S.mr, can=R.can&&!roView(), LS=mrLists(), tc=inv?TABC.maint:TABC.matching, cols=inv?MR_IC:MR_CC, rows=R.rows.filter(o=>mrInv(o)===inv);
   S.gst=S.gst||{}; const ST=S.gst[inv?'mrinv':'mrcon']||(S.gst[inv?'mrinv':'mrcon']={cf:{},sort:null,xf:null,f:{q:''}});
   const LK={appr_head:'appr',appr_mgr:'appr',appr_fin:'appr'};
-  const AD={ noImp:1, del:{kind:'match',name:'سجل مطابقة',key:o=>o.key,ref:o=>inv?'فاتورة '+o.inv_seq+' · D9 '+(o.wo||''):o.key,done:keys=>{ const K=new Set(keys); R.rows=R.rows.filter(o=>!K.has(o.key)); }}, st:ST, unit:inv?'فاتورة':'أمراً', stk:inv?'inv_seq':'key', file:inv?'الصيانة_والطوارئ_فواتير':'المطابقة_الإنشاءات', orders:false, all:cols, lbl:k=>mrLbl(k,inv), val:mrVal,
+  const AD={ noImp:1, del:{kind:'match',name:'سجل مطابقة',key:o=>o.key,ref:o=>inv?'فاتورة '+o.inv_seq+' · D9 '+(o.wo||''):o.key,done:keys=>{ const K=new Set(keys); R.rows=R.rows.filter(o=>!K.has(o.key)); }}, st:ST, unit:inv?'فاتورة':'أمراً', stk:inv?'inv_seq':'key', file:inv?'الصيانة_والطوارئ_فواتير':'المطابقة_الإنشاءات', orders:false, ordOf:o=>inv?null:byRef(o.key||o.wo), all:cols, lbl:k=>mrLbl(k,inv), val:mrVal,
     can:(o,k)=>can&&!['key','pct','prev'].concat(MR_NT).includes(k)&&!(inv&&k==='inv_seq'), opts:(o,k)=>LS[LK[k]||k], dates:MR_DATES, wrap:['notes','basket','required'],
     free:['contractor','ccode','aj_code','basket','required','po','pay_status','appr_head','appr_mgr','appr_fin'],
     src:k=>MR_ORD.includes(k)&&!inv?'الإسنادات':MR_NT.includes(k)?'إشعار الصيانة':inv?'الصيانة والطوارئ':'الإنشاءات', clr:k=>MR_ORD.includes(k)&&!inv?TABC.orders:MR_NT.includes(k)?TABC.maint:tc, chip:()=>'',
