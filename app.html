@@ -346,7 +346,7 @@ const isSE=o=>!!o&&o.site_engineer===S.B.user.name;
 const seStage=(o,k)=>k==='cur_stage'&&isSE(o)&&!S.B.editable.includes('stage')&&(SE_STG.includes(o.cur_stage)||(S.pct[o.cur_stage]??0)<=(S.pct['تم التنفيذ']||0));
 const canEditCell=(o,k)=>canEdit(k)||seStage(o,k);
 const optsFor=(o,k)=>seStage(o,k)?SE_STG.map(stLbl):OPTS(k);
-const val = (o,k) => k==='att' ? (o.folder_id?'له مجلد':'') : k==='cur_stage' ? stLbl(o.cur_stage) : k==='munib_delay' ? (o.munib_status&&o.due_date?Math.max(days(S.B.today,o.due_date),0):'') : k==='jpct' ? oPct(o) : k==='jstep' ? jStep(o) : k==='vio' ? (o.vio_n||'') : k==='mom' ? (o.mom_n||'') : k==='site' ? (o.site_n||'') : k==='boq' ? (o.boq_st||'') : k==='qf' ? (o.qf_status||'بلا ملف') : k==='left' ? (o.left===''?'':(o.exec?o.left:'—')) : k==='since' ? (o.cur_since?days(S.B.today,o.cur_since):'') : (o[k]??'');
+const val = (o,k) => k==='att' ? (o.folder_id?'له مجلد':'') : k==='cur_stage' ? stLbl(o.cur_stage) : k==='stage' ? stLbl(o.stage) : k==='munib_delay' ? (o.munib_status&&o.due_date?Math.max(days(S.B.today,o.due_date),0):'') : k==='jpct' ? oPct(o) : k==='jstep' ? jStep(o) : k==='vio' ? (o.vio_n||'') : k==='mom' ? (o.mom_n||'') : k==='site' ? (o.site_n||'') : k==='boq' ? (o.boq_st||'') : k==='qf' ? (o.qf_status||'بلا ملف') : k==='left' ? (o.left===''?'':(o.exec?o.left:'—')) : k==='since' ? (o.cur_since?days(S.B.today,o.cur_since):'') : (o[k]??'');
 const XF = {
   open:{label:'الأوامر المفتوحة', fn:o=>o.open},
   exec:{label:'لم تصل 211', fn:o=>o.exec},
@@ -378,7 +378,7 @@ const GRID0={ unit:'أمراً', stk:'wo', lbl:k=>lbl(k), val:(o,k)=>val(o,k), c
   search:o=>[o.wo,o.district,o.notes,o.munib_remarks,o.site_engineer,o.contractor,o.cur_owner].join(' '),
   open:o=>openOrder(o.key), undo:()=>undoLast(),
   norm:(o,k,v)=>(k==='cur_stage'||k==='stage')&&v?stNorm(v):v,
-  put:(o,k,v)=>{ if(k==='cur_stage') v=stVal(v); o[k]=v; if(k==='cur_stage') o.stage=v; if(k==='assign_date'||k==='duration'||k==='due_date'||k==='cur_stage') derive(o); return {wo:o.key,k,v}; },
+  put:(o,k,v)=>{ if(k==='cur_stage'||k==='stage') v=stVal(v); o[k]=v; if(k==='cur_stage') o.stage=v; if(k==='stage') o.cur_stage=v; if(k==='assign_date'||k==='duration'||k==='due_date'||k==='cur_stage'||k==='stage') derive(o); return {wo:o.key,k,v}; },
   save:recs=>api('saveCells',S.tok,recs).then(r=>{ r.rows.forEach(n=>{ const o=byRef(n._ref); if(!o) return; Object.assign(o,n); delete o._ref; derive(o); delete o._p; }); }) };
 function applyF(list, cols, ST, A){ ST=ST||S; A=A||GRID0;
   const q=((ST.f||{}).q||'').trim();
