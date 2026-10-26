@@ -237,7 +237,8 @@ const stLbl=n=>!n?'':(stMap().l[n]||'مرحلة - '+n);
 // a stage written the old way («تم استلام 155», «190&203», a bare code) becomes the journey step it means, so a paste or Ctrl+D is accepted
 const stNorm=v=>{ v=String(v==null?'':v).trim(); if(!v) return v; const ok=stNames().map(stLbl); if(ok.includes(v)) return v; const l=stLbl(stVal(v)); if(ok.includes(l)) return l;
   const J=S.B.journey||[], c=(/(\d{3})/.exec(v)||[])[1], x=c&&J.find(j=>j.kind==='إجراء'&&j.code===c); if(x&&ok.includes(jLbl(x))) return jLbl(x);
-  const y=J.find(j=>j.kind!=='سلة'&&(j.name===v||jNm(j)===v)); return y&&ok.includes(jLbl(y))?jLbl(y):v; };
+  const nk=t=>String(t).replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[\s\u00a0\-–_.:]/g,''), k=nk(v);
+  const y=J.find(j=>j.kind!=='سلة'&&(j.name===v||jNm(j)===v||nk(j.name)===k||nk(jNm(j))===k)); return y&&ok.includes(jLbl(y))?jLbl(y):v; };
 const stVal=l=>{ l=String(l==null?'':l).trim(); const m=stMap(); return m.v[l]||(m.l[l]?l:l.replace(/^مرحلة - /,'')); };
 const stNames=()=>stMap().n;
 const jHas=x=>x.pct!==''&&x.pct!=null;
@@ -997,15 +998,23 @@ function addOrderForm(){
 
 const BULK=['cur_owner','stage','next_action','followup_date','blocker','blocker_owner','site_engineer'];
 function canBulk(){ return (S.B.admin||S.B.user.role==='قائد مكتب') && BULK.some(k=>S.B.editable.includes(k)); }
-async function stageUnifyUI(){ modal('<div class="loading">جارٍ فحص أسماء المراحل في الأوامر…</div>'); let P; try{ P=await api('stageUnify',S.tok,false); }catch(e){ closeModal(); return toast(e.message); }
-  if(!P.rows.length){ modal('<h3 style="margin-top:0">توحيد أسماء المراحل</h3><div class="muted">كل المراحل في الأوامر بأسماء الرحلة. لا يوجد ما يُوحَّد ✓</div><div style="margin-top:10px"><button onclick="closeModal()">إغلاق</button></div>'); return; }
-  const SL=P.steps.map(n=>[n,stLbl(n)]);
-  modal(`<h3 style="margin-top:0">توحيد أسماء المراحل</h3><div class="muted" style="margin-bottom:8px">أسماء مراحل في الأوامر ليست من رحلة أمر العمل. اختر لكل اسم المرحلة المقابلة، أو اتركه كما هو. التغيير يُسجَّل ويمكن التراجع عنه.</div>
-   <div class="tw" style="max-height:55vh"><table class="jt"><thead><tr><th>الاسم الموجود</th><th>عدد الأوامر</th><th>يصير</th></tr></thead><tbody>${P.rows.map((x,i)=>`<tr><td><b>${esc(x.old)}</b></td><td class="c">${x.n}</td><td><select data-su="${i}" style="max-width:340px"><option value="">— يبقى كما هو —</option>${SL.map(([n,l])=>`<option value="${esc(n)}" ${n===x.to?'selected':''}>${esc(l)}</option>`).join('')}</select>${x.to?'':' <span class="late">لم يُعرف مقابله</span>'}</td></tr>`).join('')}</tbody></table></div>
-   <div class="err" id="suerr"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="sugo">توحيد</button><button onclick="closeModal()">إلغاء</button></div>`);
-  $('#sugo').onclick=async()=>{ const map={}; document.querySelectorAll('[data-su]').forEach(x=>{ if(x.value) map[P.rows[+x.dataset.su].old]=x.value; }); if(!Object.keys(map).length) return $('#suerr').textContent='لم تختر شيئاً';
-    const n=P.rows.filter(x=>map[x.old]).reduce((a,x)=>a+x.n,0); if(!confirm('سيتغير اسم المرحلة في '+n+' خلية. متابعة؟')) return; $('#sugo').disabled=true;
-    try{ const r=await api('stageUnify',S.tok,true,map); closeModal(); toast('وُحّدت المرحلة في '+r.changed+' أمراً'); const v=S.view; await start(); S.view=v; shell(); }catch(e){ $('#suerr').textContent=e.message; $('#sugo').disabled=false; } }; }
+async function stageUnifyUI(){ modal('<div class="loading">جارٍ فحص أسماء المراحل…</div>'); let P; try{ P=await api('stageUnify',S.tok,false); }catch(e){ closeModal(); return toast(e.message); }
+  const SL=P.steps.map(n=>[n,stLbl(n)]), sel=(attr,i,to,keep)=>`<select ${attr}="${i}" style="max-width:330px"><option value="">${keep}</option>${SL.map(([n,l])=>`<option value="${esc(n)}" ${n===to?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
+  const listOnly=P.list.filter(x=>!P.rows.some(r=>r.old===x.name));
+  modal(`<h3 style="margin-top:0">توحيد أسماء المراحل</h3>
+   <div class="muted" style="margin-bottom:6px">1) أسماء في الأوامر ليست من الرحلة أو لها إجراء مقابل: اختر المرحلة المقابلة أو اتركها. ✓ «إزالة» يُخرج الاسم من القائمة المنسدلة.</div>
+   <div class="tw" style="max-height:34vh"><table class="jt"><thead><tr><th>الاسم الموجود</th><th>أوامر</th><th>يصير</th><th>إزالة من القائمة</th></tr></thead><tbody>${P.rows.length?P.rows.map((x,i)=>`<tr><td><b>${esc(x.old)}</b></td><td class="c">${x.n}</td><td>${sel('data-su',i,x.to,'— يبقى كما هو —')}${x.to?'':' <span class="late">لم يُعرف مقابله</span>'}</td><td class="c">${P.list.some(l=>l.name===x.old)?`<input type="checkbox" data-sd="${esc(x.old)}" ${x.to?'checked':''}>`:'—'}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">لا يوجد ✓</td></tr>'}</tbody></table></div>
+   <div class="muted" style="margin:10px 0 6px">2) مراحل أخرى في القائمة المنسدلة ليست من الرحلة: غير المستخدمة محددة للإزالة. إذا أزلت مرحلة عليها أوامر يمكنك تحويل أوامرها لمرحلة من الرحلة.</div>
+   <div class="tw" style="max-height:30vh"><table class="jt"><thead><tr><th>المرحلة</th><th>أوامر</th><th>إزالة من القائمة</th><th>أوامرها تصير</th></tr></thead><tbody>${listOnly.length?listOnly.map((x,i)=>`<tr><td><b>${esc(x.name)}</b></td><td class="c">${x.n}</td><td class="c"><input type="checkbox" data-sd="${esc(x.name)}" ${x.n?'':'checked'}></td><td>${x.n?sel('data-sl',i,x.to,'— تبقى كما هي —'):'—'}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">لا يوجد ✓</td></tr>'}</tbody></table></div>
+   <div class="err" id="suerr"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="sugo">تطبيق</button><button onclick="closeModal()">إلغاء</button></div>`);
+  $('#sugo').onclick=async()=>{ const map={}, drop=[...document.querySelectorAll('[data-sd]:checked')].map(x=>x.dataset.sd);
+    document.querySelectorAll('[data-su]').forEach(x=>{ if(x.value) map[P.rows[+x.dataset.su].old]=x.value; });
+    document.querySelectorAll('[data-sl]').forEach(x=>{ if(x.value) map[listOnly[+x.dataset.sl].name]=x.value; });
+    if(!Object.keys(map).length&&!drop.length) return $('#suerr').textContent='لم تختر شيئاً';
+    const n=P.rows.filter(x=>map[x.old]).reduce((a,x)=>a+x.n,0)+listOnly.filter(x=>map[x.name]).reduce((a,x)=>a+x.n,0);
+    if(!confirm((n?'سيتغير اسم المرحلة في '+n+' أمراً. ':'')+(drop.length?'سيُزال '+drop.length+' اسماً من القائمة المنسدلة. ':'')+'متابعة؟')) return; $('#sugo').disabled=true;
+    try{ const r=await api('stageUnify',S.tok,true,map,drop); closeModal(); toast('وُحّدت المرحلة في '+r.changed+' أمراً · أُزيل '+r.dropped+' من القائمة'); STM=null; const v=S.view; await start(); S.view=v; shell(); }
+    catch(e){ $('#suerr').textContent=e.message; $('#sugo').disabled=false; } }; }
 function bulkEdit(list){
   if(!list.length) return toast('لا توجد أوامر في القائمة الحالية');
   const L=S.B.lists, ed=S.B.editable, names=S.B.people.map(p=>p.name);
