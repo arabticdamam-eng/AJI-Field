@@ -373,7 +373,7 @@ function impBtn(v){ v=v||S.view; const x=IMPK[v]; return x&&(S.B.admin||(v==='ma
 function goImport(k){ S.impKind=k; S.impBack=S.view; S.view='import'; shell(); }
 function getCols(def){ const a=admCols(), vk=colsKey()+'_v';
   try{ if(a&&localStorage.getItem(vk)!==a.v){ localStorage.removeItem(colsKey()); localStorage.setItem(vk,a.v); }
-    const c=JSON.parse(localStorage.getItem(colsKey())||'null'); if(Array.isArray(c)&&c.length){ if(!a){ let ch=0; ['vio','mom','site','boq','mvio','mqf','matt','last_action','att'].forEach(k=>{ const f='wo_new_'+k+'_'+S.view; if(def.includes(k)&&!c.includes(k)&&!localStorage.getItem(f)){ c.push(k); ch=1; } localStorage.setItem(f,'1'); }); if(ch) localStorage.setItem(colsKey(),JSON.stringify(c)); } return c; } }catch(e){} return a?a.cols:def; }
+    const c=JSON.parse(localStorage.getItem(colsKey())||'null'); if(Array.isArray(c)&&c.length){ if(!a){ let ch=0; ['vio','mom','site','boq','mvio','mqf','matt','last_action','att','desc'].forEach(k=>{ const f='wo_new_'+k+'_'+S.view; if(def.includes(k)&&!c.includes(k)&&!localStorage.getItem(f)){ const at=k==='desc'&&S.view==='daily'?c.indexOf('work'):-1; if(k==='desc'&&S.view==='daily'){ const oi=c.indexOf('o:desc'); if(oi>=0) c.splice(oi,1); } if(at>=0) c.splice(at+1,0,k); else c.push(k); ch=1; } localStorage.setItem(f,'1'); }); if(ch) localStorage.setItem(colsKey(),JSON.stringify(c)); } return c; } }catch(e){} return a?a.cols:def; }
 
 const GRID0={ unit:'أمراً', stk:'wo', lbl:k=>lbl(k), val:(o,k)=>val(o,k), can:(o,k)=>canEditCell(o,k), opts:(o,k)=>optsFor(o,k), dates:DATEF, wrap:WRAP, orders:true,
   free:['contractor','last_action','olap_holder'], src:k=>COL_SRC[k]||'', clr:k=>srcClr(k), chip:k=>srcChip(k),
@@ -699,7 +699,7 @@ function xuFlat(name, list, cols, A, opt){ A=A||GRID0; opt=opt||{};
   const head=noKey?[]:[{v:'المفتاح',st:sty('head','')}], band=noKey?[]:[{v:opt.sec||tabName(S.view)||name,st:sty('band','')}];
   cols.forEach(k=>{ band.push({v:secOf(k),st:sty('band',k)}); head.push({v:A.lbl(k),st:sty('head',k)}); });
   const rows=[band,head], W=cols.map(k=>String(A.lbl(k)||'').length);
-  list.forEach(o=>{ const r=noKey?[]:[{v:String(keyOf(o)),st:sty('key','')}]; cols.forEach((k,i)=>{ const t=typed(k,A.val(o,k)); const n=String(t[0]).length; if(n>W[i]) W[i]=n; r.push({v:t[0],st:sty('own',k,t[1])}); }); rows.push(r); });
+  list.forEach(o=>{ const r=noKey?[]:[{v:String(keyOf(o)),st:sty('key','')}]; cols.forEach((k,i)=>{ const t=typed(k,k==='wo'?woNum(A.val(o,k)):A.val(o,k)); const n=String(t[0]).length; if(n>W[i]) W[i]=n; r.push({v:t[0],st:sty('own',k,t[1])}); }); rows.push(r); });
   const nc=cols.length+(noKey?0:1), widths=(noKey?[]:[16]).concat(cols.map((k,i)=>DT.includes(k)?13:Math.max(9,Math.min(44,Math.round(W[i]*1.15)+3))));
   const c0=clrOf(cols[0]);
   return {name:String(name).replace(/[\\\/?*\[\]:]/g,' ').slice(0,31),color:c0[0],rows,widths,freeze:[noKey?0:1,2],filter:'A2:'+xuCol(nc-1)+(rows.length),hts:{1:32}}; }
@@ -1035,7 +1035,7 @@ function addOrderForm(){
     <label>المقاول<input id="n_contractor" list="dlc"></label><label>الجهة المنفذة<input id="n_group"></label>
     <label>تاريخ الإسناد<input id="n_assign_date" type="date" value="${S.B.today}"></label><label>مدة التنفيذ (يوم)<input id="n_duration" inputmode="numeric"></label>
     <label>تاريخ الانتهاء (يُحسب تلقائياً من الإسناد + المدة بدون الجمعة)<input id="n_due_date" type="date"></label><label>المهندس المسند<input id="n_engineer" list="dlp"></label>
-    <label>المرحلة<select id="n_stage">${stNames().map(s=>`<option value="${esc(s)}" ${s==='جاري العمل'?'selected':''}>${esc(stLbl(s))}</option>`).join('')}</select></label>
+    <label>المرحلة<select id="n_stage">${stNames().map(s=>`<option value="${esc(s)}" ${s==='لم يتم البدء'?'selected':''}>${esc(stLbl(s))}</option>`).join('')}</select></label>
     <label>المسؤول الحالي<input id="n_cur_owner" list="dlp" value="${esc(S.B.user.name)}"></label>
     <label>مهندس الموقع<input id="n_site_engineer" list="dlp"></label><label>تكلفة الاستشاري<input id="n_cost" inputmode="decimal"></label>
     <label style="grid-column:1/-1">التوصيف<textarea id="n_desc" rows="2"></textarea></label><label style="grid-column:1/-1">ملاحظات<textarea id="n_notes" rows="2"></textarea></label></div>
@@ -1121,41 +1121,50 @@ function vMatchingOrders(){
   sheet(l, ['wo','ccode','office','contractor','cost','olap_holder','match_cert','match_status','match_value','match_required','match_cover','oracle','cur_stage','cur_owner','since'], {intro:'رقم الأمر والكود والمكتب والمقاول والقيمة من الإسنادات، والسلة الحالية من أولاب. الأعمدة: شهادة الإنجاز، موقف المطابقة، قيمة المطابقة، المطلوب، رقم الكفر يحدّثها مسؤول ملف المطابقة هنا مباشرة (أو باستيراد ملفه).', kpis:`<div class="kpis"><div class="kpi">أوامر ما بعد الشهادة<b>${l.length}</b></div><div class="kpi">في سلال GIS/المستخلصات<b>${l.filter(inB).length}</b></div>
    <div class="kpi">غير مدرجة في ملف المطابقة<b class="late">${miss}</b></div><div class="kpi">إجمالي القيمة (من الإسنادات)<b>${Math.round(cst).toLocaleString('ar')}</b></div><div class="kpi">إجمالي قيمة المطابقة<b>${Math.round(val).toLocaleString('ar')}</b></div></div>`});
 }
-const DL={time:'الوقت',wo:'أمر العمل',type:'النوع',office:'المكتب',contractor:'المقاول',work:'العمل',engineer:'مهندس الموقع',phone:'الجوال',receiver:'المستلم',receiver_phone:'جوال المستلم',station:'المحطة',location:'رابط الموقع',note:'ملاحظة',date:'التاريخ',added_by:'أضافه'};
-const DL_EDIT=['date','wo','office','work','time','engineer','phone','receiver','receiver_phone','location','station','note'];
+const DL={time:'الوقت',wo:'أمر العمل',type:'النوع',office:'المكتب',contractor:'المقاول',work:'العمل',desc:'الوصف',engineer:'مهندس الموقع',phone:'الجوال',receiver:'المستلم',receiver_phone:'جوال المستلم',station:'المحطة',location:'رابط الموقع',note:'ملاحظة',date:'التاريخ',added_by:'أضافه'};
+const DL_EDIT=['date','wo','office','work','desc','time','engineer','phone','receiver','receiver_phone','location','station','note'];
 async function vDaily(){
   const d=S.f.dday||S.B.today, d2=(S.f.dday2&&S.f.dday2>=d)?S.f.dday2:d, can=S.B.admin||S.B.user.role==='قائد مكتب';
   $('#main').innerHTML='<div class="loading">جارٍ التحميل…</div>';
   let r; try{ r=await api('listDaily',S.tok,d,d2); }catch(e){ $('#main').innerHTML='<div class="card err">'+esc(e.message)+'</div>'; return; }
   if(S.view!=='daily') return;
   const L=r.rows.map(x=>{const o={};r.headers.forEach((k,i)=>o[k]=x[i]);return o;}); const tc=TABC.daily, names=S.B.people.map(p=>p.name);
+  // empty rows added in this session stay on screen until filled (an empty row is not listed again after leaving)
+  { const have=new Set(L.map(o=>o.id)); (S.dblank||[]).forEach(o=>{ if(!have.has(o.id)&&o.date>=d&&o.date<=d2) L.push(o); }); }
   S.gst=S.gst||{}; const ST=S.gst.daily||(S.gst.daily={cf:{},sort:null,xf:null,f:{q:''}});
   const AD={ st:ST, unit:'صفاً', stk:'wo', file:'الجدول_اليومي', orders:false, ordOf:x=>x.wo?byRef(x.wo):null, all:Object.keys(DL), lbl:k=>DL[k]||k, val:(o,k)=>o[k]==null?'':o[k],
-    can:(o,k)=>can&&DL_EDIT.includes(k)&&!!o.id, opts:(o,k)=>k==='office'?S.B.lists.office:k==='engineer'?names:k==='contractor'?CONTR():undefined, dates:['date'], wrap:['work','note'], free:['engineer','contractor'],
+    can:(o,k)=>can&&DL_EDIT.includes(k)&&!!o.id, opts:(o,k)=>k==='office'?S.B.lists.office:k==='engineer'?names:k==='contractor'?CONTR():undefined, dates:['date'], wrap:['work','desc','note'], free:['engineer','contractor'],
     src:()=>'الجدول اليومي', clr:()=>tc, chip:()=>'', cls:(o,k)=>k==='wo'?'wo':'',
     cell:(o,k,v)=>k==='wo'?esc(woNum(v)):k==='location'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener">الخريطة</a>`:k==='engineer'?'<b>'+esc(v)+'</b>':(k==='work'||k==='note')?richHtml(v):esc(v),
     search:o=>[o.wo,o.work,o.engineer,o.receiver,o.station,o.contractor,o.note].join(' '), open:o=>{ if(o.wo) openOrder(o.wo); }, undo:can?(()=>undoLast('dl')):null,
     norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('saveDailyCells',S.tok,recs).then(x=>{ x.rows.forEach(y=>{ const n={}; x.headers.forEach((k,i)=>n[k]=y[i]); const o=L.find(z=>z.id===n.id); if(o) Object.assign(o,n); }); }),
     pre:`<label>من <input type="date" id="dd" value="${d}"></label><label>إلى <input type="date" id="dd2" value="${d2}"></label>`,
-    bar:can?'<button class="pri" id="dadd">إضافة للجدول</button><button id="ddel">حذف الصفوف المحددة</button><button id="dundo">↶ تراجع</button>':'', hint:'، نقرتان على رقم الأمر لفتح سجله',
+    bar:can?'<button class="pri" id="dadd">إضافة للجدول</button><button id="dblank" title="صفوف فارغة تكتب فيها مباشرة؛ رقم أمر العمل يملأ بياناته تلقائياً">+ صفوف فارغة</button><button id="ddel">حذف الصفوف المحددة</button><button id="dundo">↶ تراجع</button>':'', hint:'، نقرتان على رقم الأمر لفتح سجله',
     wire:g=>{ $('#dd').onchange=()=>{ S.f.dday=$('#dd').value; if(S.f.dday2&&S.f.dday2<S.f.dday) S.f.dday2=S.f.dday; vDaily(); }; $('#dd2').onchange=()=>{ S.f.dday2=$('#dd2').value; vDaily(); };
-      if($('#dadd')) $('#dadd').onclick=()=>addDaily(d); if($('#dundo')) $('#dundo').onclick=()=>undoForm('dl',AD.lbl);
+      if($('#dadd')) $('#dadd').onclick=()=>addDaily(d);
+      if($('#dblank')) $('#dblank').onclick=()=>{ const offs=S.B.admin?S.B.lists.office:S.B.user.offices;
+        modal(`<h3 style="margin-top:0">صفوف فارغة في الجدول اليومي</h3><div class="f"><label>العدد<input id="db_n" type="number" min="1" max="50" value="5"></label><label>التاريخ<input id="db_d" type="date" value="${d}"></label><label>المكتب<select id="db_o">${offs.map(o=>`<option>${esc(o)}</option>`).join('')}</select></label></div>
+          <div class="muted" style="margin:6px 0">اكتب رقم أمر العمل في الصف فتُملأ بياناته (النوع والمقاول والمكتب) تلقائياً، وجوال المهندس من آخر زيارة له. الصف الذي يبقى فارغاً لا يُحفظ.</div><div class="err" id="db_e"></div>
+          <button class="pri" id="db_go">إضافة</button> <button onclick="closeModal()">إلغاء</button>`);
+        $('#db_go').onclick=async()=>{ $('#db_go').disabled=true; try{ const x=await api('dailyBlank',S.tok,$('#db_d').value,$('#db_o').value,+$('#db_n').value||1);
+            const nw=x.rows.map(y=>{ const o={}; x.headers.forEach((k,i)=>o[k]=y[i]); return o; }); S.dblank=(S.dblank||[]).concat(nw); closeModal(); toast('أُضيف '+nw.length+' صفاً فارغاً'); vDaily(); }
+          catch(e){ $('#db_e').textContent=e.message; $('#db_go').disabled=false; } }; }; if($('#dundo')) $('#dundo').onclick=()=>undoForm('dl',AD.lbl);
       if($('#ddel')) $('#ddel').onclick=()=>{ const rs=g.sel(); if(!rs.length) return toast('حدّد خلية في كل صف تريد حذفه'); if(!confirm('حذف '+rs.length+' صفاً من الجدول اليومي؟ ينتقل إلى الأرشيف ← المحذوفات ويمكن استرجاعهلحذف.')) return;
         api('deleteDaily',S.tok,rs.map(o=>o.id)).then(x=>{ toast('حُذف '+x.deleted+' صفاً'); vDaily(); }).catch(e=>toast(e.message)); }; } };
-  sheet(L, ['time','wo','type','office','contractor','work','engineer','phone','receiver','receiver_phone','station','location','note'].concat(d2>d?['date']:[]), {ad:AD});
+  sheet(L, ['time','wo','type','office','contractor','work','desc','engineer','phone','receiver','receiver_phone','station','location','note'].concat(d2>d?['date']:[]), {ad:AD});
 }
 function addDaily(d){
   const offs=S.B.user.offices;
   modal(`<h3 style="margin-top:0">إضافة للجدول اليومي</h3><div class="f">
    <label>التاريخ<input id="x_date" type="date" value="${d}"></label><label>رقم أمر العمل<input id="x_wo" list="wol"></label>
-   <label>المكتب<select id="x_office">${offs.map(o=>`<option>${o}</option>`).join('')}</select></label><label>العمل<input id="x_work" placeholder="اضافة عداد"></label>
+   <label>المكتب<select id="x_office">${offs.map(o=>`<option>${o}</option>`).join('')}</select></label><label>العمل<input id="x_work" placeholder="اضافة عداد"></label><label style="grid-column:1/-1">الوصف (وصف زيارة هذا اليوم)<textarea id="x_desc" rows="2"></textarea></label>
    <label>الوقت<input id="x_time" placeholder="6:00AM"></label><label>مهندس الموقع<select id="x_engineer">${S.B.people.map(p=>`<option>${esc(p.name)}</option>`).join('')}</select></label>
    <label>جوال المهندس<input id="x_phone"></label><label>المستلم<input id="x_receiver"></label><label>جوال المستلم<input id="x_receiver_phone"></label>
    <label>رقم المحطة<input id="x_station"></label><label>رابط الموقع<input id="x_location"></label><label>ملاحظة<input id="x_note"></label></div>
    <datalist id="wol">${woOpts()}</datalist><div class="err" id="xerr"></div>
    <button class="pri" id="xsave">حفظ</button> <button onclick="closeModal()">إلغاء</button>`);
-  $('#xsave').onclick=()=>{ const row={}; ['date','wo','office','work','time','engineer','phone','receiver','receiver_phone','station','location','note'].forEach(k=>row[k]=$('#x_'+k).value.trim());
+  $('#xsave').onclick=()=>{ const row={}; ['date','wo','office','work','desc','time','engineer','phone','receiver','receiver_phone','station','location','note'].forEach(k=>row[k]=$('#x_'+k).value.trim());
     const pk=pickOrder(row.wo); if(pk.err) return $('#xerr').textContent=pk.err; const o=pk.o; row.wo=o.key; row.type=o.type; row.contractor=o.contractor;
     api('saveDaily',S.tok,row).then(()=>{ closeModal(); toast('أُضيف للجدول'); o.site_engineer=row.engineer; vDaily(); }).catch(e=>$('#xerr').textContent=e.message); };
 }
@@ -1845,8 +1854,14 @@ function vJourney(){
   let J=(S.B.journey||[]).map(x=>Object.assign({},x)); const names=S.B.people.map(p=>p.name);
   const nrm=x=>String(x==null?'':x).replace(/\s+/g,' ').trim(), OFF=S.B.lists.office||[], OK=OFF.map((x,n)=>'o'+(n+1)), blank=()=>{ const r={kind:'مرحلة',code:'',name:'',pct:'',big:'يدوية'}; OK.forEach(k=>r[k]=''); return r; };
   const PJ=S.B.people.filter(p=>jobSplit(p.job).length).map(p=>({name:p.name,jobs:jobSplit(p.job),offs:String(p.offices||'').split(/[,\u060c]/).map(nrm).filter(Boolean)}));
-  const jobs=ORDER_ROLES.concat([...new Set(jobsAll().concat(...PJ.map(p=>p.jobs)))].filter(j=>!ORDER_ROLES.includes(j)).sort((a,b)=>a.localeCompare(b,'ar'))); const isJob=v=>jobs.includes(nrm(v));
-  const jOwn=(v,off)=>{ const c=PJ.filter(p=>p.jobs.includes(nrm(v))&&p.offs.includes(off)).sort((a,b)=>a.offs.length-b.offs.length)[0]; return c?c.name:''; };
+  // a job written per office («تيم ليدر الدمام / القطيف / الخبر») is offered once as «تيم ليدر المكتب»
+  const offJob=v=>{ v=nrm(v); const o=OFF.find(o=>v.length>o.length&&v.endsWith(' '+o)); return o&&!names.includes(v)?v.slice(0,-o.length-1)+' المكتب':v; };
+  const rawJobs=[...new Set(jobsAll().concat(...PJ.map(p=>p.jobs)))];
+  const jobs=ORDER_ROLES.concat([...new Set(rawJobs.map(offJob))].filter(j=>!ORDER_ROLES.includes(j)).sort((a,b)=>a.localeCompare(b,'ar'))); const isJob=v=>jobs.includes(nrm(v));
+  J.forEach(x=>OK.forEach(k=>{ if(x[k]) x[k]=offJob(x[k]); }));
+  const jOwn=(v,off)=>{ v=nrm(v); let c=PJ.filter(p=>p.jobs.includes(v)&&p.offs.includes(off)); const m=!c.length&&!rawJobs.includes(v)&&v.match(/^(.+) المكتب$/);
+    if(m){ c=PJ.filter(p=>p.jobs.includes(m[1]+' '+off)); if(!c.length) c=PJ.filter(p=>p.jobs.includes(m[1])&&p.offs.includes(off)); }
+    c=c.sort((a,b)=>a.offs.length-b.offs.length)[0]; return c?c.name:''; };
   const hint=(v,n)=>!isJob(v)?'':ORDER_ROLES.includes(nrm(v))?'← من بيانات الأمر':(jOwn(v,OFF[n])?'← '+esc(jOwn(v,OFF[n])):'<span style="color:var(--dan)">لا أحد بهذا المسمى في '+OFF[n]+'</span>');
   $('#usub').innerHTML=`<div class="card" style="margin-bottom:10px;line-height:1.9"><b>رحلة أمر العمل</b> — الخطوات بالترتيب من الأولى إلى الأخيرة. استخدم ▲ و▼ لتقديم الخطوة أو تأخيرها، و«＋» لإضافة خطوة بعدها.
      <div class="muted">«إجراء»: خطوة لها رمز في أولاب، وهي نفسها مرحلة في جدول الإسنادات (الإجراء ومرحلته خطوة واحدة). «مرحلة»: خطوة يدوية لا رمز لها في أولاب. «سلة»: الجهة الحالية في أولاب.
@@ -2274,7 +2289,7 @@ function xuModel(D,opt){
   const tv=(raw,k)=>{ if(raw==null||raw===''||(typeof raw==='number'&&!isFinite(raw))) return ['','']; if(XU_DATE.includes(k)){ const d=xuSer(raw); return d!=null?[d,'yyyy-mm-dd']:[String(raw),'']; }
     if(k in XU_NUMK){ const n=xuNum(raw); if(n!=null) return [n,XU_NUMK[k]]; } return [typeof raw==='number'?raw:String(raw),'']; };
   const hz=k=>XU_DATE.includes(k)?'yyyy-mm-dd;;;@':(XU_NUMK[k]?XU_NUMK[k]+';-'+XU_NUMK[k]+';;@':'General;-General;;@');
-  const own=(k,sec,raw)=>{ const t=tv(raw,k); return xuRich({v:t[0],st:sty('own',sec,t[1])}); };
+  const own=(k,sec,raw)=>{ const t=tv(k==='wo'||k==='o:wo'?woNum(raw):raw,k); return xuRich({v:t[0],st:sty('own',sec,t[1])}); };
   const lblO=k=>k==='xpct'?'نسبة المرحلة %':k==='rp_rank'?'مفتاح التقرير':k==='qf_url'?'رابط الملف':k==='last_action_name'?'مسمى آخر إجراء':(LBL[k]||k), srcO=k=>k==='xpct'||k==='rp_rank'?'البرنامج':k==='qf_url'?'ملفات الجودة':k==='last_action_name'?'أولاب':(COL_SRC[k]||'الإسنادات');
   const ownerName=k=>{ const s=srcO(k); return XU_OWNM.includes(s)?'الإسنادات':s; };
   const pctOf=o=>+S.pct[o.cur_stage]||0;
@@ -2314,7 +2329,7 @@ function xuModel(D,opt){
       const rows=R.rows.map(x=>{ const o={}; R.headers.forEach((h,i)=>{ if(h) o[h]=norm(h,x[i]); }); o._k=String(x[wi])+(ci>=0&&x[ci]!==''&&x[ci]!=null?'-'+x[ci]:''); if(!(o._k in map)) map[o._k]=o; return o; });
       SH['أولاب']={name:'أولاب',H,L,rows,col:k=>L[XU_OLAP[k]],get:(key,k)=>map[key]?map[key][XU_OLAP[k]]:undefined}; } }
   if(D.daily){ const rows=D.daily.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))), map={};
-    const keys=uq(['date'].concat(colsOf('daily',['time','wo','type','office','contractor','work','engineer','phone','receiver','receiver_phone','station','location','note']).filter(k=>DL[k]),Object.keys(DL))), L={}; keys.forEach((k,i)=>L[k]=xuCol(i+1));
+    const keys=uq(['date'].concat(colsOf('daily',['time','wo','type','office','contractor','work','desc','engineer','phone','receiver','receiver_phone','station','location','note']).filter(k=>DL[k]),Object.keys(DL))), L={}; keys.forEach((k,i)=>L[k]=xuCol(i+1));
     rows.forEach(x=>{ const o=x.wo?byRef(x.wo):null; x._k=o?o.key:''; if(x._k) map[x._k]=x; });
     SH['الجدول اليومي']={name:'الجدول اليومي',keys,L,rows,col:k=>L[k==='site_engineer'?'engineer':'date'],get:(key,k)=>map[key]?map[key][k==='site_engineer'?'engineer':'date']:undefined}; }
   if(D.forms){ const cnt={}; D.forms.forEach(x=>{ const o=x.wo?byRef(x.wo):null; x._k=o?o.key:String(x.wo||''); const g=(FK[x.kind]||{}).g; if(g){ const c=cnt[x._k]||(cnt[x._k]={vio:0,mom:0}); c[g]++; } });
@@ -2359,7 +2374,7 @@ function xuModel(D,opt){
     sheets.push({name:'التقرير الشهري',color:clr('التقرير الشهري')[0],rows:G2,widths:[26,30,22,22,14,20,22,12,16],freeze:[0,2],hts:{1:30},merges,print:1,rp:1}); }
   const JS=(S.B.journey||[]).filter(x=>x.name), OFFN=LISTS.office.slice(), JOF=OFFN.map((x,n)=>'o'+(n+1)), JN=JS.length, JQ=xuQ('رحلة أمر العمل'), JR=c=>JQ+'!$'+c+'$3:$'+c+'$'+(JN+2), JO1=xuCol(8), JO2=xuCol(7+Math.max(OFFN.length,1));
   const PJ=S.B.people.filter(p=>String(p.job||'').trim()).map(p=>({name:p.name,jobs:String(p.job).split(/[,\u060c]/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean),offs:String(p.offices||'').split(/[,\u060c]/).map(x=>x.trim()).filter(Boolean)}));
-  const ownerOf=(v,off,o)=>{ v=String(v==null?'':v).replace(/\s+/g,' ').trim(); if(!v) return ''; if(v==='مهندس الموقع') return o?(o.site_engineer||''):v; if(v==='المهندس المسند') return o?(o.engineer||''):v; const c=PJ.filter(p=>p.jobs.includes(v)); if(!c.length) return v; const hit=c.filter(p=>p.offs.includes(off)).sort((a,b)=>a.offs.length-b.offs.length)[0]; return hit?hit.name:''; };
+  const ownerOf=(v,off,o)=>{ v=String(v==null?'':v).replace(/\s+/g,' ').trim(); if(!v) return ''; if(v==='مهندس الموقع') return o?(o.site_engineer||''):v; if(v==='المهندس المسند') return o?(o.engineer||''):v; let c=PJ.filter(p=>p.jobs.includes(v)); const om=!c.length&&v.match(/^(.+) المكتب$/); if(om){ const a=PJ.filter(p=>p.jobs.includes(om[1]+' '+off)); const h2=(a.length?a:PJ.filter(p=>p.jobs.includes(om[1])&&p.offs.includes(off))).sort((x,y)=>x.offs.length-y.offs.length)[0]; return h2?h2.name:''; } if(!c.length) return v; const hit=c.filter(p=>p.offs.includes(off)).sort((a,b)=>a.offs.length-b.offs.length)[0]; return hit?hit.name:''; };
   const xjFirst=o=>{ const b=o.olap_holder?JS.find(x=>x.kind==='سلة'&&hMatch(o.olap_holder,x.name)):null; if(b) return b; const la=String(o.last_action==null?'':o.last_action).trim(), a=la?JS.find(x=>x.kind==='إجراء'&&String(x.code)===la):null, sl=rv(o,'cur_stage'), st=sl?JS.find(x=>x.kind!=='سلة'&&jLbl(x)===sl):null; if(a&&st) return a.i>st.i?a:st; return a||st||null; };
   const xjStep=o=>{ const x=xjFirst(o); return x?jLbl(x):''; }, xjOwner=o=>{ if(o.qf_status==='مرفوض') return o.site_engineer||o.engineer||''; const x=xjFirst(o), n=OFFN.indexOf(o.office); return x&&n>=0?ownerOf(x['o'+(n+1)],o.office,o):''; };
   if(JN){ const sec='رحلة أمر العمل', K=['i','kind','code','name','label','pct','big','hkey'].concat(JOF), LB=['الترتيب','النوع','رمز أولاب','الاسم','كما تظهر في الإسنادات','نسبة الإنجاز %','المشاريع الكبيرة','مفتاح السلة'].concat(OFFN.map(x=>'مسؤول '+x));
@@ -2417,7 +2432,7 @@ function xuModel(D,opt){
     const sh=finish(sec,['_key'].concat(me.keys),['المفتاح'].concat(me.keys.map(k=>DL[k])),[sec].concat(me.keys.map(()=>sec)),rows); const V=[]; if(me.L.office) V.push({sqref:vrange(me.L.office,rows.length),ref:lref('office')}); if(me.L.contractor) V.push({sqref:vrange(me.L.contractor,rows.length),ref:lref('contractor'),free:1}); if(me.L.engineer) V.push({sqref:vrange(me.L.engineer,rows.length),ref:lref('people'),free:1}); sh.valid=V; }
   if(SH['المخالفات والمحاضر']){ const me=SH['المخالفات والمحاضر'], sec=me.name, FXK=FX_KEYS, LG=D.logos||{}, M0=SH['الإسنادات'], Mn0=xuQ('الإسنادات');
     const FXL={id:'الرقم الكودي',kind:'النموذج',seq:'الرقم',cno:'رقم المقاول',wo:'أمر العمل',wo_type:'نوع أمر العمل',office:'المكتب',contractor:'المقاول',contractor_full:'اسم المقاول الرسمي',date:'التاريخ',time:'الوقت',location:'الموقع',dept:'الإدارة',circle:'الدائرة',contract_no:'رقم العقد',feeder:'رقم المغذي',start_date:'تاريخ البدء',target_date:'الانتهاء المستهدف',actual_date:'الانتهاء الفعلي',i1c:'بند 1',i1t:'نص المخالفة 1',i1r:'تكرار/كمية 1',i1p:'قيمة 1',i1s:'إجمالي 1',i2c:'بند 2',i2t:'نص المخالفة 2',i2r:'تكرار/كمية 2',i2p:'قيمة 2',i2s:'إجمالي 2',i3c:'بند 3',i3t:'نص المخالفة 3',i3r:'تكرار/كمية 3',i3p:'قيمة 3',i3s:'إجمالي 3',total:'الغرامة',desc:'الوصف',action:'الإجراء المطلوب',statement:'إفادة المقاول',topics:'محاور الاجتماع',justify:'مبررات المقاول',notes:'ملاحظات البطاقة',author:'محرر المحضر',sig:'توقيع المحرر (رابط)',receiver:'مستلم المحضر',receiver_id:'هوية المستلم',permit_issuer:'مصدر التصريح',permit_receiver:'مستلم التصريح',safety_rep:'ممثل السلامة',contractor_rep:'ممثل المقاول',pdc_rep:'ممثل الكهرباء',contractor_note:'ملاحظة المقاول',n_ph:'عدد الصور',u1:'رابط الصورة 1',u2:'رابط الصورة 2',u3:'رابط الصورة 3',g1:'صورة 1 (للعرض)',g2:'صورة 2 (للعرض)',g3:'صورة 3 (للعرض)'};
-    const FXV=(x,k)=>{ const d=x.data||{}, it=i=>(d.items||[])[i]||{}, n=/^i\d/.test(k)?+k.charAt(1)-1:-1, ph=x.photos||[];
+    const FXV=(x,k)=>{ if(k==='wo') return woNum(x.wo); const d=x.data||{}, it=i=>(d.items||[])[i]||{}, n=/^i\d/.test(k)?+k.charAt(1)-1:-1, ph=x.photos||[];
       if(n>=0){ const t=it(n), sub=k.charAt(2); return sub==='c'?t.code:sub==='t'?t.text:sub==='r'?(x.kind==='safety'?t.rep:t.qty):sub==='p'?t.price:(((+(x.kind==='safety'?t.rep:t.qty)||0)*(+t.price||0))||''); }
       if(k==='kind') return (FK[x.kind]||{}).t||x.kind; if(k==='n_ph') return ph.length; if(/^u\d$/.test(k)) return (ph[+k.charAt(1)-1]||{}).url||''; if(/^g\d$/.test(k)) return (ph[+k.charAt(1)-1]||{}).img||'';
       if(k==='wo_type'){ const o=x.wo?byRef(x.wo):null; return o?o.type||'':''; } if(k==='office'||k==='contractor') return x[k]||''; if(k==='circle'){ const o=x.wo?byRef(x.wo):null; return x.office||(o?o.office||'':''); }
