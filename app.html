@@ -234,6 +234,10 @@ let STM=null;
 const stMap=()=>{ const J=S.B.journey||[]; if(!STM||STM.j!==J){ STM={j:J,l:{},v:{},n:[]}; J.forEach(x=>{ if(x.kind!=='سلة'&&x.name){ const l=jLbl(x); STM.l[x.name]=l; STM.v[l]=x.name; STM.n.push(x.name); } });
   (S.B.lists.stage||[]).forEach(n=>{ if(n&&!STM.l[n]) STM.n.push(n); }); } return STM; };
 const stLbl=n=>!n?'':(stMap().l[n]||'مرحلة - '+n);
+// a stage written the old way («تم استلام 155», «190&203», a bare code) becomes the journey step it means, so a paste or Ctrl+D is accepted
+const stNorm=v=>{ v=String(v==null?'':v).trim(); if(!v) return v; const ok=stNames().map(stLbl); if(ok.includes(v)) return v; const l=stLbl(stVal(v)); if(ok.includes(l)) return l;
+  const J=S.B.journey||[], c=(/(\d{3})/.exec(v)||[])[1], x=c&&J.find(j=>j.kind==='إجراء'&&j.code===c); if(x&&ok.includes(jLbl(x))) return jLbl(x);
+  const y=J.find(j=>j.kind!=='سلة'&&(j.name===v||jNm(j)===v)); return y&&ok.includes(jLbl(y))?jLbl(y):v; };
 const stVal=l=>{ l=String(l==null?'':l).trim(); const m=stMap(); return m.v[l]||(m.l[l]?l:l.replace(/^مرحلة - /,'')); };
 const stNames=()=>stMap().n;
 const jHas=x=>x.pct!==''&&x.pct!=null;
@@ -372,7 +376,7 @@ const GRID0={ unit:'أمراً', stk:'wo', lbl:k=>lbl(k), val:(o,k)=>val(o,k), c
   cls:(o,k)=>(k==='wo'?'wo ':'')+(['cur_stage','cur_owner'].includes(k)?'hl ':'')+(k==='left'&&o.exec&&o.left<0?'late':''),
   search:o=>[o.wo,o.district,o.notes,o.munib_remarks,o.site_engineer,o.contractor,o.cur_owner].join(' '),
   open:o=>openOrder(o.key), undo:()=>undoLast(),
-  norm:(o,k,v)=>k==='cur_stage'&&v?stLbl(stVal(v)):v,
+  norm:(o,k,v)=>(k==='cur_stage'||k==='stage')&&v?stNorm(v):v,
   put:(o,k,v)=>{ if(k==='cur_stage') v=stVal(v); o[k]=v; if(k==='cur_stage') o.stage=v; if(k==='assign_date'||k==='duration'||k==='due_date'||k==='cur_stage') derive(o); return {wo:o.key,k,v}; },
   save:recs=>api('saveCells',S.tok,recs).then(r=>{ r.rows.forEach(n=>{ const o=byRef(n._ref); if(!o) return; Object.assign(o,n); delete o._ref; derive(o); delete o._p; }); }) };
 function applyF(list, cols, ST, A){ ST=ST||S; A=A||GRID0;
@@ -395,22 +399,34 @@ function sheet(base, defCols, opt={}){
   const lbl=A.lbl, val=A.val, canEditCell=A.can, optsFor=A.opts;
   const canAdd = S.B.admin || S.B.user.role==='قائد مكتب';
   const DEL = A.del!==undefined ? A.del : (!opt.ad ? ORD_DEL : null);
+  const EDITABLE = !RO && base.slice(0,80).some(o=>defCols.concat(A.all||[]).some(k=>canEditCell(o,k)));
+  const GBULK = opt.ad && EDITABLE && A.bulk!==false, LUNDO = opt.ad && EDITABLE && !A.undo;
+  ST.hist=ST.hist||[];
   $('#main').innerHTML = (opt.kpis||'') + (RO?'<div class="muted" style="margin-bottom:8px"><span class="pill p-w">للقراءة فقط</span> هذا التبويب مُنح لك للاطلاع: تختار أعمدته وتفلتر وتصدّر، ولا تعدّل فيه.</div>':'') + (opt.intro&&!RO?`<div class="muted" style="margin-bottom:8px">${opt.intro}</div>`:'') +
    `<div class="bar">${A.pre||''}<input id="gq" placeholder="بحث سريع" value="${esc(ST.f.q||'')}" style="min-width:200px">
      <span id="chips"></span><span class="sp"></span><span id="gsave" class="muted"></span><span class="muted" id="cnt"></span>
-     ${A.bar!==undefined?A.bar:((canAdd?'<button id="gadd">+ أمر عمل</button>':'')+(canBulk()?'<button id="bulk">تعديل جماعي</button>':'')+(S.B.editable.length?'<button id="gundo">↶ تراجع</button>':''))}${DEL&&!RO&&S.B.admin?'<button id="gdel" title="حدّد خلية في كل صف تريد حذفه">🗑 حذف المحدد</button>':''}<button id="gcols">الأعمدة</button><button id="gtall" title="عرض الملاحظات والنصوص الطويلة كاملة" class="${S.tall?'on':''}">↕ توسيع الصفوف</button><button id="xls">تصدير Excel</button>${S.view==='orders'&&!S.B.field?'<button id="xall">تصدير إكسل موحّد</button><button id="xarch" title="الأوامر المنتهية المنقولة إلى ملف الأرشيف">الأرشيف</button>':''}${A.noImp?'':impBtn()}</div>
+     ${A.bar!==undefined?A.bar:((canAdd?'<button id="gadd">+ أمر عمل</button>':'')+(S.B.admin&&!opt.ad&&!RO?'<button id="gstu" title="الأسماء القديمة للمراحل تتحول إلى مراحل الرحلة">توحيد أسماء المراحل</button>':'')+(canBulk()?'<button id="bulk">تعديل جماعي</button>':'')+(S.B.editable.length?'<button id="gundo">↶ تراجع</button>':''))}${GBULK?'<button id="gbulk" title="قيمة واحدة لعمود في الصفوف المحددة أو في كل الصفوف الظاهرة">تعديل جماعي</button>':''}${LUNDO?'<button id="glundo" title="Ctrl+Z">↶ تراجع</button>':''}${DEL&&!RO&&S.B.admin?'<button id="gdel" title="حدّد خلية في كل صف تريد حذفه">🗑 حذف المحدد</button>':''}<button id="gcols">الأعمدة</button><button id="gtall" title="عرض الملاحظات والنصوص الطويلة كاملة" class="${S.tall?'on':''}">↕ توسيع الصفوف</button><button id="xls">تصدير Excel</button>${S.view==='orders'&&!S.B.field?'<button id="xall">تصدير إكسل موحّد</button><button id="xarch" title="الأوامر المنتهية المنقولة إلى ملف الأرشيف">الأرشيف</button>':''}${A.noImp?'':impBtn()}</div>
    <div class="muted" style="font-size:12px;margin:-4px 0 6px">${A.help!==undefined?A.help:`اختر خلية أو عدة خلايا (سحب / Shift / Ctrl) ثم اكتب أو اختر من القائمة ▾ — يُطبَّق على كل الخلايا المحددة ويُحفظ تلقائياً. Ctrl+C / Ctrl+V للنسخ واللصق، Delete للمسح، Ctrl+Z للتراجع${A.hint!==undefined?A.hint:'، نقرتان على رقم الأمر لفتح سجله'}.`}</div>
    <div id="tbox" class="tw sheet${S.tall?' tall':''}" tabindex="0"></div>`;
   let rows=[], allRows=[], sel=new Set(), act=null, anchor=null, dragging=false; S.gundo=A.undo||(()=>{});
   const key=(r,c)=>r+','+c;
+  // the place in the table (selected cells, active cell, scroll) is kept by record and column, so a save, a reload or a new row keeps you where you were
+  const rid=o=>o?String(o.key!=null&&o.key!==''?o.key:(o.id!=null&&o.id!==''?o.id:(o.inv_seq!=null&&o.inv_seq!==''?'S'+o.inv_seq:(o.seq!=null?o.seq:'')))):'';
+  const savePos=()=>{ const b=$('#tbox'); if(!rows.length) return; if(!act){ if(b&&ST.pos) { ST.pos.top=b.scrollTop; ST.pos.left=b.scrollLeft; } return; }
+    const P=p=>p&&rows[p[0]]?[rid(rows[p[0]]),cols[p[1]]]:null;
+    ST.pos={a:P(act),n:P(anchor),s:[...sel].slice(0,3000).map(x=>P(x.split(',').map(Number))).filter(Boolean),top:b?b.scrollTop:0,left:b?b.scrollLeft:0}; };
+  const loadPos=()=>{ const P=ST.pos; if(!P||!P.a) return false; const ix={}; rows.forEach((o,i)=>{ const k=rid(o); if(!(k in ix)) ix[k]=i; });
+    const at=x=>x&&ix[x[0]]!==undefined&&cols.indexOf(x[1])>=0?[ix[x[0]],cols.indexOf(x[1])]:null;
+    const a=at(P.a); if(!a) return false; act=a; anchor=at(P.n)||a; sel=new Set(P.s.map(at).filter(Boolean).map(p=>key(p[0],p[1]))); if(!sel.size) sel.add(key(a[0],a[1])); return true; };
   const draw=()=>{
+    savePos();
     allRows = sortList(applyF(base, cols, ST, A), ST, A); rows = A.limit ? allRows.slice(0, ST.lim||A.limit) : allRows;
     $('#cnt').textContent = allRows.length+' '+A.unit; if(A.onDraw) A.onDraw(allRows);
     const chips=[]; if(ST.xf) chips.push(`<span class="chip" data-x="xf">${esc(ST.xf.label)} ✕</span>`);
     Object.entries(ST.cf).forEach(([k,v])=>{ if(v) chips.push(`<span class="chip" data-x="${k}">${esc(lbl(k))}: ${esc(v.length>2?v.length+' قيم':v.join('، ')||'(فارغ)')} ✕</span>`); });
     if(chips.length) chips.push('<a class="muted" data-x="all" style="cursor:pointer">مسح كل الفلاتر</a>');
     $('#chips').innerHTML=chips.join(' ');
-    document.querySelectorAll('#chips [data-x]').forEach(ch=>ch.onclick=()=>{ const x=ch.dataset.x; if(x==='all'){ST.cf={};ST.xf=null;} else if(x==='xf') ST.xf=null; else delete ST.cf[x]; sel.clear(); act=null; draw(); });
+    document.querySelectorAll('#chips [data-x]').forEach(ch=>ch.onclick=()=>{ const x=ch.dataset.x; if(x==='all'){ST.cf={};ST.xf=null;} else if(x==='xf') ST.xf=null; else delete ST.cf[x]; sel.clear(); act=null; ST.pos=null; draw(); });
     const th = cols.map((k,c)=>{ const tc=A.clr(k), sn=A.src(k); return `<th data-c="${c}" title="${sn?'المصدر: '+sn:''}" class="${k===A.stk?'stk2':''}"${tc?` style="background:${tc[1]};color:${tc[0]};border-top:3px solid ${tc[0]}"`:''}>${sn?`<small class="srcn">${sn}</small>`:''}<span>${esc(lbl(k))}</span>${ST.sort&&ST.sort[0]===k?(ST.sort[1]>0?' ▲':' ▼'):''}<b class="fbtn${ST.cf[k]?' on':''}" data-f="${c}">▾</b></th>`; }).join('');
     const rowH=(o,r)=>`<tr><td class="rn stk">${r+1}</td>${cols.map((k,c)=>{ const v=val(o,k);
        const cls=[k===A.stk?'stk2':'', canEditCell(o,k)?'ed':'ro', A.wrap.includes(k)?'wr':'', A.cls(o,k), o._p&&o._p[k]?'pend':'', o._e&&o._e[k]?'errc':''].join(' ');
@@ -421,7 +437,8 @@ function sheet(base, defCols, opt={}){
     if(rows.length>CH){ const tb=$('#tbox tbody'); let i=CH; const sn=document.createElement('div'); sn.style.cssText='height:1px'; $('#tbox').appendChild(sn);
       const step=()=>{ if(S.gdg!==gen||!tb||!document.body.contains(tb)){ io.disconnect(); return; } tb.insertAdjacentHTML('beforeend',rows.slice(i,i+CH).map((o,k)=>rowH(o,i+k)).join('')); i+=CH; if(i>=rows.length){ io.disconnect(); sn.remove(); } paintSel(); };
       const io=new IntersectionObserver(es=>{ if(es.some(x=>x.isIntersecting)) step(); },{rootMargin:'600px'}); io.observe(sn); S.gmore=()=>{ while(S.gdg===gen&&i<rows.length) step(); }; } else S.gmore=null;
-    paintSel();
+    const had=loadPos(); paintSel();
+    if(had&&ST.pos){ const b=$('#tbox'); b.scrollTop=ST.pos.top||0; b.scrollLeft=ST.pos.left||0; const t=act&&cell(act[0],act[1]); if(t){ const r=t.getBoundingClientRect(), br=b.getBoundingClientRect(); if(r.top<br.top||r.bottom>br.bottom) t.scrollIntoView({block:'center',inline:'nearest'}); } }
     document.querySelectorAll('#tbox th[data-c]').forEach(h=>h.onclick=e=>{ if(e.target.classList.contains('fbtn')) return; const k=cols[+h.dataset.c]; ST.sort=[k,ST.sort&&ST.sort[0]===k?-ST.sort[1]:1]; draw(); });
     document.querySelectorAll('#tbox .fbtn').forEach(b=>b.onclick=e=>{ e.stopPropagation(); filterMenu(cols[+b.dataset.f], b); });
   };
@@ -443,7 +460,7 @@ function sheet(base, defCols, opt={}){
     else if(e.ctrlKey||e.metaKey){ sel.has(key(...p))?sel.delete(key(...p)):sel.add(key(...p)); anchor=p; }
     else { sel=new Set([key(...p)]); anchor=p; dragging=true; }
     act=p; paintSel(); box.focus({preventScroll:true}); };
-  box.onscroll=()=>{ if(ed) commit(); };
+  box.onscroll=()=>{ if(ed) commit(); if(ST.pos){ ST.pos.top=box.scrollTop; ST.pos.left=box.scrollLeft; } };
   let mx=0,my=0,raf=0;
   const dragTick=()=>{ if(!dragging){ raf=0; return; } const b=box.getBoundingClientRect(), E=40, sp=v=>Math.min(40,Math.max(4,v*0.6));
     let dy=0,dx=0; if(my>b.bottom-E) dy=sp(my-(b.bottom-E)); else if(my<b.top+E+30) dy=-sp((b.top+E+30)-my);
@@ -489,13 +506,15 @@ function sheet(base, defCols, opt={}){
   function move(dr,dc){ if(!act) return; const r=Math.max(0,Math.min(rows.length-1,act[0]+dr)), c=Math.max(0,Math.min(cols.length-1,act[1]+dc)); act=[r,c]; anchor=act; sel=new Set([key(r,c)]); paintSel(); const t=cell(r,c); t&&t.scrollIntoView({block:'nearest',inline:'nearest'}); }
   let q=[], timer=null;
   function setMany(list){
-    let n=0, skip=0;
-    list.forEach(([r,c,v])=>{ const k=cols[c], o=rows[r]; if(!o||!canEditCell(o,k)){ skip++; return; } const opts=optsFor(o,k); v=A.norm(o,k,v);
-      if(opts&&v&&!opts.includes(v)&&!A.free.includes(k)){ skip++; return; }
+    let n=0, skip=0; const ro={}, bad={};
+    list.forEach(([r,c,v])=>{ const k=cols[c], o=rows[r]; if(!o) return; if(!canEditCell(o,k)){ skip++; ro[lbl(k)]=(ro[lbl(k)]||0)+1; return; } const opts=optsFor(o,k); v=A.norm(o,k,v);
+      if(opts&&v&&!opts.includes(v)&&!A.free.includes(k)){ skip++; const bk=lbl(k)+'|'+v; bad[bk]=(bad[bk]||0)+1; return; }
       if(String(val(o,k))===String(v)) return;
+      if(!setMany.noHist) (setMany.h=setMany.h||[]).push([rid(o),k,String(val(o,k))]);
       o._p=o._p||{}; o._p[k]=1; if(o._e) delete o._e[k];
       q.push({rec:A.put(o,k,v),o,k}); n++; });
-    if(skip) toast(skip+' خلية لم تتغير (للقراءة فقط أو قيمة غير موجودة في القائمة)');
+    if(setMany.h&&setMany.h.length){ ST.hist.push(setMany.h); if(ST.hist.length>50) ST.hist.shift(); } setMany.h=null;
+    if(skip) toast(Object.keys(bad).map(x=>{ const [c,v]=x.split('|'); return bad[x]+' خلية لم تتغير: «'+v+'» ليست في قائمة «'+c+'»'; }).concat(Object.keys(ro).map(c=>ro[c]+' خلية في «'+c+'» للقراءة فقط بصلاحيتك')).join(' · '));
     if(n){ draw(); clearTimeout(timer); timer=setTimeout(flush,700); }
   }
   async function flush(){ if(!q.length) return; const batch=q; q=[]; const g=$('#gsave'); g.dataset.busy=1; g.textContent='جارٍ الحفظ… ('+batch.length+')';
@@ -507,19 +526,62 @@ function sheet(base, defCols, opt={}){
   window.onbeforeunload=()=>q.length?'':undefined;
   box.onkeydown=e=>{ if(ed||!act) return; const ctrl=e.ctrlKey||e.metaKey;
     const mv={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowRight:[0,-1],ArrowLeft:[0,1]}[e.key];
+    if(mv&&ctrl){ e.preventDefault(); const p=xlJump(act,mv);
+      if(e.shiftKey){ act=p; sel=rect(anchor||p,p); paintSel(); } else { act=p; anchor=p; sel=new Set([key(p[0],p[1])]); paintSel(); }
+      const tc=cell(p[0],p[1]); tc&&tc.scrollIntoView({block:'nearest',inline:'nearest'}); savePos(); return; }
     if(mv){ e.preventDefault(); if(e.shiftKey){ const p=[Math.max(0,Math.min(rows.length-1,act[0]+mv[0])),Math.max(0,Math.min(cols.length-1,act[1]+mv[1]))]; act=p; sel=rect(anchor,p); paintSel(); const tc=cell(p[0],p[1]); tc&&tc.scrollIntoView({block:'nearest',inline:'nearest'}); } else move(...mv); return; }
     if(e.key==='Enter'||e.key==='F2'){ e.preventDefault(); openEditor(false); return; }
     if(e.altKey&&e.key==='ArrowDown'){ e.preventDefault(); openEditor(true); return; }
     if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); setMany([...sel].map(s=>{const [r,c]=s.split(',').map(Number); return [r,c,''];})); return; }
     if(ctrl&&e.key.toLowerCase()==='a'){ e.preventDefault(); sel=rect([0,0],[rows.length-1,cols.length-1]); paintSel(); return; }
-    if(ctrl&&e.key.toLowerCase()==='c'){ e.preventDefault(); copySel(); return; }
-    if(ctrl&&(e.key.toLowerCase()==='z'||e.code==='KeyZ')){ e.preventDefault(); if(A.undo) A.undo(); return; }
+    if(ctrl&&(e.key.toLowerCase()==='c'||e.code==='KeyC')){ S.gclip=selText(); if(S.gclip==null) return; setTimeout(()=>{ if(S.gclip!=null){ try{ document.execCommand('copy'); }catch(x){} } },0); return; }
+    if(ctrl&&(e.key.toLowerCase()==='d'||e.code==='KeyD')){ e.preventDefault(); fillDown(); return; }
+    if(ctrl&&(e.key.toLowerCase()==='z'||e.code==='KeyZ')){ e.preventDefault(); undoNow(); return; }
     if(e.key.length===1&&!ctrl&&!e.altKey){ e.preventDefault(); openEditor(false, e.key); }
   };
-  function copySel(){ const ps=[...sel].map(s=>s.split(',').map(Number)); if(!ps.length) return;
+  // copy: the browser's copy event is the one way that works inside the Apps Script frame (navigator.clipboard is blocked there)
+  function selText(){ const ps=[...sel].map(s=>s.split(',').map(Number)); if(!ps.length) return null;
     const rs=[...new Set(ps.map(p=>p[0]))].sort((a,b)=>a-b), cs=[...new Set(ps.map(p=>p[1]))].sort((a,b)=>a-b);
-    const txt=rs.map(r=>cs.map(c=>sel.has(key(r,c))?String(val(rows[r],cols[c])).replace(/[\t\n]/g,' '):'').join('\t')).join('\n');
-    navigator.clipboard&&navigator.clipboard.writeText(txt); toast('نُسخت '+ps.length+' خلية'); }
+    return rs.map(r=>cs.map(c=>sel.has(key(r,c))?richPlain(String(val(rows[r],cols[c]))).replace(/[\t\n]/g,' '):'').join('\t')).join('\n'); }
+  if(S.gcopyOff) S.gcopyOff();
+  { const oc=e=>{ if(ed||!document.body.contains(box)) return; const a=document.activeElement; if(a!==box&&!box.contains(a)&&a!==document.body) return; const t=S.gclip!=null?S.gclip:selText(); if(t==null) return;
+      e.preventDefault(); e.clipboardData.setData('text/plain',t); S.gclip=null; toast('نُسخت '+sel.size+' خلية'); };
+    document.addEventListener('copy',oc); S.gcopyOff=()=>document.removeEventListener('copy',oc); }
+  // Ctrl+Z: what is still waiting to be saved is saved first (else the server would undo the step before it), the cells go back at once
+  // on the screen, and the server undo runs behind it
+  async function undoNow(){ if(undoNow.busy) return; undoNow.busy=1;
+    try{ if(q.length){ clearTimeout(timer); await flush(); }
+      if(!A.undo){ if(LUNDO) localUndo(); return; }
+      const h=ST.hist.pop(); if(h){ const ix={}; rows.forEach((o,i)=>{ ix[rid(o)]=i; }); h.forEach(([id,k,v])=>{ const o=rows[ix[id]]; if(o) A.put(o,k,v); }); draw(); }
+      await A.undo(); }
+    finally{ undoNow.busy=0; } }
+  S.gundo=undoNow;
+  // Ctrl+arrow as in Excel: through a filled run to its last cell; from a filled cell before a gap, or from a gap, to the next filled cell; else to the edge
+  function xlJump(a,d){ const full=(r,c)=>String(richPlain(val(rows[r],cols[c]))).trim()!=='', ins=(r,c)=>r>=0&&r<rows.length&&c>=0&&c<cols.length;
+    let r=a[0], c=a[1]; const nx=()=>[r+d[0],c+d[1]];
+    if(!ins(...nx())) return [r,c];
+    if(full(r,c)&&full(...nx())){ while(ins(...nx())&&full(...nx())){ [r,c]=nx(); } return [r,c]; }
+    while(ins(...nx())){ [r,c]=nx(); if(full(r,c)) return [r,c]; } return [r,c]; }
+  function localUndo(){ const h=ST.hist.pop(); if(!h) return toast('لا يوجد ما يُتراجع عنه'); const ix={}; rows.forEach((o,i)=>{ ix[rid(o)]=i; });
+    const out=h.map(([id,k,v])=>[ix[id],cols.indexOf(k),v]).filter(x=>x[0]!==undefined&&x[1]>=0); if(!out.length) return toast('الصفوف المعدّلة ليست ظاهرة الآن (فلتر)');
+    setMany.noHist=1; try{ setMany(out); }finally{ setMany.noHist=0; } toast('تم التراجع عن '+out.length+' خلية'); }
+  function gBulk(){ const rs=[...new Set([...sel].map(x=>+x.split(',')[0]))]; const tgt=rs.length>1?rs:rows.map((o,i)=>i);
+    const ks=cols.filter(k=>tgt.some(r=>canEditCell(rows[r],k))); if(!ks.length) return toast('لا يوجد عمود قابل للتعديل');
+    modal(`<h3 style="margin-top:0">تعديل جماعي</h3><div class="muted" style="margin-bottom:8px">${rs.length>1?'على الصفوف المحددة: '+rs.length:'على كل الصفوف الظاهرة: '+tgt.length+' (حدد صفوفاً أولاً لتعديلها هي فقط)'}</div>
+      <label style="display:flex;flex-direction:column;gap:4px">العمود<select id="gbk">${ks.map(k=>`<option value="${esc(k)}">${esc(lbl(k))}</option>`).join('')}</select></label>
+      <label style="display:flex;flex-direction:column;gap:4px;margin-top:8px">القيمة الجديدة<input id="gbv" list="gbl"><datalist id="gbl"></datalist></label>
+      <div class="muted" style="font-size:12px;margin-top:4px">اتركها فارغة لمسح العمود. ويمكن التراجع بـ Ctrl+Z.</div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="pri" id="gbgo">تطبيق</button><button onclick="closeModal()">إلغاء</button></div>`);
+    const fillL=()=>{ const k=$('#gbk').value, o=rows[tgt[0]], op=(o&&optsFor(o,k))||[]; $('#gbl').innerHTML=op.map(x=>`<option value="${esc(x)}">`).join(''); $('#gbv').type=A.dates.includes(k)?'date':'text'; };
+    $('#gbk').onchange=fillL; fillL();
+    $('#gbgo').onclick=()=>{ const k=$('#gbk').value, c=cols.indexOf(k), v=$('#gbv').value.trim(); if(tgt.length>50&&!confirm('سيتم تغيير '+tgt.length+' صفاً. متابعة؟')) return; closeModal(); setMany(tgt.map(r=>[r,c,v])); }; }
+  // Ctrl+D: the first row of the selection goes down to the other selected rows; one row selected takes the row above (as in Excel)
+  function fillDown(){ const ps=[...sel].map(s=>s.split(',').map(Number)); if(!ps.length) return; const out=[];
+    const cs=[...new Set(ps.map(p=>p[1]))];
+    cs.forEach(c=>{ const rs=ps.filter(p=>p[1]===c).map(p=>p[0]).sort((a,b)=>a-b); if(!rs.length) return;
+      if(rs.length===1){ if(rs[0]===0) return; out.push([rs[0],c,richPlain(String(val(rows[rs[0]-1],cols[c])))]); }
+      else { const v=val(rows[rs[0]],cols[c]); rs.slice(1).forEach(r=>out.push([r,c,String(v)])); } });
+    if(out.length>200&&!confirm('سيتم تغيير '+out.length+' خلية. متابعة؟')) return; setMany(out); }
   box.onpaste=e=>{ if(ed||!act) return; e.preventDefault(); const txt=(e.clipboardData||window.clipboardData).getData('text').replace(/\r/g,'').replace(/\n$/,'');
     const grid=txt.split('\n').map(l=>l.split('\t'));
     if(grid.length===1&&grid[0].length===1){ if(sel.size>50&&!confirm('سيتم تغيير '+sel.size+' خلية. متابعة؟')) return; setMany([...sel].map(s=>{const [r,c]=s.split(',').map(Number); return [r,c,grid[0][0].trim()];})); return; }
@@ -543,16 +605,17 @@ function sheet(base, defCols, opt={}){
     m.querySelector('.fm-all input').onchange=e=>boxes().filter(b=>b.parentElement.style.display!=='none').forEach(b=>b.checked=e.target.checked);
     m.querySelectorAll('[data-s]').forEach(a=>a.onclick=()=>{ ST.sort=[k,+a.dataset.s]; m.remove(); draw(); });
     m.querySelector('[data-ok]').onclick=()=>{ const on=boxes().filter(b=>b.checked&&b.parentElement.style.display!=='none').map(b=>b.value);
-      if(on.length===vals.length) delete ST.cf[k]; else ST.cf[k]=on; m.remove(); sel.clear(); act=null; draw(); };
+      if(on.length===vals.length) delete ST.cf[k]; else ST.cf[k]=on; m.remove(); sel.clear(); act=null; ST.pos=null; draw(); };
     m.querySelector('[data-clr]').onclick=()=>{ delete ST.cf[k]; m.remove(); draw(); };
     m.querySelector('[data-x]').onclick=()=>m.remove();
     setTimeout(()=>{ const off=e=>{ if(!m.contains(e.target)){ m.remove(); document.removeEventListener('mousedown',off);} }; document.addEventListener('mousedown',off); },0);
     m.querySelector('.fm-q').focus();
   }
-  $('#gq').oninput=e=>{ ST.f.q=e.target.value; sel.clear(); act=null; draw(); };
+  $('#gq').oninput=e=>{ ST.f.q=e.target.value; sel.clear(); act=null; ST.pos=null; draw(); };
   $('#xls').onclick=()=>exportCsv(allRows, cols, A); if($('#xarch')) $('#xarch').onclick=archModal;
   if(A.wire) A.wire({rows:()=>rows, sel:()=>[...new Set([...sel].map(x=>+x.split(',')[0]))].map(r=>rows[r]).filter(Boolean), draw, clear:()=>{ sel.clear(); act=null; }});
   if($('#bulk')) $('#bulk').onclick=()=>bulkEdit(rows);
+  if($('#gbulk')) $('#gbulk').onclick=gBulk; if($('#gstu')) $('#gstu').onclick=stageUnifyUI; if($('#glundo')) $('#glundo').onclick=localUndo;
   if($('#gdel')) $('#gdel').onclick=()=>{ const rs=[...new Set([...sel].map(x=>+x.split(',')[0]))].map(r=>rows[r]).filter(Boolean); delRows(DEL, rs); };
   if($('#gadd')) $('#gadd').onclick=()=>addOrderForm();
   if($('#xall')) $('#xall').onclick=()=>exportUnified(); if($('#gimp')) $('#gimp').onclick=()=>goImport($('#gimp').dataset.k);
@@ -656,6 +719,12 @@ function qdDraw(C,V){ const X=V.ctx, o=X.o, d=V.d, P=V.plan, ed=X.canEdit, qs=QF
     else if(F.k==='up'){ const L=(d.up||{})[k]||[]; info=L.map(x=>`<span class="qdfile"><a href="${esc(/pdf$/.test(x.mime||'')?'https:\/\/drive.google.com\/file\/d\/'+x.id+'\/view':phUrl(x.id,1600))}" target="_blank" rel="noopener">${/pdf$/.test(x.mime||'')?'📄':'🖼'} ${esc(x.by)}</a>${ed?`<b class="qdx" data-qdel="u:${k}" data-id="${esc(x.id)}" title="حذف">✕</b>`:''}</span>`).join(' ');
       act=ed?`<label class="qdup">📎 رفع<input type="file" data-qup="u:${k}" accept="application/pdf,image/jpeg,image/png" multiple hidden></label>`:''; }
     else if(F.k==='site'||F.k==='meeting'){ const L=(V.linked||{})[k]||[]; info=L.length?L.map(x=>FK[F.k].i+' '+esc(x.seq)).join('، '):''; act=`<button data-qlk="${F.k==='site'?'site':'mom'}">${L.length?'فتح':'إنشاء'}</button>`; }
+    else if(F.k==='day'||F.k==='boq'){ const X2=V.ext||{}, L=(d.up||{})[k]||[];
+      if(F.k==='day') info=X2.days&&X2.days.length?`من الجدول اليومي: ${X2.days.slice(0,4).map(esc).join('، ')}${X2.days.length>4?'…':''}`:'<span class="late">الأمر ليس في الجدول اليومي بعد — أضفه للجدول، أو ارفع صورة النموذج</span>';
+      else info=qdBoqRows(V,F.sub).length?`من المقايسة: ${qdBoqRows(V,F.sub).length} بنداً`:'<span class="late">لا توجد بنود في المقايسة'+(F.sub==='meas'?' للحفر':'')+' — عبّئ المقايسة، أو ارفع صورة النموذج</span>';
+      info+=L.map(x=>` <span class="qdfile"><a href="${esc(/pdf$/.test(x.mime||'')?'https:\/\/drive.google.com\/file\/d\/'+x.id+'\/view':phUrl(x.id,1600))}" target="_blank" rel="noopener">${/pdf$/.test(x.mime||'')?'📄':'🖼'} ${esc(x.by)}</a>${ed?`<b class="qdx" data-qdel="u:${k}" data-id="${esc(x.id)}" title="حذف">✕</b>`:''}</span>`).join('');
+      const has=F.k==='day'?(X2.days||[]).length:qdBoqRows(V,F.sub).length;
+      act=(has?(F.sub==='con'||F.sub==='eng'?(X2.days||[]).slice(0,6).map(dd=>`<button data-qgp="${k}" data-day="${esc(dd)}" title="طباعة ${esc(dd)}">🖨 ${esc(dd.slice(5))}</button>`).join(' '):`<button data-qgp="${k}">🖨 طباعة</button>`):'')+(ed?` <label class="qdup">📎 رفع<input type="file" data-qup="u:${k}" accept="application/pdf,image/jpeg,image/png" multiple hidden></label>`:''); }
     else if(F.k==='lic'){ info=V.lic.has?'مرفقة تلقائياً: '+esc(V.lic.name):`<span class="late">لا توجد إجازة${V.lic.name?' لـ '+esc(V.lic.name):''} — يرفعها المدير من «المستخدمون»</span>`; }
     const drop=ed&&F.k!=='lic'?`<b class="qdx" data-qdrop="${k}" title="إزالة من قائمة هذا الأمر">✕</b>`:'';
     return `<tr class="${qdRejOf(V,'f:'+k)||qdRejOf(V,'u:'+k)||qdRejOf(V,'fm:'+(k==='SITE'?'SITE':'MTG'))?'qdrj':''}"><td class="c"><span class="qdk ${S2[1]}">${S2[0]}</span></td><td><b>${esc(F.name)}</b>${F.no?` <small class="muted">${esc(F.no)}</small>`:''}<div class="muted" style="font-size:11px">يعبّئه: ${esc(F.by||'')}</div></td><td style="font-size:12px">${info}${rjMark('f:'+k)}${rjMark('u:'+k)}${F.k==='site'?rjMark('fm:SITE'):F.k==='meeting'?rjMark('fm:MTG'):''}</td><td style="white-space:nowrap">${act} ${drop}</td></tr>`; };
@@ -686,6 +755,7 @@ function qdDraw(C,V){ const X=V.ctx, o=X.o, d=V.d, P=V.plan, ed=X.canEdit, qs=QF
   document.querySelectorAll('[data-qdrop]').forEach(b=>b.onclick=()=>{ if(confirm('إزالة «'+C.forms[b.dataset.qdrop].name+'» من قائمة هذا الأمر؟')) save({drop:b.dataset.qdrop}); });
   document.querySelectorAll('[data-qfm]').forEach(b=>b.onclick=()=>qdForm(C,V,b.dataset.qfm));
   document.querySelectorAll('[data-qpr]').forEach(b=>b.onclick=()=>qdPrintOne(C,V,b.dataset.qpr));
+  document.querySelectorAll('[data-qgp]').forEach(b=>b.onclick=()=>qdPrintGen(C,V,b.dataset.qgp,b.dataset.day||''));
   document.querySelectorAll('[data-qlk]').forEach(b=>b.onclick=()=>formsModal(ref,b.dataset.qlk));
   document.querySelectorAll('[data-qdel]').forEach(b=>b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); if(!confirm('حذف هذا الملف؟')) return; api('qdRemove',S.tok,ref,b.dataset.qdel,b.dataset.id).then(again).catch(er=>err(er.message)); });
   document.querySelectorAll('input[data-qup]').forEach(inp=>inp.onchange=()=>qdUploadFiles(C,V,inp.dataset.qup,[...inp.files],!!inp.dataset.cam));
@@ -742,6 +812,32 @@ function qdChkHtml(C,V,code,L,sig){ const F=C.forms[code], f=(V.d.f||{})[code]||
    <table style="margin-top:6px"><tr><td class="b" style="width:18%">ملاحظات</td><td style="height:36px">${e(f.rm||'')}</td></tr></table>
    <table style="margin-top:6px" class="nb"><tr><td class="b" style="width:18%">اسم الاستشاري:</td><td style="width:32%">${e(f.by||'')}</td><td class="b" style="width:12%">التوقيع:</td><td class="c" style="width:20%">${sig?`<img class="sig" src="${sig}">`:''}</td><td class="c">${L.stamp?`<img class="stamp" src="${L.stamp}">`:''}<div style="font-size:10px">ختم الاستشاري</div></td></tr></table>
    <div style="font-size:9px;text-align:left;margin-top:4px">${e(F.no||'')}</div></div>`; }
+// ---- forms built from the program's data: daily / weekly programmes from «الجدول اليومي», measurement and quantities from the BOQ ----
+const QD_DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const qdDayName=d=>{ const t=new Date(d+'T12:00:00'); return isNaN(t)?'':QD_DAYS[t.getDay()]; };
+function qdBoqRows(V,sub){ const L=(V.ext&&V.ext.boq)||[]; return sub==='meas'?L.filter(l=>/^(30101|30401|30402|50502|30202)/.test(l.c)):L.filter(l=>(l.d!==''&&l.d!=null)||+l.p); }
+function qdGenHtml(C,V,code,day,L,sig){ const F=C.forms[code], X2=V.ext||{}, o=V.ctx.o, e=x=>esc(x==null?'':x), IT=X2.items||{};
+  const head=(cells)=>{ const h=[]; for(let i=0;i<cells.length;i+=2) h.push(`<tr>${[cells[i],cells[i+1]].map(c=>c?`<td class="b" style="width:16%">${e(c[0])}</td><td style="width:34%">${e(c[1])}</td>`:'<td></td><td></td>').join('')}</tr>`); return `<table>${h.join('')}</table>`; };
+  const foot=(nm)=>`<table style="margin-top:8px" class="nb"><tr><td class="b" style="width:18%">اسم الاستشاري:</td><td style="width:32%">${e(nm||'')}</td><td class="b" style="width:12%">التوقيع:</td><td class="c" style="width:20%">${sig?`<img class="sig" src="${sig}">`:''}</td><td class="c">${L.stamp?`<img class="stamp" src="${L.stamp}">`:''}<div style="font-size:10px">ختم الاستشاري</div></td></tr></table>`;
+  const top=`<div class="logos"><img src="${L.pdc||''}"><img src="${L.se||''}"></div><div class="ttl">${e(F.name)}</div>`;
+  const tbl=(H,rows)=>`<table style="margin-top:6px"><colgroup>${H.map(x=>`<col style="width:${x==='م'?5:/الوصف|وصف العمل/.test(x)?38:x==='رقم البند'||x==='الوحدة'||x==='النوع'?10:''}%">`).join('')}</colgroup><tr class="th">${H.map(x=>`<td class="c">${e(x)}</td>`).join('')}</tr>${rows.length?rows.map(r=>`<tr>${r.map((x,i)=>`<td class="${i===0?'c':''}">${e(x)}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${H.length}" class="c">—</td></tr>`}</table>`;
+  const wo=r=>String(r.wo||'')+(r.type&&String(r.wo).indexOf('-')<0?'-'+r.type:'');
+  if(F.k==='day'&&F.sub==='con'){ const R=(X2.con||{})[day]||[];
+    return `<div class="pf chk">${top}${head([['التاريخ',day],['اليوم',qdDayName(day)],['المقاول',FULLC(X2.conName||o.contractor||'')],['ادارة كهرباء','الدمام'],['الدائرة',o.office||''],['عدد الأعمال',R.length]])}
+      ${tbl(['م','رقم أمر العمل','الموقع / المحطة','وصف العمل','الوقت','مهندس الموقع','الجوال'],R.map((r,i)=>[i+1,wo(r),r.station||r.location&&'رابط'||'',r.work,r.time,r.engineer,r.phone]))}${foot(X2.engName||o.site_engineer)}<div style="font-size:9px;text-align:left;margin-top:4px">${e(F.no)}</div></div>`; }
+  if(F.k==='day'&&F.sub==='eng'){ const R=(X2.eng||{})[day]||[];
+    return `<div class="pf chk">${top}${head([['المفتش / مهندس الموقع',X2.engName||o.site_engineer||''],['التاريخ',day+' — '+qdDayName(day)],['ادارة كهرباء','الدمام'],['الدائرة',o.office||'']])}
+      ${tbl(['م','الوقت','رقم أمر العمل','المقاول','الموقع / المحطة','وصف العمل','المستلم'],R.map((r,i)=>[i+1,r.time,wo(r),FULLC(r.contractor||''),r.station||'',r.work,r.receiver]))}${foot(X2.engName||o.site_engineer)}<div style="font-size:9px;text-align:left;margin-top:4px">${e(F.no)}</div></div>`; }
+  if(F.k==='day'){ const R=(X2.week||[]).slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)), wk=X2.wk||['',''];
+    return `<div class="pf chk">${top}${head([['المقاول',FULLC(X2.conName||o.contractor||'')],['الأسبوع',wk[0]+' إلى '+wk[1]],['ادارة كهرباء','الدمام'],['الدائرة',o.office||'']])}
+      ${tbl(['م','اليوم','التاريخ','رقم أمر العمل','الموقع / المحطة','وصف العمل','مهندس الموقع'],R.map((r,i)=>[i+1,qdDayName(r.date),r.date,wo(r),r.station||'',r.work,r.engineer]))}${foot(X2.engName||o.site_engineer)}<div style="font-size:9px;text-align:left;margin-top:4px">${e(F.no)}</div></div>`; }
+  const B=qdBoqRows(V,F.sub), q=v=>v===''||v==null?'':v, surf=c=>/^30101010?7/.test(c)?'أسفلت':/^30101010?5/.test(c)?'بلاط':/^301010/.test(c)?'ترابي':/^3040/.test(c)?'كابل':/^5050/.test(c)?'ماسورة':/^3020/.test(c)?'عبور':'';
+  const hd=head([['رقم أمر العمل',o.wo+(o.type?'-'+o.type:'')],['المقاول',FULLC(o.contractor||'')],['ادارة كهرباء','الدمام'],['الدائرة',o.office||''],['الموقع',o.district||''],['التاريخ',S.B.today]]);
+  if(F.sub==='meas') return `<div class="pf chk">${top}${hd}${tbl(['م','رقم البند','الوصف','النوع','الوحدة','المخطط','المنفذ'],B.map((l,i)=>[i+1,l.c,(IT[l.c]||[])[0]||'',surf(l.c),(IT[l.c]||[])[1]||'',q(l.p),q(l.d)]))}${foot(o.site_engineer)}</div>`;
+  return `<div class="pf chk">${top}${hd}${tbl(['م','رقم البند','الوصف','الوحدة','الكمية المخططة','الكمية المنفذة'],B.map((l,i)=>[i+1,l.c,(IT[l.c]||[])[0]||'',(IT[l.c]||[])[1]||'',q(l.p),q(l.d)]))}${foot(o.site_engineer)}</div>`; }
+async function qdPrintGen(C,V,code,day){ let M; try{ M=await fmMeta(); }catch(e){ return toast(e.message); } const X2=V.ext||{}, sg=await qdSigOf(X2.engName||V.ctx.o.site_engineer);
+  toast('جارٍ تجهيز الطباعة…'); let p=$('#prt'); if(!p){ p=document.createElement('div'); p.id='prt'; document.body.appendChild(p); } p.innerHTML=chkFit(qdGenHtml(C,V,code,day,M.logos||{},sg.sig));
+  await Promise.all([...p.querySelectorAll('img')].map(im=>im.complete&&im.naturalWidth?1:new Promise(r=>{ im.onload=im.onerror=r; setTimeout(r,12000); }))); fitOnePage(p); window.print(); }
 async function qdSigOf(n){ n=String(n||'').trim(); if(!n) return {sig:'',emp_no:''}; S.sigC=S.sigC||{}; if(!S.sigC[n]){ try{ S.sigC[n]=await api('formSig',S.tok,n); }catch(e){ S.sigC[n]={sig:'',emp_no:''}; } } return S.sigC[n]; }
 async function qdPrintOne(C,V,code){ let M; try{ M=await fmMeta(); }catch(e){ return toast(e.message); } const f=(V.d.f||{})[code]||{}, sg=await qdSigOf(f.by);
   toast('جارٍ تجهيز الطباعة…'); let p=$('#prt'); if(!p){ p=document.createElement('div'); p.id='prt'; document.body.appendChild(p); } p.innerHTML=chkFit(qdChkHtml(C,V,code,M.logos||{},sg.sig));
@@ -760,6 +856,10 @@ async function qdBuildHtml(C,V,msg){ const M=await fmMeta(), M2=Object.assign({}
     if(F.k==='chk'&&d.f&&d.f[k]) pg.push(chkFit(qdChkHtml(C,V,k,QD_LG,sigT(d.f[k].by))));
     else if(F.k==='up') ((d.up||{})[k]||[]).forEach(x=>pg.push(/pdf$/.test(x.mime||'')?`<div class="pf cov"><h3>${e(F.name)}</h3><p>مرفق بصيغة PDF: <a href="https:\/\/drive.google.com\/file\/d\/${e(x.id)}\/view">${e(x.n)}</a></p></div>`:`<div class="pf att"><h3>${e(F.name)}</h3><img data-fid="${e(x.id)}"></div>`));
     else if(F.k==='site'||F.k==='meeting') (ids[k]||[]).forEach(id=>{ const f=FM[id]; if(f) pg.push(fid(fmPrintHtml(f,Object.assign({},o,{maint:V.ctx.d9?1:0,key:V.ctx.key}),M2,{sig:sigT((f.data||{}).author),emp_no:''}))); });
+    else if(F.k==='day'||F.k==='boq'){ const X2=V.ext||{}, sg=sigT(X2.engName||o.site_engineer);
+      if(F.k==='day'&&(X2.days||[]).length){ if(F.sub==='week') pg.push(chkFit(qdGenHtml(C,V,k,'',QD_LG,sg))); else X2.days.slice(0,6).forEach(dd=>pg.push(chkFit(qdGenHtml(C,V,k,dd,QD_LG,sg)))); }
+      else if(F.k==='boq'&&qdBoqRows(V,F.sub).length) pg.push(chkFit(qdGenHtml(C,V,k,'',QD_LG,sigT(o.site_engineer))));
+      ((d.up||{})[k]||[]).forEach(x=>pg.push(/pdf$/.test(x.mime||'')?`<div class="pf cov"><h3>${e(F.name)}</h3><p>مرفق بصيغة PDF: <a href="https:\/\/drive.google.com\/file\/d\/${e(x.id)}\/view">${e(x.n)}</a></p></div>`:`<div class="pf att"><h3>${e(F.name)}</h3><img data-fid="${e(x.id)}"></div>`)); }
     else if(F.k==='lic'&&V.lic.has) pg.push(/pdf$/.test(V.lic.mime||'')?`<div class="pf cov"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><p><a href="https:\/\/drive.google.com\/file\/d\/${e(V.lic.id)}\/view">فتح الإجازة</a></p></div>`:`<div class="pf att"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><img data-fid="${e(V.lic.id)}"></div>`); }
   if(V.draw_id) pg.push(`<div class="pf att"><h3>مخطط الموقع</h3><img data-fid="${e(V.draw_id)}"></div>`);
   P.cats.forEach(g=>{ const G=C.ph[g]; if(!G) return; const L=[]; G.items.forEach((t,i)=>((d.ph||{})[g+':'+i]||[]).forEach(x=>L.push({t:(i+1)+'. '+t,id:x.id})));
@@ -776,7 +876,7 @@ async function qdBuild(C,V,force){ const msg=t=>{ if($('#qdmsg')) $('#qdmsg').te
     toast('أُنشئ ملف الجودة وأُرسل لمهندس الجودة'); qdApply(V2); qdDraw(C,V2); }
   catch(e){ err(e.message); msg(''); if($('#qdbuild')) $('#qdbuild').disabled=false; } }
 function qdRejectUI(C,V){ const d=V.d, P=V.plan, it=[];
-  P.req.forEach(k=>{ const F=C.forms[k]; if(F.k==='chk'&&d.f&&d.f[k]) it.push({s:'f:'+k,t:F.name,by:d.f[k].by}); else if(F.k==='up'&&(d.up||{})[k]&&d.up[k].length) it.push({s:'u:'+k,t:F.name,by:d.up[k][d.up[k].length-1].by}); else if((F.k==='site'||F.k==='meeting')&&(V.linked[k]||[]).length) it.push({s:'fm:'+k,t:F.name,by:''}); });
+  P.req.forEach(k=>{ const F=C.forms[k]; if(F.k==='chk'&&d.f&&d.f[k]) it.push({s:'f:'+k,t:F.name,by:d.f[k].by}); else if(F.k==='up'&&(d.up||{})[k]&&d.up[k].length) it.push({s:'u:'+k,t:F.name,by:d.up[k][d.up[k].length-1].by}); else if((F.k==='day'||F.k==='boq')&&V.st[k]==='done') it.push({s:'u:'+k,t:F.name,by:((d.up||{})[k]||[]).length?d.up[k][d.up[k].length-1].by:(F.k==='day'?(V.ext||{}).engName||'':V.ctx.o.site_engineer||'')}); else if((F.k==='site'||F.k==='meeting')&&(V.linked[k]||[]).length) it.push({s:'fm:'+k,t:F.name,by:''}); });
   P.cats.forEach(g=>{ const G=C.ph[g]; if(G) G.items.forEach((t,i)=>{ const L=(d.ph||{})[g+':'+i]||[]; if(L.length) it.push({s:'p:'+g+':'+i,t:G.name+': '+t,by:L[L.length-1].by}); }); });
   modal(`<h3 style="margin-top:0">رفض بنود من ملف الجودة</h3><div class="muted">حدّد ما يحتاج تعديلاً. يذهب الأمر إلى من عبّأ البند أو صوّره، والمرحلة لا تتغير.</div>
    <div style="max-height:50vh;overflow:auto;margin:8px 0">${it.map(x=>`<label style="display:flex;gap:6px;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--line)"><input type="checkbox" data-rj="${esc(x.s)}"><span>${esc(x.t)}${x.by?` <small class="muted">— ${esc(x.by)}</small>`:''}</span></label>`).join('')}</div>
@@ -897,6 +997,15 @@ function addOrderForm(){
 
 const BULK=['cur_owner','stage','next_action','followup_date','blocker','blocker_owner','site_engineer'];
 function canBulk(){ return (S.B.admin||S.B.user.role==='قائد مكتب') && BULK.some(k=>S.B.editable.includes(k)); }
+async function stageUnifyUI(){ modal('<div class="loading">جارٍ فحص أسماء المراحل في الأوامر…</div>'); let P; try{ P=await api('stageUnify',S.tok,false); }catch(e){ closeModal(); return toast(e.message); }
+  if(!P.rows.length){ modal('<h3 style="margin-top:0">توحيد أسماء المراحل</h3><div class="muted">كل المراحل في الأوامر بأسماء الرحلة. لا يوجد ما يُوحَّد ✓</div><div style="margin-top:10px"><button onclick="closeModal()">إغلاق</button></div>'); return; }
+  const SL=P.steps.map(n=>[n,stLbl(n)]);
+  modal(`<h3 style="margin-top:0">توحيد أسماء المراحل</h3><div class="muted" style="margin-bottom:8px">أسماء مراحل في الأوامر ليست من رحلة أمر العمل. اختر لكل اسم المرحلة المقابلة، أو اتركه كما هو. التغيير يُسجَّل ويمكن التراجع عنه.</div>
+   <div class="tw" style="max-height:55vh"><table class="jt"><thead><tr><th>الاسم الموجود</th><th>عدد الأوامر</th><th>يصير</th></tr></thead><tbody>${P.rows.map((x,i)=>`<tr><td><b>${esc(x.old)}</b></td><td class="c">${x.n}</td><td><select data-su="${i}" style="max-width:340px"><option value="">— يبقى كما هو —</option>${SL.map(([n,l])=>`<option value="${esc(n)}" ${n===x.to?'selected':''}>${esc(l)}</option>`).join('')}</select>${x.to?'':' <span class="late">لم يُعرف مقابله</span>'}</td></tr>`).join('')}</tbody></table></div>
+   <div class="err" id="suerr"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="sugo">توحيد</button><button onclick="closeModal()">إلغاء</button></div>`);
+  $('#sugo').onclick=async()=>{ const map={}; document.querySelectorAll('[data-su]').forEach(x=>{ if(x.value) map[P.rows[+x.dataset.su].old]=x.value; }); if(!Object.keys(map).length) return $('#suerr').textContent='لم تختر شيئاً';
+    const n=P.rows.filter(x=>map[x.old]).reduce((a,x)=>a+x.n,0); if(!confirm('سيتغير اسم المرحلة في '+n+' خلية. متابعة؟')) return; $('#sugo').disabled=true;
+    try{ const r=await api('stageUnify',S.tok,true,map); closeModal(); toast('وُحّدت المرحلة في '+r.changed+' أمراً'); const v=S.view; await start(); S.view=v; shell(); }catch(e){ $('#suerr').textContent=e.message; $('#sugo').disabled=false; } }; }
 function bulkEdit(list){
   if(!list.length) return toast('لا توجد أوامر في القائمة الحالية');
   const L=S.B.lists, ed=S.B.editable, names=S.B.people.map(p=>p.name);
@@ -1422,7 +1531,7 @@ async function formEditor(f,o,back){
   if($('#fsave')) $('#fsave').onclick=()=>save(false); if($('#fsavep')) $('#fsavep').onclick=()=>save(true);
   if($('#fprt')) $('#fprt').onclick=()=>{ collect(); printForm(Object.assign({},f,{data:d,photos}),o); };
   $('#fback').onclick=()=>{ if(!ro&&fresh.length&&!confirm('الصور المرفوعة لم تُحفظ بعد وسيتم حذفها. الخروج دون حفظ؟')) return; leave(); };
-  if($('#fdel')) $('#fdel').onclick=async()=>{ if(!confirm('حذف '+K.t+' رقم '+f.seq+' مع صوره؟ لا يمكن التراجع.')) return;
+  if($('#fdel')) $('#fdel').onclick=async()=>{ if(!confirm('حذف '+K.t+' رقم '+f.seq+'؟ ينتقل إلى الأرشيف ← المحذوفات مع صوره ويمكن استرجاعه.')) return;
     try{ const r=await api('deleteForm',S.tok,f.id); fmSetCounts(r.wo,r.counts); toast('تم الحذف'); back?back():closeModal(); }catch(e){ $('#ferr').textContent=e.message; } };
 }
 
@@ -1560,7 +1669,7 @@ async function vForms(){
     return multi?toks.some(t=>{ const T=t.toUpperCase(); return /^[SQMT]/.test(T)?String(x.id).toUpperCase()===T:(String(x.seq)===T||String(x.wo)===T||String(x.wo).indexOf(T+'-')===0); }):[x.wo,x.sum,x.author,x.contractor,x.seq,x.id,(FK[x.kind]||{}).t].join(' ').includes(q); };
   S.gst=S.gst||{}; const ST=S.gst.forms||(S.gst.forms={cf:{},sort:['date',-1],xf:null,f:{q:''}}); const tc=TABC.forms;
   const LB=Object.assign({pick:'✓',seq:'الرقم',cno:'رقم المقاول',month:'الشهر',by_name:'أدخله',act:''},FFL);
-  const AD={ st:ST, unit:'نموذجاً', stk:'seq', file:'المخالفات_والمحاضر', orders:false, all:['pick','kind','seq','wo','office','contractor','date','month','sum','total','author','n_ph','cno','by_name','act'],
+  const AD={ del:{kind:'forms',name:'نموذج',key:x=>x.id,ref:x=>((FK[x.kind]||{}).t||x.kind)+' '+x.seq+(x.wo?' · '+x.wo:''),done:keys=>{ const K=new Set(keys); for(let i=L.length-1;i>=0;i--) if(K.has(L[i].id)) L.splice(i,1); S.fmList=null; S.fxList=null; }}, st:ST, unit:'نموذجاً', stk:'seq', file:'المخالفات_والمحاضر', orders:false, all:['pick','kind','seq','wo','office','contractor','date','month','sum','total','author','n_ph','cno','by_name','act'],
     lbl:k=>LB[k]||k, val:(x,k)=>k==='kind'?(FK[x.kind]||{}).t||x.kind:k==='month'?(x.date||'').slice(0,7):k==='pick'?(F.pick[x.id]?'محدد':''):k==='act'?'':(x[k]==null?'':x[k]), can:()=>false,
     opts:()=>undefined, dates:[], wrap:['sum'], free:[], src:k=>k==='pick'||k==='act'?'البرنامج':'المخالفات والمحاضر', clr:k=>k==='pick'||k==='act'?TABC.mine:tc, chip:()=>'',
     cell:(x,k,v)=>k==='pick'?`<span class="pkb" data-pk="${esc(x.id)}" style="cursor:pointer;font-size:16px">${F.pick[x.id]?'☑':'☐'}</span>`:k==='kind'?`${(FK[x.kind]||{}).i||''} ${esc(v)}`:k==='seq'?`<b>${esc(v)}</b>`:k==='total'?money(v):k==='sum'?`<span>${esc(v)}</span>`:k==='act'?`<span style="white-space:nowrap"><button data-fo="${esc(x.id)}">فتح</button> <button data-fp="${esc(x.id)}">🖨</button></span>`:esc(v),
@@ -2971,12 +3080,12 @@ function vMatchRec(inv,top,wireTop){
     open:o=>{ const x=!inv&&byRef(o.key); if(x) openOrder(x.key); }, undo:null,
     norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {key:o.key,k,v}; },
     save:recs=>api('saveMatchRec',S.tok,recs).then(r=>{ r.rows.forEach(n=>{ const o=R.rows.find(x=>x.key===n.key); if(o) Object.assign(o,n); const x=!mrInv(n)&&byRef(n.key); if(x){ x.match_cert=n.cert; x.match_status=n.status; x.match_value=n.value; x.match_required=n.required; x.match_cover=n.cover; } }); S.mt=null; }),
-    bar:`<button id="mrx" class="pri">⬇ تصدير ملف ${inv?'الصيانة والطوارئ':'الإنشاءات'}</button><button id="mrxa">⬇ تصدير الملف الموحد للمطابقة</button>${can?'<button id="mri">⬆ استيراد ملف المطابقة</button><input type="file" id="mrf" accept=".xlsx,.xls" style="display:none">':''}`,
+    bar:`${can?'<button id="mradd" class="pri">+ '+(inv?'فاتورة':'أمر')+'</button>':''}<button id="mrx">⬇ تصدير ملف ${inv?'الصيانة والطوارئ':'الإنشاءات'}</button><button id="mrxa">⬇ تصدير الملف الموحد للمطابقة</button>${can?'<button id="mri">⬆ استيراد ملف المطابقة</button><input type="file" id="mrf" accept=".xlsx,.xls" style="display:none">':''}`,
     help:inv?'فواتير الصيانة والطوارئ، كل فاتورة مربوطة بإشعارها D9 (المكتب والمقاول والمحطة ونوع العمل تأتي من الإشعار). الملف المصدَّر فيه الفواتير وملخصها وكفر الصيانة.':'أوامر الإنشاءات، ومنها ما حوّلته GIS (بتاريخ تحويله). الاستيراد يضيف ويحدّث بالمفتاح ولا يحذف، ويحدّث أعمدة المطابقة الخمسة في أوامر العمل. يقبل الملف الموحد والمنفصل والقديم، ويقرأ ورقة «القوائم».',
     onDraw:l=>{ if(!$('#mrk')) return; const sm=k=>Math.round(l.reduce((s,o)=>s+(mrNum(o[k])||0),0)*100)/100;
       $('#mrk').innerHTML=inv?`<div class="kpi">الفواتير<b>${l.length}</b></div><div class="kpi">صافي الفواتير<b>${money(sm('inv_net'))||0}</b></div><div class="kpi">بالضريبة<b>${money(Math.round(sm('inv_net')*115)/100)||0}</b></div><div class="kpi">معتمدة من المالية<b style="color:var(--ok)">${l.filter(o=>/^\d{4}-/.test(o.appr_fin)).length}</b></div><div class="kpi">بلا إشعار في البرنامج<b class="late">${l.filter(o=>!o.n_found).length}</b></div>`
         :`<div class="kpi">أوامر الإنشاءات<b>${l.length}</b></div><div class="kpi">منها من GIS<b>${l.filter(o=>o.gis_date).length}</b></div><div class="kpi">قيمة المطابقة<b>${money(sm('value'))||0}</b></div><div class="kpi">موقف المطابقة: متبقي<b class="late">${l.filter(o=>o.status==='متبقي').length}</b></div><div class="kpi">صدر لها PO<b>${l.filter(o=>/^\d+$/.test(o.po)).length}</b></div>`; },
-    wire:()=>{ $('#mrx').onclick=()=>mrExport(inv?'maint':'cons'); $('#mrxa').onclick=()=>mrExport('all'); if($('#mri')){ $('#mri').onclick=()=>$('#mrf').click(); $('#mrf').onchange=e=>mrImport(e.target.files[0]); } } };
+    wire:()=>{ if($('#mradd')) $('#mradd').onclick=()=>mrAdd(inv); $('#mrx').onclick=()=>mrExport(inv?'maint':'cons'); $('#mrxa').onclick=()=>mrExport('all'); if($('#mri')){ $('#mri').onclick=()=>$('#mrf').click(); $('#mrf').onchange=e=>mrImport(e.target.files[0]); } } };
   sheet(rows, cols, {ad:AD, kpis:'<div id="mrk" class="kpis"></div>'});
   $('#main').insertAdjacentHTML('afterbegin',top); wireTop();
 }
@@ -2993,6 +3102,18 @@ async function mrImportBook(wb,quiet,uni){
     try{ add(await api('importMatchRec',S.tok,rows,hint)); out.sheets.push(nm); }catch(e){ if(!quiet) throw e; } }
   const ln=wb.SheetNames.find(n=>S2(n)==='القوائم'); if(ln){ try{ out.lists=await api('importLists',S.tok,rowsOf(ln)); }catch(e){ if(!quiet) throw e; } }
   return out; }
+// a new record typed in: the same path as an import of one row, so keys, kinds and the order sync stay the same
+function mrAdd(inv){ const nx=inv?Math.max(0,...(S.mr.rows||[]).filter(mrInv).map(o=>mrNum(o.inv_seq)||0))+1:'';
+  modal(`<h3 style="margin-top:0">${inv?'فاتورة صيانة وطوارئ جديدة':'أمر إنشاءات جديد في المطابقة'}</h3>
+   ${inv?`<label style="display:flex;flex-direction:column;gap:4px">التسلسل<input id="ma1" value="${nx}"></label><label style="display:flex;flex-direction:column;gap:4px;margin-top:8px">رقم الإشعار D9<input id="ma2"></label>`
+        :`<label style="display:flex;flex-direction:column;gap:4px">رقم أمر العمل<input id="ma1"></label><label style="display:flex;flex-direction:column;gap:4px;margin-top:8px">رمز استشاري<input id="ma2" list="mal"><datalist id="mal">${['911','912','913','914','915','916','917'].map(x=>`<option value="${x}">`).join('')}</datalist></label>`}
+   <div class="err" id="maerr"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="pri" id="mago">إضافة</button><button onclick="closeModal()">إلغاء</button></div>`);
+  $('#mago').onclick=async()=>{ const a=$('#ma1').value.trim(), b=$('#ma2').value.trim(); if(!a) return $('#maerr').textContent=inv?'اكتب التسلسل':'اكتب رقم أمر العمل';
+    const rows=inv?[['التسلسل (المفتاح)','رقم الإشعار D9'],[a,b]]:[['رقم أمر العمل','رمز استشاري'],[a,b]];
+    $('#mago').disabled=true; try{ const r=await api('importMatchRec',S.tok,rows,inv?'الصيانة والطوارئ':'الإنشاءات'); closeModal();
+      const key=inv?'INV-'+a:(b?a+'-'+b:a); await mrLoad(true); (S.gst[inv?'mrinv':'mrcon']||{}).pos={a:[key,inv?'wo':'type'],n:null,s:[],top:1e7,left:0};
+      toast(r.added?'أُضيف':r.deleted?'هذا السجل محذوف، استرجعه من الأرشيف ← المحذوفات':'موجود مسبقاً'); vMatching(); }
+    catch(e){ $('#maerr').textContent=e.message; $('#mago').disabled=false; } }; }
 async function mrImport(f){ if(!f) return; toast('جارٍ قراءة الملف…');
   try{ await loadXlsx(); const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true}); const r=await mrImportBook(wb);
     if(!r.sheets.length) return toast('لم أجد في الملف ورقة «الإنشاءات» أو «الصيانة والطوارئ» أو «المطابقة والصرف»');

@@ -156,9 +156,10 @@ function stateOf(it, d, P) {
   P.req.forEach(k => { const f = C.forms[k]; let s = 'none';
     if (f.k === 'chk') { const a = ((d.f || {})[k] || {}).a || {}, n = f.items.filter(x => !x.h).length, m = Object.keys(a).filter(i => a[i]).length; s = m >= n ? 'done' : m ? 'part' : 'none'; }
     else if (f.k === 'up') s = ((d.up || {})[k] || []).length ? 'done' : 'none';
+    else if (f.k === 'day' || f.k === 'boq') s = ((d.up || {})[k] || []).length ? 'done' : 'auto';   // built in the program from the daily schedule / the BOQ
     else if (f.k === 'site' || f.k === 'meeting') s = F.some(x => x.kind === f.k) ? 'done' : 'none';
     else if (f.k === 'lic') s = lic.has ? 'done' : 'none';
-    st[k] = s; if (s === 'done') fd++; else miss++; });
+    st[k] = s; if (s === 'done' || s === 'auto') fd++; else miss++; });
   P.cats.forEach(g => { const G = C.ph[g]; if (G) G.items.forEach((t, i) => { pn++; if (((d.ph || {})[g + ':' + i] || []).length) pd++; else miss++; }); });
   return { st, lic, prog: fd + '/' + P.req.length + ' · ' + pd + '/' + pn, miss };
 }
@@ -267,12 +268,13 @@ function queueView(A) {
 function itemView(A) {
   const key = S.r.key, it = itemOf(key); if (!it) { go({ v: 'home' }); return; }
   const C = S.B.cat, d = docOf(key), P = planOf(it, d), ST = stateOf(it, d, P), F = formsOf(key), rj = s => (d.rej || []).find(x => x.s === s);
-  const K = { done: ['✓', 'k2'], part: ['◐', 'k1'], none: ['○', 'k0'] };
+  const K = { done: ['✓', 'k2'], part: ['◐', 'k1'], none: ['○', 'k0'], auto: ['⚙', 'k1'] };
   const thumbs = (L, slot) => `<div class="th">${(L || []).map(x => `<span><img class="${x.local ? 'loc' : ''}" src="${x.local ? x.thumb || '' : phUrl(x.id, 160)}" alt=""><b class="x" data-del="${esc(slot)}" data-id="${esc(x.id)}">✕</b></span>`).join('')}</div>`;
   const fRow = k => { const f = C.forms[k], s = ST.st[k] || 'none'; let act = '', info = '';
     if (f.k === 'chk') { const x = (d.f || {})[k]; info = x ? esc(x.by) + (x.local ? ' · بانتظار الإرسال' : '') : ''; act = `<button data-chk="${k}">${x ? 'تعديل' : 'تعبئة'}</button>`; }
     else if (f.k === 'up') { info = thumbs((d.up || {})[k], 'u:' + k); act = `<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
     else if (f.k === 'site' || f.k === 'meeting') { const L = F.filter(x => x.kind === f.k); info = L.map(x => (x.local ? '⏳ ' : '') + esc(x.seq)).join('، '); act = `<button data-nf="${f.k}">+ جديد</button>`; }
+    else if (f.k === 'day' || f.k === 'boq') { info = (f.k === 'day' ? 'يُعبّأ تلقائياً من الجدول اليومي في البرنامج' : 'يُعبّأ تلقائياً من المقايسة') + thumbs((d.up || {})[k], 'u:' + k); act = `<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
     else if (f.k === 'lic') info = ST.lic.has ? 'مرفقة تلقائياً' : '<span class="err">لا توجد إجازة لـ ' + esc(ST.lic.name) + '</span>';
     return `<div class="fl ${rj('f:' + k) || rj('u:' + k) ? 'rj' : ''}"><span class="k ${K[s][1]}">${K[s][0]}</span><div class="n"><b>${esc(f.name)}</b>${f.no ? ' <span class="muted">' + esc(f.no) + '</span>' : ''}<div class="muted">${info}${rj('f:' + k) ? ' ⛔ مرفوض' : ''}</div></div>${act}${f.k !== 'lic' ? `<b class="x" data-drop="${k}" style="color:var(--mut);cursor:pointer;padding:4px">✕</b>` : ''}</div>`; };
   const ph = P.cats.map(g => { const G = C.ph[g]; if (!G) return ''; return `<h3>${esc(G.name)}</h3><div class="card">${G.items.map((t, i) => { const s = 'p:' + g + ':' + i, L = (d.ph || {})[g + ':' + i] || [];
@@ -531,7 +533,7 @@ async function reviewView(A) {
   if (!navigator.onLine) { $('.wrap').innerHTML = '<div class="card muted">المراجعة تحتاج اتصالاً بالإنترنت.</div>'; return; }
   let V; try { V = await call('qdGet', key); } catch (e) { $('.wrap').innerHTML = `<div class="card err">${esc(e.message)}</div>`; return; }
   if (S.r.v !== 'review') return; const C = S.B.cat, P = V.plan, items = [];
-  P.req.forEach(k => { const f = C.forms[k]; if (!f || f.k === 'lic') return; items.push([(f.k === 'chk' ? 'f:' : f.k === 'up' ? 'u:' : 'fm:') + (f.k === 'site' ? 'SITE' : f.k === 'meeting' ? 'MTG' : k), f.name + ((V.st || {})[k] && V.st[k] !== 'done' ? ' (ناقص)' : '')]); });
+  P.req.forEach(k => { const f = C.forms[k]; if (!f || f.k === 'lic') return; items.push([(f.k === 'chk' ? 'f:' : f.k === 'up' || f.k === 'day' || f.k === 'boq' ? 'u:' : 'fm:') + (f.k === 'site' ? 'SITE' : f.k === 'meeting' ? 'MTG' : k), f.name + ((V.st || {})[k] && V.st[k] !== 'done' ? ' (ناقص)' : '')]); });
   P.cats.forEach(g => { const G = C.ph[g]; if (G) G.items.forEach((t, i) => items.push(['p:' + g + ':' + i, G.name + ': ' + t])); });
   $('.wrap').innerHTML = `${o && o.qf_url ? `<a class="card item" href="${esc(o.qf_url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit">📄 فتح ملف الجودة PDF</a>` : ''}
     <div class="card"><b>اعتماد</b><div class="muted">إن كان الملف سليماً.</div><button class="pri big" id="ap" style="width:100%;margin-top:8px">اعتماد الملف</button></div>
