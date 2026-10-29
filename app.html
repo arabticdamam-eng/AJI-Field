@@ -235,8 +235,12 @@ const woOpts=()=>{ const n={}; S.orders.forEach(o=>n[o.wo]=(n[o.wo]||0)+1); retu
 const hKey=s=>String(s==null?'':s).replace(/[\u200b-\u200f\u202a-\u202e\ufeff]/g,'').replace(/SIG/gi,'GIS').replace(/[\s\-_\u0640]/g,'');
 const bKey=n=>hKey(String(n==null?'':n).replace(new RegExp('^\\s*سلة\\s*'),''));
 const hMatch=(holder,name)=>{ const h=hKey(holder), k=bKey(name); if(!h||!k) return false; if(h===k||h.indexOf(k)>=0) return true; const k2=k.replace(/ات$/,''); return k2.length>=5&&h.indexOf(k2)>=0; };
+// one OLAP code may stand for two steps (material issue / return before and after execution): an executed order takes the later one
+function jAct(code,o){ code=String(code==null?'':code).trim(); if(!code) return null; const J=S.B.journey||[], c=J.filter(x=>x.kind==='إجراء'&&String(x.code)===code); if(c.length<2) return c[0]||null;
+  const post=c.find(x=>/بعد التنفيذ/.test(x.name))||c[c.length-1], pre=c.find(x=>x!==post)||c[0], ex=J.find(x=>x.kind!=='سلة'&&x.name==='تم التنفيذ')||J.find(x=>x.kind==='إجراء'&&String(x.code)==='203'), at=n=>n?J.find(x=>x.kind!=='سلة'&&x.name===n):null, ok=x=>!!(ex&&x&&x.i>=ex.i&&x!==pre);
+  return (o&&o.exec_date)||(o&&(ok(at(o.cur_stage))||ok(at(o.stage))))?post:pre; }
 function jSteps(o){ const J=S.B.journey||[], b=o.olap_holder?J.find(x=>x.kind==='سلة'&&hMatch(o.olap_holder,x.name)):null;
-  const a=o.last_action?J.find(x=>x.kind==='إجراء'&&x.code===String(o.last_action)):null, st=o.cur_stage||o.stage, s=st?J.find(x=>x.kind!=='سلة'&&x.name===st):null;
+  const a=o.last_action?jAct(o.last_action,o):null, st=o.cur_stage||o.stage, s=st?J.find(x=>x.kind!=='سلة'&&x.name===st):null;
   return [b].concat(a&&s&&a!==s?(a.i>s.i?[a,s]:[s,a]):[a||s]).filter(Boolean); }
 const jNm=x=>{ if(x.kind!=='إجراء'||!x.code) return x.name; const n=String(x.name).replace(new RegExp('^'+x.code+'\\s+|\\s+'+x.code+'$'),'').trim(); return n||x.name; };
 const jLbl=x=>x.kind==='إجراء'&&x.code?'إجراء - '+x.code+' - '+jNm(x):x.kind+' - '+x.name;
@@ -300,7 +304,7 @@ async function start(useCache){
   if(tries>=3) { const m=$('#syncm'); if(m) m.classList.remove('on'); return; }
   S.pendB=raw; if(busyUI()){ const m=$('#syncm'); if(m) m.textContent='✓ بيانات جديدة تظهر بعد إغلاق النافذة'; return; } applyFresh();
 }
-const TABC={where:['#0F4C81','#E3EEF8'],inbox:['#5B3A8C','#EFE8F8'],orders:['#185FA5','#E6F1FB'],mine:['#5F5E5A','#F1EFE8'],daily:['#3C3489','#EEEDFE'],forms:['#A32D2D','#FCEBEB'],stalled:['#854F0B','#FAEEDA'],matching:['#3B6D11','#EAF3DE'],boq:['#7A4A12','#F7EEDF'],maint:['#993C1D','#FAECE7'],quality:['#72243E','#FBEAF0'],users:['#0F6E56','#E1F5EE'],import:['#444441','#EDEBE4'],report:['#6B3FA0','#F3EAFB'],olap:['#0B6E8A','#DFF3F8'],dash:['#1F3A5F','#E4EBF5'],permits:['#8A6D0B','#FBF3DA']};
+const TABC={cinv:['#8A5A00','#FFF4DC'],where:['#0F4C81','#E3EEF8'],inbox:['#5B3A8C','#EFE8F8'],orders:['#185FA5','#E6F1FB'],mine:['#5F5E5A','#F1EFE8'],daily:['#3C3489','#EEEDFE'],forms:['#A32D2D','#FCEBEB'],stalled:['#854F0B','#FAEEDA'],matching:['#3B6D11','#EAF3DE'],boq:['#7A4A12','#F7EEDF'],maint:['#993C1D','#FAECE7'],quality:['#72243E','#FBEAF0'],users:['#0F6E56','#E1F5EE'],import:['#444441','#EDEBE4'],report:['#6B3FA0','#F3EAFB'],olap:['#0B6E8A','#DFF3F8'],dash:['#1F3A5F','#E4EBF5'],permits:['#8A6D0B','#FBF3DA']};
 const SRC_TAB={'المقايسة':'boq','الصيانة والطوارئ':'maint','الإسنادات':'orders','المتعثرات':'stalled','المطابقة والصرف':'matching','الجدول اليومي':'daily','ملفات الجودة':'quality','المخالفات والمحاضر':'forms','أولاب':'olap','رحلة أمر العمل':'users','البرنامج':'mine','التصاريح':'permits'};
 const srcClr=k=>TABC[SRC_TAB[COL_SRC[k]]]||null;
 const VIEWS = [['orders','الإسنادات'],['mine','مهامي'],['daily','الجدول اليومي'],['forms','المخالفات والمحاضر'],['stalled','المتعثرات'],['matching','المطابقة والصرف']];
@@ -486,11 +490,12 @@ const stuckOut=o=>{ const p=J155(); if(!o||!p) return false; if(String(o.last_ac
 const isStalled=o=>!!o.munib_status&&!stuckOut(o);
 // «الإفادة / المرحلة» against OLAP (the owner, 29/10): the more advanced of the consultant's and the contractor's last action (journey order);
 // ▲ the stage is behind it, ▼ the stage is ahead of it. A click (after a question) writes that step as the stage.
-const jByCode=c=>c?(S.B.journey||[]).find(x=>x.kind==='إجراء'&&String(x.code)===String(c).trim())||null:null;
+const jByCode=(c,o)=>c?jAct(c,o):null;
 const jByStage=n=>{ if(!n) return null; const J=S.B.journey||[], v=stVal(stNorm(n)); return J.find(x=>x.kind!=='سلة'&&(x.name===v||x.name===n))||null; };
 function stDir(o){ if(!o||!o.wo) return null; const sig=(o.stage||'')+'|'+(o.last_action||'')+'|'+(o.last_action_con||'')+'|'+((S.B.journey||[]).length);
-  if(o._sdk===sig) return o._sd; let r=null; const a=jByCode(o.last_action), c=jByCode(o.last_action_con), top=a&&c?(c.i>a.i?c:a):(a||c);
-  if(top){ const s=jByStage(o.stage); if(!s||s.i!==top.i) r={d:!s||s.i<top.i?'up':'down',top,a,c,s,by:c&&top===c&&(!a||c.i>a.i)?'المقاول':'الاستشاري'}; }
+  if(o._sdk===sig) return o._sd; let r=null; const a=jByCode(o.last_action,o), c=jByCode(o.last_action_con,o), top=a&&c?(c.i>a.i?c:a):(a||c);
+  // ▼ only when the stage is itself an OLAP action ahead of it: a hand stage («جاري العمل», «تم التنفيذ») may run ahead of OLAP
+  if(top){ const s=jByStage(o.stage); if(!s||s.i<top.i) r={d:'up',top,a,c,s}; else if(s.i>top.i&&s.kind==='إجراء') r={d:'down',top,a,c,s}; if(r) r.by=c&&top===c&&(!a||c.i>a.i)?'المقاول':'الاستشاري'; }
   o._sdk=sig; o._sd=r; return r; }
 const sdTip=(o,d)=>'آخر إجراء للاستشاري: '+(d.a?actLbl(d.a.code):'—')+'\nآخر إجراء للمقاول: '+(d.c?actLbl(d.c.code):'—')+'\nالأكثر تقدماً: '+actLbl(d.top.code)+' ('+d.by+')\nالمرحلة المقترحة: '+stLbl(d.top.name)+'\n— اضغط لتغيير المرحلة إليها';
 async function stDirApply(key){ const o=byKey(key)||byRef(key), d=stDir(o); if(!d) return;
@@ -556,7 +561,7 @@ function gridAugment(A){
   return oKeys.concat(lKeys); }
 // ---- columns of the other files, linked to the row: the order's matching record, latest permit, latest daily visit and BOQ summary;
 // a notice's invoices in maintenance, an invoice's notice in matching. Edited here, saved in that file with that file's rights ----
-const isXK=k=>typeof k==='string'&&/^(mc|pm|dl|bq|mi|mn):/.test(k);
+const isXK=k=>typeof k==='string'&&/^(mc|pm|dl|bq|mi|mn|ci):/.test(k);
 const LXOBJ=(H,x)=>{ const o={}; H.forEach((k,i)=>o[k]=x[i]); return o; }, LX_BUSY={}, LX_FAIL={};
 const lxLatest=(a,b,f)=>!a||f(b)>f(a)?b:a;
 const LINKS={
@@ -588,6 +593,12 @@ const LINKS={
     ix:()=>{ const m={}; S.bqList.rows.forEach(r=>m[r.key]=r); return m; }, of:(d,X)=>d?X[d.key]||null:null, can:()=>false, num:['pv','dv'],
     val:(r,k)=>{ const P=c=>+((S.items.m[c]||[])[4]||0), v=w=>Math.round(r.lines.reduce((s,l)=>s+(w==='p'?+l.p||0:(l.d===''||l.d==null?0:+l.d))*P(l.c),0)*100)/100;
       return k==='st'?(BQS[r.status||'']||[r.status])[0]:k==='n'?r.lines.length:k==='df'?(r.lines.filter(x=>x.d!==''&&x.d!=null&&+x.d!==+(x.p||0)).length||''):k==='pv'?v('p'):k==='dv'?v('d'):k==='upd'?((r.upd_by||'')+' '+(r.upd_at||'').slice(0,10)).trim():k==='appr'?(r.appr_by||''):''; } },
+  ci:{ grp:'مراجعة فواتير المقاول', tab:'matching', on:()=>tabOn('matching'), ready:()=>!!S.ci, load:()=>ciLoad(), clr:()=>TABC.cinv, noCreate:1,
+    keys:()=>['n','seq','recv_date','back_date','inv_state','forms','uds','sl','engineer','notes'], lbl:k=>k==='n'?'عدد فواتير المقاول':k==='seq'?'آخر فاتورة مقاول':(CIL[k]||k)+(k==='notes'?' (فاتورة المقاول)':''),
+    ix:()=>{ const m={}; S.ci.rows.forEach(r=>{ const k=r.key||r.wo; (m[k]=m[k]||[]).push(r); }); Object.values(m).forEach(L=>L.sort((a,b)=>(+a.seq||0)-(+b.seq||0))); return m; },
+    of:(d,X)=>{ if(!d) return null; const L=X[d.key]||(!d.ccode?X[d.wo]:null); return L&&L.length?Object.assign(Object.create(L[L.length-1]),{_n:L.length}):null; },
+    val:(r,k)=>k==='n'?r._n:(r[k]==null?'':r[k]), can:k=>!!S.ci.can&&CI_ED.includes(k), opts:k=>CI_OK.includes(k)?(k==='forms'?['✓','✗','قديم','متبقي الصور']:['✓','✗']):k==='engineer'?PEOPLE():undefined, dates:['recv_date','back_date'],
+    save:L=>api('saveCInvCells',S.tok,L.map(x=>({id:x.r.id,k:x.k,v:x.v}))).then(r=>{ r.rows.forEach(y=>{ const n=ciObj(r.headers,y), o=S.ci.rows.find(z=>z.id===n.id); if(o) Object.assign(o,n,{file_n:o.file_n}); }); }) },
   // maintenance: the notice's invoices (by D9, or by the D2 written on the notice); several invoices are written together
   mi:{ grp:'فواتير الصيانة — المطابقة والصرف', tab:'matching', row:1, many:1, on:()=>tabOn('matching'), ready:()=>!!(S.mr&&S.mr.rows), load:()=>mrLoad(), clr:()=>TABC.maint, ask:'لا توجد فاتورة لهذا الإشعار في المطابقة والصرف. إنشاء فاتورة جديدة له؟',
     keys:()=>MR_IC.concat(['po_status']).filter(k=>!/^n_/.test(k)&&(canMoney()||!MR_NUM.includes(k))), lbl:k=>(k==='inv_seq'?'تسلسل الفاتورة':mrLbl(k,true)),
@@ -609,7 +620,7 @@ function lxLoad(p){ const P=LINKS[p]; if(P.ready()||LX_BUSY[p]||LX_FAIL[p]||!P.o
   Promise.resolve(P.load()).then(()=>{ LX_BUSY[p]=0; const go=()=>{ if(S.view!==v||!P.ready()) return; if(busyUI()) return setTimeout(go,1500); shell(); }; go(); }).catch(()=>{ LX_BUSY[p]=0; LX_FAIL[p]=1; }); }
 // which linked files a grid shows: order-based grids get the four order files (not their own), maintenance and invoices get each other
 function lxFor(A){ if(A.lx) return A.lx; if(A.file==='olap') return []; const native=!A.all&&A.orders!==false; if(!native&&!A.ordOf) return [];
-  const own={'المطابقة_الإنشاءات':'mc','التصاريح':'pm','الجدول_اليومي':'dl','المقايسة':'bq'}[A.file]; return ['mc','pm','dl','bq'].filter(p=>p!==own); }
+  const own={'المطابقة_الإنشاءات':'mc','التصاريح':'pm','الجدول_اليومي':'dl','المقايسة':'bq','مراجعة_فواتير_المقاول':'ci'}[A.file]; return ['mc','pm','dl','bq','ci'].filter(p=>p!==own); }
 function lxAugment(A){
   const ids=lxFor(A).filter(p=>LINKS[p].on()); if(!ids.length) return [];
   ids.forEach(lxLoad); const on=ids.filter(p=>LINKS[p].ready()); if(!on.length) return [];
@@ -635,7 +646,7 @@ function lxAugment(A){
   const pre=(p,a)=>(a||[]).map(k=>p+':'+k); on.forEach(p=>{ A.dates=(A.dates||[]).concat(pre(p,LINKS[p].dates)); A.free=(A.free||[]).concat(pre(p,LINKS[p].keys())); A.wrap=(A.wrap||[]).concat(pre(p,['notes','work','desc','note','work_desc','required'])); });
   return [].concat(...on.map(p=>LINKS[p].keys().map(k=>p+':'+k))); }
 // groups in the column chooser, in this order after the tab's own file
-const COL_GRP=['الإسنادات','أولاب','المتعثرات','المطابقة والصرف','المطابقة والصرف — الإنشاءات','فواتير الصيانة — المطابقة والصرف','الجدول اليومي','ملفات الجودة','المخالفات والمحاضر','التصاريح','المقايسة','رحلة أمر العمل','البرنامج','الصيانة والطوارئ'];
+const COL_GRP=['الإسنادات','أولاب','المتعثرات','المطابقة والصرف','المطابقة والصرف — الإنشاءات','فواتير الصيانة — المطابقة والصرف','مراجعة فواتير المقاول','الجدول اليومي','ملفات الجودة','المخالفات والمحاضر','التصاريح','المقايسة','رحلة أمر العمل','البرنامج','الصيانة والطوارئ'];
 // Excel-like figures: a strict number reader (dates, codes and phone numbers are not numbers to add up)
 const gNum=x=>{ if(typeof x==='number') return isFinite(x)?x:null; const t=String(x==null?'':x).replace(/,/g,'').trim(); return /^-?\d+(\.\d+)?$/.test(t)&&t.replace(/^-/,'').replace('.','').length<=13?+t:null; };
 const gFmt=n=>n==null?'':(Math.round(n*100)/100).toLocaleString('en');
@@ -757,7 +768,7 @@ function sheet(base, defCols, opt={}){
     b.querySelectorAll('.gsi').forEach(x=>x.onclick=()=>{ try{ navigator.clipboard.writeText(String(Math.round(+x.dataset.v*100)/100)); toast('نُسخ: '+gFmt(+x.dataset.v)); }catch(e){} }); };
   const rect=(a,b)=>{ const s=new Set(); for(let r=Math.min(a[0],b[0]);r<=Math.max(a[0],b[0]);r++) for(let c=Math.min(a[1],b[1]);c<=Math.max(a[1],b[1]);c++) s.add(key(r,c)); return s; };
   const box=$('#tbox');
-  box.onmousedown=e=>{ const qb=e.target.closest('.qfb'); if(qb){ e.preventDefault(); qdModal(qb.dataset.mq?'D9:'+qb.dataset.mq:qb.dataset.qf); return; } const ab=e.target.closest('.atb'); if(ab){ e.preventDefault(); attModal(ab.dataset.att); return; } const sd=e.target.closest('.sdir'); if(sd){ e.preventDefault(); e.stopPropagation(); stDirApply(sd.dataset.sd); return; } const pb=e.target.closest('.pmb'); if(pb){ e.preventDefault(); goPermits(pb.dataset.pm); return; } const pu=e.target.closest('.pmu'); if(pu){ e.preventDefault(); e.stopPropagation(); permitPick(pu.dataset.pm); return; } const px=e.target.closest('.pmx'); if(px){ e.preventDefault(); e.stopPropagation(); if(confirm('إخفاء هذا الملف؟ لا يُحذف من Drive، ويُرجع من قائمة ملفات التصريح.')) api('removePermitFile',S.tok,px.dataset.pm).then(()=>{ toast('أُخفي الملف'); S.pm=null; shell(); }).catch(er=>toast(er.message)); return; }
+  box.onmousedown=e=>{ const qb=e.target.closest('.qfb'); if(qb){ e.preventDefault(); qdModal(qb.dataset.mq?'D9:'+qb.dataset.mq:qb.dataset.qf); return; } const ab=e.target.closest('.atb'); if(ab){ e.preventDefault(); attModal(ab.dataset.att); return; } const cp=e.target.closest('.cip'); if(cp){ e.preventDefault(); e.stopPropagation(); ciPick(cp.dataset.ci); return; } const cl=e.target.closest('.cil'); if(cl){ e.preventDefault(); e.stopPropagation(); ciFilesModal(cl.dataset.ci); return; } const sd=e.target.closest('.sdir'); if(sd){ e.preventDefault(); e.stopPropagation(); stDirApply(sd.dataset.sd); return; } const pb=e.target.closest('.pmb'); if(pb){ e.preventDefault(); goPermits(pb.dataset.pm); return; } const pu=e.target.closest('.pmu'); if(pu){ e.preventDefault(); e.stopPropagation(); permitPick(pu.dataset.pm); return; } const px=e.target.closest('.pmx'); if(px){ e.preventDefault(); e.stopPropagation(); if(confirm('إخفاء هذا الملف؟ لا يُحذف من Drive، ويُرجع من قائمة ملفات التصريح.')) api('removePermitFile',S.tok,px.dataset.pm).then(()=>{ toast('أُخفي الملف'); S.pm=null; shell(); }).catch(er=>toast(er.message)); return; }
     const pl=e.target.closest('.pml'); if(pl){ e.preventDefault(); e.stopPropagation(); permitFilesModal(pl.dataset.pm); return; } const al=e.target.closest('.atb2'); if(al){ e.stopPropagation(); return; } const bq=e.target.closest('.bqb'); if(bq){ e.preventDefault(); boqModal(bq.dataset.bq); return; } const fb=e.target.closest('.fmb'); if(fb){ e.preventDefault(); formsModal(fb.dataset.wo,fb.dataset.fg); return; } const rn=e.target.closest('td[data-rr]'); if(rn){ e.preventDefault(); if(ed) commit(); const r=+rn.dataset.rr, last=cols.length-1;
       if(e.shiftKey&&anchor){ sel=rect([anchor[0],0],[r,last]); act=[r,0]; } else if(e.ctrlKey||e.metaKey){ rect([r,0],[r,last]).forEach(x=>sel.add(x)); act=[r,0]; } else { act=[r,0]; anchor=[r,0]; sel=rect([r,0],[r,last]); }
       paintSel(); box.focus(); return; }
@@ -3599,11 +3610,57 @@ function mrLists(){ const L=S.mr.rows||[], X=S.mr.lists||{}, u=(k,inv)=>[...new 
     appr:m(['تحت الاعتماد'],X.appr||[])}; }
 async function mrLoad(force){ if(S.mr&&S.mr.rows&&!force) return S.mr; const r=await api('listMatchRec',S.tok); S.mr={can:r.can,lists:r.lists||{},rows:r.rows.map(x=>{ const o={}; r.headers.forEach((k,i)=>o[k]=x[i]); return o; })}; return S.mr; }
 function vMatching(){
-  const sub=S.mtSub==='maint'?'maint':'cons', tc=TABC.matching, tm=TABC.maint;
-  const top=`<div class="bar whtabs"><a data-mts="cons" class="${sub==='cons'?'on':''}" style="--tc:${tc[0]};--tt:${tc[1]}">الإنشاءات</a><a data-mts="maint" class="${sub==='maint'?'on':''}" style="--tc:${tm[0]};--tt:${tm[1]}">الصيانة والطوارئ</a></div>`;
+  const sub=S.mtSub==='maint'?'maint':S.mtSub==='cinv'?'cinv':'cons', tc=TABC.matching, tm=TABC.maint, ti=TABC.cinv;
+  const top=`<div class="bar whtabs"><a data-mts="cons" class="${sub==='cons'?'on':''}" style="--tc:${tc[0]};--tt:${tc[1]}">الإنشاءات</a><a data-mts="maint" class="${sub==='maint'?'on':''}" style="--tc:${tm[0]};--tt:${tm[1]}">الصيانة والطوارئ</a><a data-mts="cinv" class="${sub==='cinv'?'on':''}" style="--tc:${ti[0]};--tt:${ti[1]}">مراجعة فواتير المقاول</a></div>`;
   const wireTop=()=>document.querySelectorAll('[data-mts]').forEach(a=>a.onclick=()=>{ S.mtSub=a.dataset.mts; vMatching(); });
   $('#main').innerHTML=top+'<div class="loading">جارٍ تحميل المطابقة والصرف…</div>'; wireTop();
-  mrLoad().then(()=>{ if(S.view==='matching') vMatchRec(sub==='maint',top,wireTop); }).catch(e=>{ $('#main').innerHTML=top+`<div class="err">${esc(e.message)}</div>`; wireTop(); });
+  (sub==='cinv'?ciLoad():mrLoad()).then(()=>{ if(S.view==='matching') sub==='cinv'?vCInv(top,wireTop):vMatchRec(sub==='maint',top,wireTop); }).catch(e=>{ $('#main').innerHTML=top+`<div class="err">${esc(e.message)}</div>`; wireTop(); });
+}
+// ---------- «مراجعة فواتير المقاول»: a tab of المطابقة والصرف (the owner, 29/10) ----------
+const CIL={wo:'رقم أمر العمل',type:'الكود',seq:'الفاتورة',recv_date:'استلام الفاتورة من المقاول',back_date:'تسليم الفاتورة للمقاول',days:'مدة المراجعة (يوم)',desc:'وصف العمل',inv_state:'إعداد / حالة الفاتورة',forms:'النماذج والصور',uds:'مراجعة المقايسة UDS',sl:'مراجعة SL',engineer:'المهندس المشرف',notes:'ملاحظات',note_date:'تعديل الملاحظة',file_n:'صور الفاتورة',updated_at:'آخر تحديث',updated_by:'بواسطة'};
+const CI_COLS=['wo','type','seq','recv_date','back_date','days','desc','inv_state','forms','uds','sl','engineer','notes','note_date','file_n'];
+const CI_ED=['recv_date','back_date','desc','inv_state','forms','uds','sl','engineer','notes','note_date'], CI_OK=['inv_state','forms','uds','sl'];
+async function ciLoad(force){ if(S.ci&&!force) return S.ci; const r=await api('listCInv',S.tok); S.ci={can:r.can,H:r.headers,rows:r.rows.map(x=>{ const o={}; r.headers.forEach((k,i)=>o[k]=x[i]); return o; })}; return S.ci; }
+const ciDays=o=>{ const a=o.recv_date, b=o.back_date||S.B.today; if(!/^\d{4}-\d{2}-\d{2}$/.test(a||'')) return ''; return Math.max(0,Math.round((new Date(b)-new Date(a))/864e5)); };
+const ciObj=(H,x)=>{ const o={}; H.forEach((k,i)=>o[k]=x[i]); return o; };
+function ciPick(id){ const i=document.createElement('input'); i.type='file'; i.multiple=true; i.accept='image'+String.fromCharCode(47)+'*,application'+String.fromCharCode(47)+'pdf'; i.onchange=async()=>{ const fs=[...i.files]; let n=0;
+  for(const file of fs){ let b64, mime=file.type||''; try{ if(/^image\//.test(mime)){ const im=await shrinkImg(file,2000,0.85); b64=im.b64; mime=im.mime; } else if(/pdf/.test(mime)||/\.pdf$/i.test(file.name)){ b64=await fileB64(file); mime='application/pdf'; } else { toast('ارفع صورة أو PDF'); continue; }
+    toast('جارٍ رفع صورة الفاتورة '+(n+1)+' من '+fs.length+'…'); const r=await api('uploadCInvFile',S.tok,id,b64,mime,file.name); n++; const o=(S.ci&&S.ci.rows||[]).find(x=>x.id===String(id)); if(o) o.file_n=String(r.n); }catch(e){ toast(e.message); } }
+  if(n){ toast('رُفعت '+n+' صورة للفاتورة'); if(S.view==='matching') shell(); } }; i.click(); }
+async function ciFilesModal(id){ let R; try{ R=await api('ciFilesList',S.tok,id); }catch(e){ return toast(e.message); } const V=R.files.filter(f=>!f.hid).reverse(), Hd=R.files.filter(f=>f.hid).reverse();
+  modal(`<h3 style="margin-top:0">صور الفاتورة (${V.length})</h3><div class="tw" style="max-height:45vh"><table><thead><tr><th>الملف</th><th>رُفع</th><th>بواسطة</th><th></th></tr></thead><tbody>${V.map(f=>`<tr><td><a href="${esc(f.url)}" target="_blank" rel="noopener">📄 ${esc(f.n||'ملف')}</a></td><td>${esc((f.at||'').slice(0,16))}</td><td>${esc(f.by||'')}</td><td>${R.can?`<button data-fh="${esc(f.id)}">✕ إخفاء</button>`:''}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">لا توجد صور بعد</td></tr>'}</tbody></table></div>
+   ${Hd.length?`<h4 style="margin:12px 0 6px">صور مخفية (${Hd.length})</h4><div class="tw" style="max-height:25vh"><table><tbody>${Hd.map(f=>`<tr style="color:#888780"><td><a href="${esc(f.url)}" target="_blank" rel="noopener">📄 ${esc(f.n||'ملف')}</a></td><td>أخفاها ${esc(f.hid_by||'')}</td><td>${R.can?`<button data-fs="${esc(f.id)}">↺ إرجاع</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:''}
+   <div style="display:flex;gap:8px;margin-top:10px">${R.can?'<button class="pri" id="cfadd">📷 تصوير / رفع</button>':''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+  const act=(fid,hide)=>api('ciFileHide',S.tok,id,fid,hide).then(r=>{ const o=(S.ci&&S.ci.rows||[]).find(x=>x.id===String(id)); if(o) o.file_n=String(r.files.filter(f=>!f.hid).length||''); toast(hide===false?'أُرجعت الصورة':'أُخفيت الصورة'); ciFilesModal(id); }).catch(e=>toast(e.message));
+  document.querySelectorAll('[data-fh]').forEach(b=>b.onclick=()=>act(b.dataset.fh)); document.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>act(b.dataset.fs,false)); if($('#cfadd')) $('#cfadd').onclick=()=>{ closeModal(); ciPick(id); }; }
+async function ciImport(f){ if(!f) return; toast('جارٍ قراءة الملف…');
+  try{ await loadXlsx(); const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true}); let best=null;
+    wb.SheetNames.forEach(n=>{ const rows=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''}); if(!best&&rows.some(r=>r.some(c=>String(c).replace(/\s+/g,'').includes('رقمأمرالعمل')))) best=rows; });
+    if(!best) throw new Error('لم أجد عمود «رقم أمر العمل» في الملف'); const r=await api('importCInv',S.tok,best); toast('أُضيف '+r.added+' · حُدّث '+r.updated+(r.skipped?' · تُرك '+r.skipped:'')); await ciLoad(true); if(S.view==='matching') vMatching(); }
+  catch(e){ toast(e.message); } }
+function vCInv(top,wireTop){
+  const R=S.ci, can=R.can&&!roView(), tc=TABC.cinv, rows=R.rows; S.gst=S.gst||{}; const ST=S.gst.cinv||(S.gst.cinv={cf:{},sort:['recv_date',-1],xf:null,f:{q:''}});
+  const AD={ noImp:1, del:{kind:'cinv',name:'فاتورة مقاول',key:o=>o.id,ref:o=>(o.wo||'')+' · فاتورة '+(o.seq||''),done:keys=>{ const K=new Set(keys); R.rows=R.rows.filter(o=>!K.has(o.id)); }}, st:ST, unit:'فاتورة', stk:'wo', file:'مراجعة_فواتير_المقاول', orders:false, lx:['mc','pm','dl','bq'],
+    ordOf:o=>byRef(o.key||o.wo), all:CI_COLS.concat(['updated_at','updated_by']), lbl:k=>CIL[k]||k, val:(o,k)=>k==='days'?ciDays(o):k==='file_n'?(o.file_n||''):(o[k]==null?'':o[k]),
+    can:(o,k)=>can&&CI_ED.includes(k), opts:(o,k)=>CI_OK.includes(k)?(k==='forms'?['✓','✗','قديم','متبقي الصور']:['✓','✗']):k==='engineer'?PEOPLE():undefined, dates:['recv_date','back_date','note_date'], wrap:['desc','notes'], free:['forms','engineer'],
+    src:()=>'مراجعة فواتير المقاول', clr:()=>tc, chip:()=>'', cls:(o,k)=>CI_OK.includes(k)&&o[k]==='✗'?'late':'',
+    cell:(o,k,v)=>CI_OK.includes(k)&&v?`<b style="color:${v==='✓'?'var(--ok)':v==='✗'?'var(--dan)':'inherit'}">${esc(v)}</b>`:k==='file_n'?`${can?`<button class="cip" data-ci="${esc(o.id)}" title="تصوير الفاتورة أو رفع صورة / PDF — تُحفظ مع الصور السابقة">📷</button> `:''}${v?`<button class="cil" data-ci="${esc(o.id)}" title="صور الفاتورة">${esc(v)} صور</button>`:''}`:k==='seq'&&v?'فاتورة '+esc(v):(k==='desc'||k==='notes')?richHtml(v):esc(v),
+    search:o=>[o.wo,o.key,o.desc,o.engineer,o.notes].join(' '), open:o=>{ const x=byRef(o.key||o.wo); if(x) openOrder(x.key); }, undo:can?(()=>undoLast('ci')):null,
+    norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
+    save:recs=>api('saveCInvCells',S.tok,recs).then(r=>{ r.rows.forEach(x=>{ const n=ciObj(r.headers,x), o=R.rows.find(y=>y.id===n.id); if(o) Object.assign(o,n,{file_n:o.file_n}); }); }),
+    bar:`${can?'<button id="ciadd" class="pri">+ فاتورة</button><button id="ciimp">⬆ استيراد ملف المراجعة</button><input type="file" id="cif" accept=".xlsx,.xls" style="display:none">':''}`,
+    help:'فاتورة لكل سطر: الأمر الواحد قد تكون له أكثر من فاتورة (فاتورة 1، 2 …). 📷 لتصوير الفاتورة من الجوال أو رفع صورة / PDF، وكل صورة تُحفظ مع ما قبلها. «مدة المراجعة» من استلام الفاتورة إلى تسليمها (أو إلى اليوم إن لم تُسلّم).',
+    onDraw:l=>{ if(!$('#cik')) return; const nb=l.filter(o=>!o.back_date).length, avg=l.length?Math.round(l.reduce((s,o)=>s+(+ciDays(o)||0),0)/l.length*10)/10:0;
+      $('#cik').innerHTML=`<div class="kpi">فواتير مستلمة<b>${l.length}</b></div><div class="kpi">لم تُسلّم للمقاول<b class="${nb?'late':''}">${nb}</b></div><div class="kpi">مراجعة المقايسة غير مكتملة<b>${l.filter(o=>o.uds!=='✓').length}</b></div><div class="kpi">مراجعة SL غير مكتملة<b>${l.filter(o=>o.sl!=='✓').length}</b></div><div class="kpi">متوسط مدة المراجعة (يوم)<b>${avg}</b></div>`; },
+    wire:()=>{ if($('#ciadd')) $('#ciadd').onclick=()=>{ modal(`<h3 style="margin-top:0">فاتورة مقاول جديدة</h3><div class="f"><label>رقم أمر العمل<input id="ci1"></label><label>الكود (نوع الأمر)<input id="ci2" placeholder="مثل 804"></label><label>تاريخ الاستلام<input id="ci3" type="date" value="${S.B.today}"></label></div><div class="err" id="cie"></div><button class="pri" id="cigo">إضافة</button> <button onclick="closeModal()">إلغاء</button>`);
+        $('#ci1').oninput=()=>{ const x=byRef($('#ci1').value.trim()); if(x&&!$('#ci2').value) $('#ci2').value=x.type||''; };
+        $('#cigo').onclick=async()=>{ $('#cigo').disabled=true; try{ const row=await api('addCInv',S.tok,{wo:$('#ci1').value.trim(),type:$('#ci2').value.trim(),recv_date:$('#ci3').value}); R.rows.push(ciObj(R.H,row)); closeModal(); toast('أُضيفت الفاتورة'); vMatching(); }catch(e){ $('#cie').textContent=e.message; $('#cigo').disabled=false; } }; };
+      if($('#ciimp')){ $('#ciimp').onclick=()=>$('#cif').click(); $('#cif').onchange=e=>ciImport(e.target.files[0]); } } };
+  const D=can?{ need:'رقم أمر العمل', fields:['wo','type'].concat(CI_ED), ready:o=>/^\d{6,12}$/.test(String(o.wo||'').trim()), init:()=>({recv_date:S.B.today}),
+    fill:(o,k)=>{ if(k!=='wo') return; const x=byRef(o.wo); if(!x) return; o.wo=x.wo; if(!o.type) o.type=x.type||''; },
+    commit:async x=>{ const row=await api('addCInv',S.tok,x); return ciObj(R.H,row); }, done:o=>'أُضيفت فاتورة '+o.seq+' للأمر '+o.wo }:null;
+  sheet(rows, CI_COLS, {ad:AD, draft:D, kpis:'<div id="cik" class="kpis"></div>'});
+  $('#main').insertAdjacentHTML('afterbegin',top); wireTop();
 }
 function vMatchRec(inv,top,wireTop){
   const R=S.mr, can=R.can&&!roView(), LS=mrLists(), tc=inv?TABC.maint:TABC.matching, cols=inv?MR_IC:MR_CC, rows=R.rows.filter(o=>mrInv(o)===inv);

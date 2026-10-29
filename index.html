@@ -92,6 +92,7 @@ async function runOp(op) {
   if (op.t === 'qd') return call('qdSave', op.ref, op.op);
   if (op.t === 'up') return call('qdUpload', op.ref, op.slot, op.b64, op.mime, op.loc || '');
   if (op.t === 'del') return call('qdRemove', op.ref, op.slot, op.fid);
+  if (op.t === 'ci') return call('fieldCInvPhoto', op.ref, op.b64, op.mime, !!op.isNew);
   if (op.t === 'boq') return call('boqSave', op.ref, { lines: op.lines });
   if (op.t === 'draw') return call('boqDraw', op.ref, op.draw, op.png || '');
   if (op.t === 'form') {
@@ -260,7 +261,7 @@ function homeView(A) {
 }
 function queueView(A) {
   A.innerHTML = topBar('بانتظار الإرسال', 1) + `<div class="wrap">${S.Q.map(op => `<div class="card"><div class="row"><b>${esc(op.ref)}</b><span class="muted">${esc(op.at)}</span><span style="flex:1"></span><button data-dq="${op.id}" style="color:var(--dan)">حذف</button></div>
-    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
+    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'ci' ? 'صورة فاتورة المقاول' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
     <button class="pri big" id="sn" style="width:100%">إرسال الآن</button></div>`;
   wire(); $('#sn').onclick = () => sync(true);
   $$('[data-dq]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذا العمل من الجوال نهائياً؟')) return; await DB.qdel(+b.dataset.dq); S.Q = S.Q.filter(x => x.id !== +b.dataset.dq); render(); });
@@ -289,6 +290,8 @@ function itemView(A) {
     <h3>المخالفات${it.d9 ? '' : ' والمحاضر'}</h3><div class="card"><div class="muted">${vio.length ? vio.map(x => (x.local ? '⏳ ' : '') + (x.kind === 'safety' ? 'سلامة ' : 'جودة ') + esc(x.seq)).join('، ') : 'لا توجد مخالفات'}</div>
       <div class="row" style="margin-top:8px"><button data-nf="safety">+ مخالفة سلامة</button><button data-nf="quality">+ مخالفة جودة</button>${it.d9 ? '' : '<button data-nf="meeting">+ محضر اجتماع</button>'}</div></div>
     ${it.d9 ? '' : boqCard(key)}
+    ${it.d9 ? '' : `<h3>فاتورة المقاول</h3><div class="card"><div class="muted">صوّر فاتورة المقاول (صفحة أو أكثر). تُحفظ مع آخر فاتورة لهذا الأمر في «مراجعة فواتير المقاول»، وتُرسل عند الاتصال.${S.Q.filter(q => q.t === 'ci' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'ci' && q.ref === key).length : ''}</div>
+      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-ci="0" hidden></label><label class="cam btn">🖼 من الجهاز<input type="file" accept="image/*,application/pdf" multiple data-ci="0" hidden></label><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cinew" style="width:auto"> فاتورة جديدة</label></div></div>`}
     <h3>الصور المطلوبة</h3>${ph || '<div class="card muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
     <div class="card muted">إنشاء ملف الجودة (PDF) من البرنامج الرئيسي بعد إرسال كل شيء. <a href="${esc(S.api)}" target="_blank" rel="noopener">فتح البرنامج</a></div></div>`;
   wire();
@@ -302,6 +305,10 @@ function itemView(A) {
   if ($('#bqo')) $('#bqo').onclick = () => go({ v: 'boq', key }); if ($('#bqd')) $('#bqd').onclick = () => openDraw(key);
   $$('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذه الصورة؟')) return; const id = b.dataset.id;
     if (/^L\d+$/.test(id)) { const qid = +id.slice(1); await DB.qdel(qid); S.Q = S.Q.filter(x => x.id !== qid); render(); } else enqueue({ t: 'del', ref: key, slot: b.dataset.del, fid: id }); });
+  $$('input[data-ci]').forEach(inp => inp.onchange = async () => { const files = [...inp.files]; if (!files.length) return; const nw = !!($('#cinew') && $('#cinew').checked); let first = true;
+    try { for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'ci', ref: key, b64: await fileB64(f), mime: 'application/pdf', isNew: nw && first }); }
+        else { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'ci', ref: key, b64: b, mime: 'image/jpeg', isNew: nw && first }); } first = false; }
+      toast('حُفظت صور الفاتورة على الجوال' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); } catch (e) { toast(e.message, 4000); } });
   $$('input[data-up]').forEach(inp => inp.onchange = async () => { const slot = inp.dataset.up, files = [...inp.files]; if (!files.length) return;
     try { for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'up', ref: key, slot, b64: await fileB64(f), mime: 'application/pdf', thumb: '' }); }
         else { const [p] = await takePhotos([f], it, !!inp.dataset.cam); await enqueue({ t: 'up', ref: key, slot, b64: p.b64, mime: p.mime, loc: p.loc, thumb: p.thumb }); } } toast('حُفظت على الجوال' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); }
