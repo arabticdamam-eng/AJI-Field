@@ -143,6 +143,7 @@ table.fit td{vertical-align:top}table.fit select{width:100%}
 .pf.saf .hbar td{background:#F8CBAD;color:#833C0B;text-align:center}.pf.saf td.v{color:#1F4E9A;text-align:center}.pf.saf .page{border:1.5px solid #000}
 .pf.qua .page{border:1.5px solid #000;padding:10px 16px 16px}.pf.qua .hbar{background:#D8E4BC;border:1px solid #000;text-align:center;font-weight:700;width:46%;margin:8px auto;padding:2px}.pf.qua td.g{background:#D8E4BC}
 .pf.qua .mgr{background:#DCE6F1;border:1px solid #000;padding:6px 8px;font-weight:700}
+.pf.f26 .page{border:1.5px solid #000;padding:0;font-family:Arial,Tahoma,sans-serif;color:#000}.pf.f26 table{width:100%;border-collapse:collapse}.pf.f26 td{border:1px solid #000;padding:3px 6px;font-size:10.5px;color:#000;text-align:center;vertical-align:middle}.pf.f26 td.k{background:#F2F2F2;font-weight:700}.pf.f26 td.b{font-weight:700}.pf.f26 td.tt{background:#fff;font-size:13px;border-bottom:1px solid #000}.pf.f26 td.a{background:#fff;font-size:9.5px;font-weight:700}.pf.f26 .en{font-size:10px;font-weight:700;direction:ltr}.pf.f26 td.pic img{max-width:96%;max-height:95mm;display:block;margin:0 auto}.pf.f26 .muted2{color:#000;font-size:11px}.pf.f26 .blu{color:#1F3864}.pf.f26 table+table{margin-top:-1px}.pf.f26+.pf.f26{break-before:page;page-break-before:always}
 .pf.vr .page{border:1.5px solid #000;padding:10px 14px 14px}.pf.vr table{width:100%;border-collapse:collapse}.pf.vr td{border:1px solid #000;padding:3px 5px;font-size:11px}.pf.vr table.top td{border:none}.pf.vr td.k{background:#DCE6F1;color:#1F3864;font-weight:700;text-align:center}.pf.vr td.v{color:#1F4E9A;text-align:center}.pf.vr .en{font-size:9px;font-weight:700;direction:ltr}.pf.vr .hd{background:#DCE6F1;border:1px solid #000;font-weight:700;text-align:center;padding:4px;margin:6px 0 0;color:#1F3864}
 .pf.mee{font-size:13px}.pf.mee .ttl{position:relative;background:#D0CECE;border:1px solid #000;text-align:center;font-size:20px;font-weight:700;padding:3px 0}.pf.mee .ttl .no{position:absolute;left:36%;top:1px;font-size:11px}
 .pf.mee .sec{background:#D0CECE;font-weight:700;font-size:15px;padding:1px 8px;border:1px solid #000;border-bottom:none}.pf.mee .pbox{border:1px solid #000;padding:6px 10px;white-space:pre-wrap;line-height:1.6}
@@ -304,7 +305,7 @@ const srcClr=k=>TABC[SRC_TAB[COL_SRC[k]]]||null;
 const VIEWS = [['orders','الإسنادات'],['mine','مهامي'],['daily','الجدول اليومي'],['forms','المخالفات والمحاضر'],['stalled','المتعثرات'],['matching','المطابقة والصرف']];
 const TABL={where:'أين الطلب',orders:'الإسنادات',mine:'مهامي',daily:'الجدول اليومي',forms:'المخالفات والمحاضر',boq:'المقايسة',stalled:'المتعثرات',matching:'المطابقة والصرف',maint:'الصيانة والطوارئ',permits:'التصاريح',quality:'ملفات الجودة',report:'التقرير الشهري',olap:'أولاب',dash:'الداشبورد',inbox:'الوارد والتوزيع'}, TABK=Object.keys(TABL).filter(k=>k!=='inbox');
 const tabOn=v=>!S.tabsOn||S.tabsOn.includes(v), roView=v=>(((S.B||{}).tabs||{}).ro||[]).includes(v||S.view), TAB_NO='هذا التبويب غير متاح لك';
-const autoTabs=(role,mods)=>{ const m=String(mods||'').split(',').map(x=>x.trim()), adm=role==='مدير'||role==='مدير المشاريع'||m.includes('الكل'), qe=m.includes('الجودة'), mt=adm||m.includes('الصيانة'); const pm=adm||m.includes('التصاريح'); if(adm) return TABK.slice(); if(role==='مشاهد'&&!qe) return ['mine','daily','forms','boq'].concat(mt?['maint']:[],pm?['permits']:[]); return ['where','orders','mine','daily','forms','boq','stalled','matching','maint','permits'].concat(qe?['quality']:[],['olap','dash']); };
+const autoTabs=(role,mods)=>{ const m=String(mods||'').split(',').map(x=>x.trim()), adm=role==='مدير'||role==='مدير المشاريع'||role==='مدير النظام'||m.includes('الكل'), qe=m.includes('الجودة'), mt=adm||m.includes('الصيانة'); const pm=adm||m.includes('التصاريح'); if(adm) return TABK.slice(); if(role==='مشاهد'&&!qe) return ['mine','daily','forms','boq'].concat(mt?['maint']:[],pm?['permits']:[]); return ['where','orders','mine','daily','forms','boq','stalled','matching','maint','permits'].concat(qe?['quality']:[],['olap','dash']); };
 // ---------- side menu: ☰ at the top right opens the sections grouped by work ----------
 const MGRP=[['الرئيسية',['where','inbox','dash','mine']],['أوامر العمل',['orders','daily','stalled','matching','boq']],['الصيانة والتصاريح',['maint','permits']],['الجودة والسلامة',['forms','quality']],['التقارير',['report','olap']],['الإدارة',['users','import']]];
 const tabName=k=>k==='users'?'المستخدمون ورحلة أمر العمل':k==='import'?'الاستيراد':TABL[k]||k;
@@ -341,11 +342,11 @@ async function pjCompare(){ const box=$('#pjcmp'); if(!box) return; box.innerHTM
     <tr class="tot" style="font-weight:700;background:#EEF3F8"><td>كل المشاريع</td><td>${T('n')}</td><td>${T('open')}</td><td>${T('late')}</td><td>${T('mn')}</td>${mny?`<td>${gFmt(T('pdc'))}</td><td>${gFmt(T('aji'))}</td><td>${gFmt(T('sar'))}</td><td>${T('aji')?Math.round(T('sar')/T('aji')*1000)/10:0}%</td>`:''}<td></td></tr></tbody></table></div>`;
   box.querySelectorAll('[data-pjgo]').forEach(b=>b.onclick=()=>projGo(b.dataset.pjgo)); }
 // the register: add a project (from the first project's template), stop one, choose who sees every project
-async function projModal(){ let R; try{ R=await api('listProjects',S.tok); }catch(e){ return toast(e.message); }
+async function projModal(){ let R; try{ R=await api('listProjects',S.tok); }catch(e){ return toast(e.message); } const own=!!(S.B.projects&&S.B.projects.own);
   modal(`<h3 style="margin-top:0">المشاريع</h3>
    <div class="tw" style="max-height:30vh"><table><thead><tr><th>المشروع</th><th>أُنشئ</th><th>بواسطة</th><th></th></tr></thead><tbody>${R.list.map(p=>`<tr><td><b>${esc(p.name)}</b>${p.id===R.cur?' <span class="pill p-ok">مفتوح</span>':''}${p.id?'':' <span class="muted">(الأساسي — القالب)</span>'}</td><td>${esc((p.at||'').slice(0,10))}</td><td>${esc(p.by||'')}</td>
-     <td>${p.id!==R.cur?`<button data-pg="${esc(p.id)}">دخول</button>`:''} ${p.book?`<a href="https://docs.google.com/spreadsheets/d/${esc(p.book)}" target="_blank" rel="noopener">ملف البيانات</a>`:''} ${p.id?`<button data-pstop="${esc(p.id)}" title="لا يُحذف شيء؛ يختفي المشروع من القائمة ولا يدخله أفراده">إيقاف</button>`:''}</td></tr>`).join('')}</tbody></table></div>
-   <h4 style="margin:14px 0 6px">مشروع جديد</h4>
+     <td>${p.id!==R.cur?`<button data-pg="${esc(p.id)}">دخول</button>`:''} ${p.book?`<a href="https://docs.google.com/spreadsheets/d/${esc(p.book)}" target="_blank" rel="noopener">ملف البيانات</a>`:''} ${p.id&&own?`<button data-pstop="${esc(p.id)}" title="لا يُحذف شيء؛ يختفي المشروع من القائمة ولا يدخله أفراده">إيقاف</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+   ${own?`<h4 style="margin:14px 0 6px">مشروع جديد</h4>
    <div class="muted" style="margin-bottom:6px">يُنشأ ملف بيانات جديد بنفس الأعمدة، وتُنقل إليه من المشروع الأساسي: المراحل ورحلة أمر العمل والنماذج وقوائمها وقوائم الصور والرموز والغرامات والقوائم (عدا المكاتب والمقاولين). البيانات تبدأ فارغة. كل ذلك قابل للتعديل داخل المشروع الجديد.</div>
    <div class="f"><label>اسم المشروع<input id="pn_n" placeholder="العقد الموحد الرياض"></label><label>العنوان في التقارير (اختياري)<input id="pn_t"></label></div>
    <label style="display:flex;flex-direction:column;gap:4px;margin-top:6px">المكاتب — مكتب في كل سطر، ويمكن كتابة الاسم الإنجليزي للتقرير بعد «|»<textarea id="pn_o" rows="3" placeholder="الرياض | Riyadh"></textarea></label>
@@ -354,9 +355,10 @@ async function projModal(){ let R; try{ R=await api('listProjects',S.tok); }catc
    <div class="err" id="pn_e"></div><button class="pri" id="pn_go">إنشاء المشروع</button>
    <h4 style="margin:14px 0 6px">من يرى كل المشاريع</h4><div class="muted" style="margin-bottom:6px">من المديرين في المشروع الأساسي. صاحب دور «مدير المشاريع» يراها دائماً.</div>
    <div>${R.homeAdmins.map(a=>`<label style="display:inline-flex;gap:4px;margin-inline-end:12px"><input type="checkbox" data-sup="${esc(a.id)}" ${R.supers.includes(a.id)||a.role==='مدير المشاريع'?'checked':''} ${a.role==='مدير المشاريع'?'disabled':''} style="width:auto"> ${esc(a.name)} <small class="muted">${esc(a.role)}</small></label>`).join('')}</div>
-   <div style="margin-top:8px"><button id="pn_sup">حفظ</button> <button onclick="closeModal()">إغلاق</button></div>`);
+   <div style="margin-top:8px"><button id="pn_sup">حفظ</button> <button onclick="closeModal()">إغلاق</button></div>`:`<div class="muted" style="margin-top:12px">إنشاء المشاريع وإيقافها لمدير النظام.</div><div style="margin-top:8px"><button onclick="closeModal()">إغلاق</button></div>`}`);
   document.querySelectorAll('[data-pg]').forEach(b=>b.onclick=()=>{ closeModal(); projGo(b.dataset.pg); });
   document.querySelectorAll('[data-pstop]').forEach(b=>b.onclick=async()=>{ if(!confirm('إيقاف المشروع؟ لا تُحذف بياناته، ويمكن إرجاعه من ملف التسجيل.')) return; try{ await api('setProjectActive',S.tok,b.dataset.pstop,false); toast('أُوقف'); closeModal(); start(false); }catch(e){ toast(e.message); } });
+  if(!own) return;
   $('#pn_sup').onclick=async()=>{ try{ await api('saveSupers',S.tok,[...document.querySelectorAll('[data-sup]:checked')].map(x=>x.dataset.sup)); toast('حُفظ'); }catch(e){ toast(e.message); } };
   $('#pn_go').onclick=async()=>{ const offices=$('#pn_o').value.split('\n').map(l=>l.split('|')).map(([a,e])=>({ar:(a||'').trim(),en:(e||'').trim()})).filter(x=>x.ar);
     const b=$('#pn_go'); b.disabled=true; $('#pn_e').textContent='';
@@ -583,7 +585,7 @@ const LINKS={
     norm:(k,v)=>MCHK.includes(k)&&v?'تم':v,
     save:L=>api('saveMaintCells',S.tok,L.map(x=>({id:x.r.id,k:x.k,v:x.v}))).then(r=>{ r.rows.forEach(y=>{ const n=LXOBJ(r.headers,y), o=LINKS.mn.L().find(z=>z.id===n.id); if(o) Object.assign(o,n); const i=S.mt.rows.findIndex(z=>z[0]===n.id); if(i>=0) S.mt.rows[i]=S.mt.headers.map(k=>n[k]); }); }) } };
 function lxLoad(p){ const P=LINKS[p]; if(P.ready()||LX_BUSY[p]||LX_FAIL[p]||!P.on()) return; LX_BUSY[p]=1; const v=S.view;
-  Promise.resolve(P.load()).then(()=>{ LX_BUSY[p]=0; if(S.view===v&&P.ready()) shell(); }).catch(()=>{ LX_BUSY[p]=0; LX_FAIL[p]=1; }); }
+  Promise.resolve(P.load()).then(()=>{ LX_BUSY[p]=0; const go=()=>{ if(S.view!==v||!P.ready()) return; if(busyUI()) return setTimeout(go,1500); shell(); }; go(); }).catch(()=>{ LX_BUSY[p]=0; LX_FAIL[p]=1; }); }
 // which linked files a grid shows: order-based grids get the four order files (not their own), maintenance and invoices get each other
 function lxFor(A){ if(A.lx) return A.lx; if(A.file==='olap') return []; const native=!A.all&&A.orders!==false; if(!native&&!A.ordOf) return [];
   const own={'المطابقة_الإنشاءات':'mc','التصاريح':'pm','الجدول_اليومي':'dl','المقايسة':'bq'}[A.file]; return ['mc','pm','dl','bq'].filter(p=>p!==own); }
@@ -663,6 +665,7 @@ function sheet(base, defCols, opt={}){
      ${A.bar!==undefined?A.bar:((canAdd?'<button id="gadd">+ أمر عمل</button>':'')+(S.B.admin&&!opt.ad&&!RO?'<button id="gstu" title="الأسماء القديمة للمراحل تتحول إلى مراحل الرحلة">توحيد أسماء المراحل</button>':'')+(canBulk()?'<button id="bulk">تعديل جماعي</button>':'')+(S.B.editable.length?'<button id="gundo">↶ تراجع</button>':''))}${DF?'<button id="gblank" title="صفوف فارغة تكتب فيها مباشرة، أو تلصق فيها صفوفاً منسوخة">+ صفوف فارغة</button>':''}${GBULK?'<button id="gbulk" title="قيمة واحدة لعمود في الصفوف المحددة أو في كل الصفوف الظاهرة">تعديل جماعي</button>':''}${LUNDO?'<button id="glundo" title="Ctrl+Z">↶ تراجع</button>':''}${DEL&&!RO&&S.B.admin?'<button id="gdel" title="حدّد خلية في كل صف تريد حذفه">🗑 حذف المحدد</button>':''}<button id="gcols">الأعمدة</button><button id="gtall" title="عرض الملاحظات والنصوص الطويلة كاملة" class="${S.tall?'on':''}">↕ توسيع الصفوف</button><button id="gtot" title="صف الإجمالي أسفل الجدول (مثل Excel). Ctrl + نقرة على رأس عمود تحدده كاملاً" class="${totOn()?'on':''}">Σ الإجمالي</button><button id="xls">تصدير Excel</button>${S.view==='orders'&&!S.B.field?'<button id="xall">تصدير إكسل موحّد</button><button id="xarch" title="الأوامر المنتهية المنقولة إلى ملف الأرشيف">الأرشيف</button>':''}${A.noImp?'':impBtn()}</div>
    <div class="muted" style="font-size:12px;margin:-4px 0 6px">${A.help!==undefined?A.help:`اختر خلية أو عدة خلايا (سحب / Shift / Ctrl) ثم اكتب أو اختر من القائمة ▾ — يُطبَّق على كل الخلايا المحددة ويُحفظ تلقائياً. Ctrl+C / Ctrl+V للنسخ واللصق، Delete للمسح، Ctrl+Z للتراجع${A.hint!==undefined?A.hint:'، نقرتان على رقم الأمر لفتح سجله'}.`}</div>
    <div id="tbox" class="tw sheet${S.tall?' tall':''}" tabindex="0"></div><div id="gstat" class="gstat" style="display:none"></div>`;
+  const GID='g'+Date.now()+Math.random(); { const t=$('#tbox'); if(t) t.dataset.g=GID; }
   let rows=[], allRows=[], sel=new Set(), act=null, anchor=null, dragging=false; S.gundo=A.undo||(()=>{});
   const key=(r,c)=>r+','+c;
   // the place in the table (selected cells, active cell, scroll) is kept by record and column, so a save, a reload or a new row keeps you where you were
@@ -674,6 +677,7 @@ function sheet(base, defCols, opt={}){
     const at=x=>x&&ix[x[0]]!==undefined&&cols.indexOf(x[1])>=0?[ix[x[0]],cols.indexOf(x[1])]:null;
     const a=at(P.a); if(!a) return false; act=a; anchor=at(P.n)||a; sel=new Set(P.s.map(at).filter(Boolean).map(p=>key(p[0],p[1]))); if(!sel.size) sel.add(key(a[0],a[1])); return true; };
   const draw=()=>{
+    { const t=$('#tbox'); if(!t||t.dataset.g!==GID||!$('#cnt')) return; }
     savePos();
     allRows = DR.concat(sortList(applyF(base, cols, ST, A), ST, A)); rows = A.limit ? allRows.slice(0, ST.lim||A.limit) : allRows;
     $('#cnt').textContent = allRows.length+' '+A.unit; if(A.onDraw) A.onDraw(allRows); navTouch();
@@ -1942,31 +1946,39 @@ function fmPrintHtml(f,o,M,sg){
      <div style="position:relative;break-inside:avoid"><div style="margin-top:14px">في حالة امتناع المقاول عن التوقيع يتم ذكر السبب</div><div class="line" style="height:auto;min-height:22px;padding-top:4px;color:#1F4E9A;white-space:pre-wrap">${e(d.contractor_note||'')}</div>${st?`<img class="stamp" src="${L.stamp}" style="position:absolute;left:6%;top:-6px">`:''}</div>${more}</div>`; }
   if(f.kind==='quality'){ while(items.length<5) items.push({}); const m4=isMt||String(o.wo||f.wo).replace(/^D9:/,'').charAt(0)==='4';
     // maintenance & emergency (numbers starting with 4): the company's bilingual «Violation Report» form; construction keeps the form below
-    if(m4){ const K=(a,en)=>`<td class="k">${a}<div class="en">${en}</div></td>`, V=x=>`<td class="v">${x}</td>`, its=(d.items||[]).filter(it=>it.text||it.code||it.price); while(its.length<2) its.push({});
-      return `<div class="pf vr"><div class="page"><div style="display:flex;align-items:center;justify-content:space-between;min-height:64px"><span style="flex:1;text-align:center;color:#1F4E9A;font-size:15px;font-weight:700">نموذج محضر مخالفة</span>${L.se?`<img src="${L.se}" style="max-height:62px">`:''}</div>
-       <div class="hd">محضر مخالفة رقم ( ${fmNo(f)} ) / Violation Report Number ( ${fmNo(f)} )</div>
-       <table><colgroup><col style="width:22%"><col style="width:28%"><col style="width:22%"><col style="width:28%"></colgroup>
+    if(m4){ // the company's «Form-26» (نموذج محضر مخالفة) as issued: grey label cells, black borders; one page per violation item
+      const K=(a,en,x)=>`<td class="k"${x||''}>${a}<div class="en">${en}</div></td>`, V=(x,a)=>`<td class="v"${a||''}>${x}</td>`, its=(d.items||[]).filter(it=>it.text||it.code||it.price); if(!its.length) its.push({});
+      const d9=String(woT||'').replace(/<[^>]*>/g,'').trim(), loc=[d9?'D9 '+d9:'', f.office||o.office||'', o.station||o.district||d.location||''].filter(Boolean).join(' — ');
+      const page=(it,i)=>{ const q=+it.qty||(it.text?1:0), pr=+it.price||0, t=it.text?q*pr:'', pic=ph[i]||ph[0];
+        return `<div class="pf f26"><div class="page">
+       <table><tr><td class="tt" style="height:62px"><div style="display:flex;align-items:center;justify-content:center;position:relative"><span>نموذج محضر مخالفة</span>${L.se?`<img src="${L.se}" style="position:absolute;left:30px;max-height:56px">`:''}</div></td></tr>
+       <tr><td class="k b" style="font-size:12px">محضر مخالفة رقم ( ${fmNo(f)} ) / Violation Report Number ( ${fmNo(f)} )${its.length>1?` <span style="font-weight:400">— البند ${i+1} من ${its.length}</span>`:''}</td></tr></table>
+       <table class="g4"><colgroup><col style="width:23%"><col style="width:30%"><col style="width:21%"><col style="width:26%"></colgroup>
        <tr>${K('اسم المقاول','Contractor Name')}${V(e(FULLC(d.contractor)))}${K('تاريخ زيارة التفتيش','Inspection Date')}${V(e(d.date))}</tr>
-       <tr>${K('اسم المشروع','Project Name / Vendor number')}${V(e((S.B.project||{}).name||'')+(d.cno?' / '+e(d.cno):''))}${K('وقت الزيارة','Inspection Time')}${V(e(d.time))}</tr>
-       <tr>${K('رقم عقد المشروع','Project contract number')}${V(e(d.contract_no))}${K('مكان المخالفة','Location of violation')}${V(e(d.location||((f.office||o.office||'')+(o.district?' - '+o.district:''))))}</tr>
-       <tr>${K('مدير المشروع','Site manager')}${V(e(d.site_manager||''))}${K('ممثل السلامة لدى المقاول بالموقع','Contractor Safety Rep.')}${V(e(d.safety_rep||''))}</tr>
-       <tr>${K(WOL,isMt?'D9 Notification No.':'Work Order No.')}${V(woT)}${K('المكتب','Office')}${V(e(f.office||o.office||''))}</tr></table>
-       <div class="hd">تفاصيل المخالفة ( ☐ سلامة &nbsp; ☑ أخرى ) &nbsp; Details of the violation ( ☐ safety &nbsp; ☑ other )</div>
-       <table><colgroup><col style="width:4%"><col style="width:16%"><col style="width:38%"><col style="width:12%"><col style="width:14%"><col style="width:16%"></colgroup>
-       <tr><td class="k c">م</td><td class="k c">رقم بند المخالفة بالعقد<div class="en">Violation Paragraph No. in Contract</div></td><td class="k c">رقم ونص المخالفة (حسب جدول تصنيف المخالفات)<div class="en">Violation Reference and statement</div></td><td class="k c">التكرار<div class="en">Repetition</div></td><td class="k c">قيمة المخالفة<div class="en">Violation Cost</div></td><td class="k c">إجمالي قيمة الغرامة<div class="en">Total</div></td></tr>
-       ${its.map((it,i)=>`<tr style="height:34px"><td class="c">${it.text?i+1:''}</td><td class="v">${e(it.code||(it.text?'-':''))}</td><td class="v">${e(it.text)}</td><td class="v">${e(it.text?it.qty:'')}</td><td class="v">${money(it.price)}</td><td class="v">${it.text?money((+it.qty||0)*(+it.price||0)):''}</td></tr>`).join('')}
-       <tr><td colspan="5" class="k" style="text-align:left">الإجمالي / Total</td><td class="v b">${money(tot)}</td></tr></table>
-       <table><tr style="height:120px"><td style="vertical-align:top;width:100%"><div style="display:flex;justify-content:space-between"><b>وصف المخالفة:</b><b>:Violation description</b></div><div class="v" style="white-space:pre-wrap;margin-top:8px">${e(d.desc)}</div>${ph[0]?`<img class="pimg" src="${ph[0]}" style="max-width:60%;max-height:70mm;display:block;margin:6px auto">`:''}</td></tr></table>
-       <div class="hd" style="display:flex;justify-content:space-between"><span>المصادقة</span><span>:Authentication</span></div>
-       <table><colgroup><col style="width:22%"><col style="width:28%"><col style="width:22%"><col style="width:28%"></colgroup>
-       <tr>${K('محرر المحضر','Violation Recorder')}${V(e(d.author))}${K('مستلم المحضر','Violation Receiver')}${V(e(d.contractor_rep||d.receiver||''))}</tr>
-       <tr>${K('الرقم الوظيفي','Badge number')}${V(e(sg.emp_no||''))}${K('رقم الإقامة','ID number')}${V(e(d.receiver_id||''))}</tr>
-       <tr>${K('التاريخ','Date')}${V(e(d.date))}${K('التاريخ','Date')}${V(e(d.date))}</tr>
-       <tr style="height:56px">${K('التوقيع','Signature')}<td class="c">${sig}</td>${K('التوقيع','Signature')}<td></td></tr>
-       <tr style="height:52px">${K('اعتماد مدير إدارة كهرباء '+e(dpt),'Approval')}<td></td>${K('التوقيع','Signature')}<td></td></tr></table>
-       <div style="margin-top:10px;font-weight:700;text-decoration:underline">ملاحظة: في حالة امتناع ممثل المقاول (مدير موقع المشروع أو من ينوبه) عن استلام المحضر أو توقيعه، يقوم المقاول بكتابة سبب الامتناع أدناه (سبب عدم التوقيع على المخالفة).</div>
-       <div class="v" style="min-height:60px;border:1px solid #000;margin-top:6px;padding:6px;white-space:pre-wrap">${e(d.statement||d.contractor_note||'')}</div>
-       ${st?`<img src="${L.stamp}" style="max-height:80px;display:block;margin:8px auto 0">`:''}</div>${more}</div>`; }
+       <tr>${K('اسم المشروع','Project Name /Vendor number')}${V(e((S.B.project||{}).name||'')+(d.cno?' / '+e(d.cno):''))}${K('وقت الزيارة','Inspection Time')}${V(e(d.time))}</tr>
+       <tr>${K('رقم عقد المشروع','Project contract number')}${V(e(d.contract_no||''))}${K('مكان المخالفة','Location of Safety violation')}${V(e(loc))}</tr>
+       <tr>${K('مدير المشروع','Site manager')}${V(e(d.site_manager||''))}${K('ممثل السلامة لدى المقاول بالموقع','.Contractor Safety Rep')}${V(e(d.safety_rep||''))}</tr>
+       <tr><td colspan="4" class="k b" style="font-size:12px">تفاصيل المخالفة ( ☐ سلامة &nbsp; ☑ أخرى ) &nbsp; Details of the violation ( ☐ safety &nbsp; ☑ other )</td></tr></table>
+       <table class="mid"><colgroup><col style="width:33%"><col style="width:13%"><col style="width:54%"></colgroup>
+       <tr style="height:44px">${K('رقم بند المخالفة بالعقد','Violation Paragraph No. in Contract')}${V(e(it.code||'-'))}<td rowspan="8" class="pic">${pic?`<img src="${pic}">`:'<span class="muted2">مكان الصورة</span>'}</td></tr>
+       <tr>${K('(حسب جدول تصنيف المخالفات) رقم ونص المخالفة','Violation Reference and statement (as per violation Classification table)')}${K('قيمة المخالفة','Violation Cost')}</tr>
+       <tr style="height:52px">${V(e(it.text||''))}${V(it.text?money(pr):'')}</tr>
+       <tr>${K('(حسب جدول تصنيف الجزاءات) رقم ونص المخالفة','Violation Reference and statement (as per Penalties Classification table)')}${K('التكرار','Repetition')}</tr>
+       <tr style="height:44px">${V('')}${V(it.text?e(q):'')}</tr>
+       <tr style="height:44px">${K('(حسب جدول تصنيف الغرامات) فئة الغرامة','Fine category (as per fines classifications table)')}${V('')}</tr>
+       <tr>${K('الجزاء (حسب التصنيفات والتكرار)','')}${K('إجمالي قيمة الغرامة (حسب التصنيفات والتكرار)','')}</tr>
+       <tr style="height:44px">${V('')}${V(t===''?'':money(t))}</tr></table>
+       <table><tr style="height:92px"><td style="vertical-align:top"><div style="display:flex;justify-content:space-between"><b>وصف المخالفة:</b><b class="blu" style="direction:ltr">Violation description:</b></div><div style="white-space:pre-wrap;margin-top:6px;text-align:center">${e(d.desc)}</div></td></tr></table>
+       <table class="au"><colgroup><col style="width:24%"><col style="width:26%"><col style="width:22%"><col style="width:28%"></colgroup>
+       <tr><td colspan="2" class="k b" style="text-align:right;font-size:12px">المصادقة</td><td colspan="2" class="k b" style="text-align:left;direction:ltr;font-size:12px">:Authentication :</td></tr>
+       <tr><td class="a">محرر المحضر / Violation Recorder</td>${V(e(d.author))}<td class="a">مستلم المحضر / Violation Receiver</td>${V(e(d.contractor_rep||d.receiver||''))}</tr>
+       <tr><td class="a">الرقم الوظيفي / Badge number</td>${V(e(sg.emp_no||''))}<td class="a">رقم الإقامة / ID number</td>${V(e(d.receiver_id||''))}</tr>
+       <tr><td class="a">التاريخ / Date</td>${V(e(d.date))}<td class="a">التاريخ / Date</td>${V(e(d.date))}</tr>
+       <tr style="height:46px"><td class="a">التوقيع / Signature</td><td class="v">${sig}</td><td class="a">التوقيع / Signature</td><td></td></tr>
+       <tr style="height:40px"><td class="a">اعتماد مدير إدارة كهرباء ${e(dpt||'.....')}</td><td></td><td class="a">التوقيع / Signature</td><td></td></tr></table>
+       <div style="margin-top:8px;font-weight:700;text-decoration:underline;font-size:11px">ملاحظة: في حالة امتناع ممثل المقاول (مدير موقع المشروع أو من ينوبه) عن إستلام المحضر أو توقيعه، يقوم المقاول بكتابة سبب الامتناع أدناه (سبب عدم التوقيع على المخالفة):</div>
+       <div style="position:relative;min-height:80px;border:1px solid #000;margin-top:4px;padding:6px;white-space:pre-wrap;font-size:11px">${e(d.statement||d.contractor_note||'')}${st&&i===its.length-1?`<img src="${L.stamp}" style="position:absolute;left:8%;top:4px;max-height:76px">`:''}</div></div></div>`; };
+      return its.map(page).join('')+more; }
     const mg=t=>`<div style="width:44%"><div class="mgr">${t}</div><div style="margin-top:16px">الاسم :</div><div class="line"></div><div style="margin-top:16px">التوقيع</div><div class="line"></div></div>`;
     return `<div class="pf qua"><div class="page"><div class="logos" style="padding:0">${L.se?`<img src="${L.se}">`:''}<span></span></div>
      <table style="width:42%"><tr><td class="b">رقم المحضر</td><td class="c b">${fmNo(f)}</td></tr></table>
@@ -2026,7 +2038,7 @@ async function printAll(rows){ if(!rows.length) return toast('لا نماذج ظ
   void sigOf; S.sigC=S.sigC||{};
   for(let i=0;i<rows.length;i+=20){ if(stop) return; const part=rows.slice(i,i+20); let got=[]; try{ got=await api('getForms',S.tok,part.map(r=>r.id)); }catch(e){ toast(e.message); } if(stop||!$('#pvb')) return; const by={}; (got||[]).forEach(f=>by[f.id]=f);
     part.forEach(r=>{ const f=by[r.id]; if(!f) return; const o=fmOrder(f.wo,f); const ak=String((f.data||{}).author||'').trim(); if(ak&&f.sg) S.sigC[ak]=f.sg; const sg=f.sg||{sig:'',emp_no:''};
-      const d=document.createElement('div'); d.innerHTML=fmPrintHtml(f,o,M,sg); d.querySelectorAll('img').forEach(im=>im.loading='lazy'); box.appendChild(d.firstElementChild); done++; });
+      const d=document.createElement('div'); d.innerHTML=fmPrintHtml(f,o,M,sg); d.querySelectorAll('img').forEach(im=>im.loading='lazy'); while(d.firstElementChild) box.appendChild(d.firstElementChild); done++; });
     if($('#pvst')) $('#pvst').textContent=done+' / '+rows.length; }
   if($('#pvst')) $('#pvst').textContent=done+' / '+rows.length;
   $('#pvgo').onclick=async()=>{ let p=$('#prt'); if(!p){ p=document.createElement('div'); p.id='prt'; document.body.appendChild(p); } p.innerHTML=''; [...box.children].forEach(el=>{ const c=el.cloneNode(true); c.querySelectorAll('img').forEach(im=>im.loading='eager'); p.appendChild(c); });
@@ -2116,9 +2128,27 @@ async function sigAdmin(){
   draw();
 }
 function vUsers(){ const sub=S.usub||'users';
-  $('#main').innerHTML=`<div class="tabs2" style="margin-bottom:12px;font-size:15px"><a data-us="users" class="${sub==='users'?'on':''}">المستخدمون</a><a data-us="journey" class="${sub==='journey'?'on':''}">رحلة أمر العمل</a><a data-us="project" class="${sub==='project'?'on':''}">إعدادات المشروع</a><a data-us="qdcat" class="${sub==='qdcat'?'on':''}">قوائم ملف الجودة</a></div><div id="usub"></div>`;
+  $('#main').innerHTML=`<div class="tabs2" style="margin-bottom:12px;font-size:15px"><a data-us="users" class="${sub==='users'?'on':''}">المستخدمون</a><a data-us="journey" class="${sub==='journey'?'on':''}">رحلة أمر العمل</a><a data-us="ctr" class="${sub==='ctr'?'on':''}">المقاولون</a><a data-us="project" class="${sub==='project'?'on':''}">إعدادات المشروع</a><a data-us="qdcat" class="${sub==='qdcat'?'on':''}">قوائم ملف الجودة</a></div><div id="usub"></div>`;
   document.querySelectorAll('[data-us]').forEach(a=>a.onclick=()=>{ S.usub=a.dataset.us; vUsers(); });
-  if(sub==='journey') vJourney(); else if(sub==='project') vProject(); else if(sub==='qdcat') vQdCat(); else vUsersList(); }
+  if(sub==='journey') vJourney(); else if(sub==='ctr') vContractors(); else if(sub==='project') vProject(); else if(sub==='qdcat') vQdCat(); else vUsersList(); }
+
+// the project's contractors: short name (tables), full name (forms); a rename reaches every file, a stop only hides the name
+async function vContractors(){ $('#usub').innerHTML='<div class="loading">جارٍ التحميل…</div>'; let L; try{ L=await api('listContractors',S.tok); }catch(e){ $('#usub').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
+  if(S.view!=='users'||S.usub!=='ctr'||!$('#usub')) return; const q=(S.ctrQ||'').trim();
+  const rows=L.filter(x=>!q||[x.name,x.full,x.aliases].join(' ').includes(q)).sort((a,b)=>(b.active-a.active)||(b.n-a.n)||a.name.localeCompare(b.name,'ar'));
+  $('#usub').innerHTML=`<div class="bar"><input id="ctq" placeholder="بحث" value="${esc(q)}" style="max-width:220px"><span class="muted">${L.filter(x=>x.active).length} مقاولاً فعّالاً${L.some(x=>!x.active)?' · '+L.filter(x=>!x.active).length+' موقوفاً':''}</span><span class="sp"></span><button class="pri" id="ctadd">+ مقاول</button></div>
+   <div class="muted" style="margin:4px 0 8px">الاسم المختصر يظهر في الجداول والقوائم، والاسم الكامل في المحاضر. تعديل الاسم يغيّره في كل ملفات المشروع (الإسنادات والتصاريح والجدول اليومي والصيانة والمطابقة والمخالفات)، ويبقى الاسم القديم معروفاً عند الاستيراد. الإيقاف يخفي المقاول من القوائم ولا يغيّر أوامره.</div>
+   <div class="tw" style="max-height:none"><table><thead><tr><th>الاسم المختصر</th><th>الاسم الكامل</th><th>أوامر العمل</th><th>أسماء سابقة</th><th>الحالة</th><th>آخر تعديل</th></tr></thead><tbody>
+   ${rows.map(x=>`<tr data-ct="${esc(x.name)}" style="cursor:pointer${x.active?'':';color:#888780'}"><td><b>${esc(x.name)}</b></td><td>${esc(x.full)}</td><td>${x.n}</td><td class="muted">${esc(x.aliases)}</td><td>${x.active?'<span class="pill p-ok">فعّال</span>':'<span class="pill p-d">موقوف</span>'}</td><td class="muted">${esc((x.by||'')+' '+(x.at||'').slice(0,10))}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">لا يوجد مقاولون بعد — أضف أول مقاول.</td></tr>'}</tbody></table></div>`;
+  $('#ctq').oninput=e=>{ S.ctrQ=e.target.value; clearTimeout(S.ctrT); S.ctrT=setTimeout(()=>{ vContractors().then(()=>{ const i=$('#ctq'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }); },350); };
+  const form=x=>{ modal(`<h3 style="margin-top:0">${x?'تعديل المقاول':'مقاول جديد'}</h3><div class="f"><label>الاسم المختصر<input id="ctn" value="${esc(x?x.name:'')}"></label><label>الاسم الكامل (للمحاضر)<input id="ctf" value="${esc(x?x.full:'')}"></label></div>
+      ${x?`<label style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="cta" ${x.active?'checked':''} style="width:auto"> فعّال (يظهر في القوائم)</label><div class="muted" style="margin-top:6px">له ${x.n} أمر عمل.${x.n?' تغيير الاسم المختصر يغيّره فيها كلها.':''}</div>`:''}
+      <div class="err" id="cte"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="cts">حفظ</button><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+    $('#cts').onclick=async()=>{ const n=$('#ctn').value.trim(); if(x&&n!==x.name&&x.n&&!confirm('سيتغير اسم «'+x.name+'» إلى «'+n+'» في '+x.n+' أمر عمل وفي باقي الملفات. متابعة؟')) return; $('#cts').disabled=true;
+      try{ const r=await api('saveContractor',S.tok,{old:x?x.name:'',name:n,full:$('#ctf').value.trim(),active:x?$('#cta').checked:true}); closeModal(); toast(x?(r.moved?'حُفظ — تغيّر الاسم في '+r.moved+' سجلاً':'حُفظ'):'أُضيف المقاول');
+        if(x&&r.moved){ S.mt=null; S.pm=null; S.mr=null; S.dlAll=null; start(false); return; } const B=await api('boot',S.tok).catch(()=>null); if(B){ S.B.lists.contractor=B.lists.contractor; S.B.lists.contractor_full=B.lists.contractor_full; } vContractors(); }
+      catch(e){ $('#cte').textContent=e.message; $('#cts').disabled=false; } }; };
+  $('#ctadd').onclick=()=>form(null); document.querySelectorAll('[data-ct]').forEach(tr=>tr.onclick=()=>form(L.find(x=>x.name===tr.dataset.ct))); }
 
 function vProject(){
   const P=S.B.project||{}, st=P.sites||{}; let O=(S.B.lists.office||[]).map(a=>({ar:a,en:st[a]||''}));
@@ -2233,7 +2263,7 @@ async function vPermits(){
     opts:(o,k)=>k==='status'?R.statuses:k==='cert'?['تم','رفض']:k==='contractor'?CONTR():k==='stage'?['تم ادخال جميع المراحل','تم رفع جميع المراحل']:undefined,
     dates:['assign_date','start_date','end_date'], wrap:['notes'], free:['contractor','stage','cert'], src:()=>'التصاريح', clr:()=>tc, chip:()=>'',
     cell:(o,k,v)=>k==='notes'?richHtml(v):k==='wo'&&v?`<span class="wo">${esc(v)}</span>`:k==='file_url'?((v?`<a class="atb2" href="${esc(v)}" target="_blank" rel="noopener">📄 فتح</a> `:'')+(R.can?`<button class="pmu" data-pm="${esc(o.id)}" title="رفع صورة التصريح أو PDF">${v?'استبدال':'📎 رفع'}</button>`+(v?` <button class="pmx" data-pm="${esc(o.id)}" title="حذف الملف">✕</button>`:''):'')):esc(v), cls:(o,k)=>(k==='end_date'||k==='status')&&expired(o)?'late':'',
-    search:o=>[o.req_no,o.wo,o.contractor,o.permit_no,o.status,o.notes].join(' '), open:o=>{ const x=o.wo?byRef(o.wo):null; if(x) openOrder(x.key); else permitForm(o); }, undo:R.can?(()=>undoLast('pm')):null,
+    search:o=>[o.req_no,o.wo,o.contractor,o.permit_no,o.status,o.notes].join(' '), open:o=>{ if(o._draft) return permitForm(o); const x=o.wo?byRef(o.wo):null; if(x) openOrder(x.key); else permitForm(o); }, undo:R.can?(()=>undoLast('pm')):null,
     norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('savePermitCells',S.tok,recs).then(r=>{ r.rows.forEach(x=>{ const n={}; r.headers.forEach((k,i)=>n[k]=x[i]); const o=L.find(y=>y.id===n.id); if(o) Object.assign(o,n); const i=R.rows.findIndex(y=>y[0]===n.id); if(i>=0) R.rows[i]=H.map(k=>n[k]); }); S.orders.forEach(o=>{ o.permit_n=o.permit_n; }); }),
     bar:R.can?'<button class="pri" id="pnew">+ طلب تصريح</button><button id="pundo">↶ تراجع</button>':'', hint:'، نقرتان على الصف تفتح أمر العمل (أو نموذج الطلب إن لم يكن له أمر في البرنامج)',
@@ -2245,7 +2275,7 @@ async function vPermits(){
     init:()=>({status:'لم يتم التقديم على تصريح'}), fill:(o,k)=>{ if(k!=='wo') return; const x=byRef(o.wo); if(!x) return; o.wo=x.wo; if(!o.contractor) o.contractor=x.contractor||''; if(!o.wo_type) o.wo_type=x.type||''; if(!o.assign_date) o.assign_date=x.assign_date||''; },
     commit:async x=>{ const row=await api('savePermit',S.tok,x); R.rows.push(row); return obj(row); }, done:o=>'أُضيف طلب التصريح '+(o.req_no||o.wo) }:null;
   sheet(L, ['id','req_no','wo','contractor','assign_date','wo_type','status','permit_no','start_date','end_date','stage','cert','file_url','notes'], {ad:AD, draft:PD, kpis:`<div id="pk" class="kpis"></div>`, intro:'طلبات التصاريح للمقاولين كما في ملفَي متابعة التصاريح (أوامر العمل والطوارئ). تُستورد من زر «استيراد ملف التصاريح» أو تُضاف هنا. التصريح المنتهي تاريخه قبل شهادة إتمام الأعمال يظهر بالأحمر. عدد الطلبات وحالة آخر تصريح يظهران في عمودين داخل الإسنادات.'});
-  function permitForm(o){ const isNew=!o, ro=!R.can; o=o||{status:'لم يتم التقديم على تصريح'}; const D=ro?'disabled':'';
+  function permitForm(o){ const isNew=!o||!o.id, ro=!R.can; o=o||{status:'لم يتم التقديم على تصريح'}; const D=ro?'disabled':'';
     const inp=(k,opt={})=>`<label${opt.full?' style="grid-column:1/-1"':''}>${PL[k]}${opt.sel?`<select data-p="${k}" ${D}><option value=""></option>${opt.sel.map(x=>`<option ${x===o[k]?'selected':''}>${esc(x)}</option>`).join('')}</select>`:opt.area?`<textarea data-p="${k}" rows="2" ${D}>${esc(o[k]||'')}</textarea>`:`<input data-p="${k}"${opt.type?` type="${opt.type}"`:''}${opt.list?` list="${opt.list}"`:''} value="${esc(o[k]||'')}" ${D}>`}</label>`;
     modal(`<h3 style="margin-top:0">${isNew?'طلب تصريح جديد':'طلب تصريح رقم '+esc(o.id)}${ro?' <span class="pill p-w">عرض فقط</span>':''}</h3><div class="f">
       ${inp('wo')}${inp('req_no')}${inp('contractor',{list:'pdc'})}${inp('assign_date',{type:'date'})}${inp('wo_type')}${inp('status',{sel:R.statuses})}${inp('permit_no')}${inp('start_date',{type:'date'})}${inp('end_date',{type:'date'})}${inp('stage',{list:'pst'})}${inp('cert',{sel:['تم','رفض']})}${inp('notes',{area:1,full:1})}</div>
@@ -2254,7 +2284,7 @@ async function vPermits(){
       ${o.updated_by?`<div class="muted" style="margin-top:6px">آخر تعديل: ${esc(o.updated_by)} ${esc((o.updated_at||'').slice(0,16))}</div>`:''}<div class="err" id="perr"></div>
       <div style="display:flex;gap:8px;margin-top:8px">${ro?'':'<button class="pri" id="psave">حفظ</button>'}${!ro&&!isNew?'<button id="pdel" style="color:var(--dan);border-color:var(--dan)">حذف</button>':''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
     if($('#psave')) $('#psave').onclick=async()=>{ const x={id:o.id||''}; document.querySelectorAll('[data-p]').forEach(el=>x[el.dataset.p]=el.value.trim());
-      $('#psave').disabled=true; try{ await api('savePermit',S.tok,x); closeModal(); toast('تم الحفظ'); S.pm=null; const v=S.view; await start(); S.view=v; shell(); }catch(e){ $('#perr').textContent=e.message; $('#psave').disabled=false; } };
+      $('#psave').disabled=true; try{ await api('savePermit',S.tok,x); closeModal(); toast('تم الحفظ'); if(o._draft){ const D=(S.gst.permits||{}).drafts||[], i=D.indexOf(o); if(i>=0) D.splice(i,1); } S.pm=null; const v=S.view; await start(); S.view=v; shell(); }catch(e){ $('#perr').textContent=e.message; $('#psave').disabled=false; } };
     if($('#pfup')) $('#pfup').onclick=()=>{ closeModal(); permitPick(o.id); }; if($('#pfrm')) $('#pfrm').onclick=async()=>{ if(!confirm('حذف ملف التصريح؟')) return; try{ await api('removePermitFile',S.tok,o.id); closeModal(); toast('تم الحذف'); S.pm=null; shell(); }catch(e){ $('#perr').textContent=e.message; } };
     if($('#pdel')) $('#pdel').onclick=async()=>{ if(!confirm('حذف طلب التصريح رقم '+o.id+'؟ ينتقل إلى الأرشيف ← المحذوفات ويمكن استرجاعه.')) return;
       try{ await api('deletePermit',S.tok,o.id); closeModal(); toast('تم الحذف'); S.pm=null; const v=S.view; await start(); S.view=v; shell(); }catch(e){ $('#perr').textContent=e.message; } }; }
