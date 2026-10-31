@@ -87,7 +87,21 @@ async function call(fn, ...args) {
   if (j.err) { if (/انتهت الجلسة/.test(j.err)) { S.dev = ''; await DB.delk('dev'); } throw new Error(j.err); }
   return j.ok;
 }
-async function pull() { const B = await call('fieldPull', S.itv || ''); if (B.items) { S.IT = {}; B.items.forEach(x => S.IT[x[0]] = [x[1], x[2]]); S.itv = B.itemsVer; await DB.set('items', { v: S.itv, m: S.IT }); } delete B.items; S.B = B; await DB.set('B', B); return B; }
+// Each project keeps its own copy on the phone, so going back to a project you were in is instant and works with no network.
+// The first project stays under the old key 'B', so nothing already on a phone is lost.
+const bKey = () => S.pid ? 'B:' + S.pid : 'B';
+async function loadProjects() { try { S.PJ = await call('fieldProjects'); await DB.set('PJ', S.PJ); } catch (e) { S.PJ = S.PJ || { sup: false, list: [] }; } }
+async function pull() { const B = await call('fieldPull', S.itv || ''); if (B.items) { S.IT = {}; B.items.forEach(x => S.IT[x[0]] = [x[1], x[2]]); S.itv = B.itemsVer; await DB.set('items', { v: S.itv, m: S.IT }); } delete B.items; S.B = B; await DB.set(bKey(), B); return B; }
+// switching needs the network, and never while something is still waiting to be sent
+async function switchProj(pid, name) {
+  if (S.Q.length) { toast('لا يمكن تبديل المشروع وهناك ' + S.Q.length + ' عملاً بانتظار الإرسال. أرسله أولاً.'); return go({ v: 'queue' }); }
+  if (!navigator.onLine) return toast('تبديل المشروع يحتاج اتصالاً بالإنترنت');
+  try { toast('جارٍ تبديل المشروع…');
+    const r = await call('fieldSwitchProject', S.dev, pid);
+    S.pid = pid; await DB.set('pid', pid);
+    const cached = await DB.get(bKey()); if (cached) S.B = cached;
+    await pull(); S.msg = 'المشروع: ' + (r.name || name || 'الأساسي'); S.q = ''; S.tab = 'o'; go({ v: 'home' }); toast('المشروع الآن: ' + (r.name || name || 'الأساسي')); }
+  catch (e) { toast(e.message); } }
 async function runOp(op) {
   if (op.t === 'qd') return call('qdSave', op.ref, op.op);
   if (op.t === 'up') return call('qdUpload', op.ref, op.slot, op.b64, op.mime, op.loc || '');
@@ -95,6 +109,13 @@ async function runOp(op) {
   if (op.t === 'ci') return call('fieldCInvPhoto', op.ref, op.b64, op.mime, !!op.isNew);
   if (op.t === 'boq') return call('boqSave', op.ref, { lines: op.lines });
   if (op.t === 'draw') return call('boqDraw', op.ref, op.draw, op.png || '');
+  if (op.t === 'mt') {
+    const r = await call('fieldSaveMaint', op.data);
+    op.done = op.done || [];
+    for (let i = op.done.length; i < (op.photos || []).length; i++) { const p = op.photos[i];
+      const x = await call('fieldMaintPhoto', op.data.d9, p.b64, p.mime); op.done.push(x.id); await DB.qput(op); }
+    return r;
+  }
   if (op.t === 'form') {
     op.done = op.done || [];
     for (let i = op.done.length; i < op.photos.length; i++) { const p = op.photos[i]; const r = await call('uploadFormPhoto', op.ref, op.kind, p.b64, p.mime, p.loc || ''); op.done.push({ id: r.id, name: r.name, st: r.st, loc: r.loc }); await DB.qput(op); }
@@ -111,7 +132,7 @@ async function sync(manual) {
       try { await runOp(op); await DB.qdel(op.id); S.Q = S.Q.filter(x => x.id !== op.id); sent++; render(); }
       catch (e) { delete op.sending; if (e.net) throw e; op.err = e.message; failed++; await DB.qput(op); }
     }
-    await pull(); if (!S.noFull && (manual || !S.F || Date.now() - (S.F.got || 0) > 300000)) await pullFull(); S.msg = 'آخر مزامنة ' + now();
+    await pull(); await loadProjects(); if (!S.noFull && (manual || !S.F || Date.now() - (S.F.got || 0) > 300000)) await pullFull(); S.msg = 'آخر مزامنة ' + now();
     if (sent || failed) toast('أُرسل ' + sent + (failed ? ' — ' + failed + ' لم يُقبل (افتح «بانتظار الإرسال»)' : ''), failed ? 5000 : 2600);
   } catch (e) { S.msg = e.message; if (manual) toast(e.message, 4000); }
   S.Q.forEach(x => delete x.sending); S.syncing = false; render();
@@ -203,6 +224,7 @@ function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div
     <a data-go="home:o" class="${on('home', () => S.tab === 'o')}">📍 أوامري<span class="n">${B.orders.length}</span></a>
     <a data-go="home:n" class="${on('home', () => S.tab === 'n')}">🔧 إشعارات الصيانة<span class="n">${B.notices.length}</span></a>
     <a data-go="queue" class="${on('queue')}">⏳ بانتظار الإرسال<span class="n">${S.Q.length}</span></a>
+    ${(S.PJ && S.PJ.sup && S.PJ.list && S.PJ.list.length > 1) ? `<div class="grp">المشروع</div>${S.PJ.list.map(p => `<a data-pj="${esc(p.id)}" class="${String(p.id) === String(S.pid || '') ? 'on' : ''}">🏗 ${esc(p.name)}${String(p.id) === String(S.pid || '') ? '<span class="n">الحالي</span>' : ''}</a>`).join('')}` : ''}
     <div class="grp">البرنامج</div><a href="./app.html" id="mapp" style="background:#FFF6CC;font-weight:700">🖥 البرنامج الكامل<span class="n">كل التبويبات</span></a>
     <div class="grp">أخرى</div>
     ${S.api ? `<a href="${esc(S.api)}" target="_blank" rel="noopener" id="mweb">🌐 البرنامج الرئيسي</a>` : ''}<a data-go="sync">⟳ مزامنة الآن</a></div>
@@ -211,6 +233,8 @@ function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div
   if ($('#mapp')) $('#mapp').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الكامل يحتاج اتصالاً بالإنترنت أول مرة'); } };
   if ($('#mweb')) $('#mweb').onclick = e => { menu(false); if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الرئيسي يحتاج اتصالاً بالإنترنت'); } };
   $('#mlo').onclick = () => { menu(false); logoutField(); };
+  d.querySelectorAll('[data-pj]').forEach(a => a.onclick = () => { menu(false); const pid = a.dataset.pj;
+    if (String(pid) === String(S.pid || '')) return; switchProj(pid, a.textContent.replace(/^🏗\s*/, '')); });
   d.querySelectorAll('[data-go]').forEach(a => a.onclick = () => { menu(false); const [v, x] = a.dataset.go.split(':');
     if (v === 'sync') return sync(true); if (v === 'home') { S.tab = x; S.q = ''; return S.r.v === 'home' ? render() : go({ v: 'home' }); }
     if (v === 'queue') return go({ v: 'queue' }); if (v === 'full') return S.r.v === 'full' ? (S.r = { v: 'full', sec: x }, history.replaceState(S.r, ''), render(), scrollTo(0, 0)) : go({ v: 'full', sec: x }); });
@@ -221,7 +245,7 @@ function render() {
   const A = $('#app');
   if (!S.api) return setupView(A);
   if (!S.dev || !S.B) return loginView(A);
-  const v = S.r.v; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); homeView(A);
+  const v = S.r.v; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); homeView(A);
 }
 function cleanApi(t) { const m = String(t || '').replace(/\s+/g, '').match(/https:\/\/script\.google(?:usercontent)?\.com\/[^?#]*?\/(?:exec|dev)\b/); return m ? m[0].replace(/\/dev$/, '/exec') : ''; }
 function setupView(A) {
@@ -249,19 +273,63 @@ function homeView(A) {
     <div class="card row"><div style="flex:1"><b>${esc(me())}</b><div class="muted">${navigator.onLine ? 'متصل' : 'بدون إنترنت — يُحفظ عملك على الجوال'} · ${esc(S.msg || ('بيانات ' + (B.at || '')))}</div></div>
       ${S.Q.length ? `<button id="qv" class="${fails ? '' : 'pri'}">بانتظار الإرسال ${S.Q.length}${fails ? ' · ⚠ ' + fails : ''}</button>` : '<span class="pill p-ok">✓ لا شيء بانتظار الإرسال</span>'}</div>
     ${S.noFull ? '' : '<button class="pri big" id="full" style="width:100%;margin-bottom:10px">🖥 البرنامج الكامل: كل التبويبات والأعمدة كالرابط الأساسي</button>'}<div class="tabs"><button data-t="o" class="${tab === 'o' ? 'on' : ''}">أوامر العمل (${B.orders.length})</button><button data-t="n" class="${tab === 'n' ? 'on' : ''}">إشعارات الصيانة (${B.notices.length})</button></div>
+    ${tab === 'n' ? '<button class="pri big" id="mtadd" style="width:100%;margin-bottom:10px">+ إشعار صيانة جديد</button>' : ''}
     <input id="q" placeholder="بحث برقم الأمر أو المقاول أو الحي" value="${esc(q)}" style="margin-bottom:10px">
     ${shown.map(it => { const d = docOf(it.key), P = planOf(it, d), st = stateOf(it, d, P), qs = QFS[it.qf_status || ''] || QFS[''], rj = (d.rej || []).length;
       return `<button class="card item" data-k="${esc(it.key)}"><div class="row"><span class="t">${it.d9 ? 'D9 ' : ''}${esc(it.wo)}${it.type && !it.d9 ? '-' + esc(it.type) : ''}</span><span class="pill ${qs[1]}">${esc(qs[0])}</span>${rj ? '<span class="pill p-d">⛔ مرفوض ' + rj + '</span>' : ''}<span style="flex:1"></span><span class="pill">📝 ${esc(st.prog.split(' · ')[0])} · 📷 ${esc(st.prog.split(' · ')[1])}</span></div>
         <div class="muted">${esc(it.office || '')} · ${esc(it.contractor || '')} · ${esc(it.district || '')}</div>${it.d9 ? `<div class="muted">${esc(it.work_desc || '')}</div>` : `<div class="muted">${esc(it.cur_stage || '')}</div>`}${it.visit && (it.visit.work || it.visit.desc) ? `<div class="muted" style="margin-top:2px">📅 ${esc(it.visit.date || '')}${it.visit.time ? ' ' + esc(it.visit.time) : ''} · ${esc(it.visit.work || '')}${it.visit.desc ? ' — ' + esc(it.visit.desc) : ''}</div>` : ''}</button>`; }).join('') || '<div class="card muted">لا شيء مسند إليك هنا.</div>'}
     <div class="row" style="margin:16px 0"><button id="lo" style="color:var(--dan)">تسجيل الخروج</button><span class="muted">الإصدار 1</span></div></div>`;
   wire(); $$('[data-t]').forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); });
+  if ($('#mtadd')) $('#mtadd').onclick = () => go({ v: 'mt', id: '' });
   $('#q').oninput = e => { S.q = e.target.value; const p = e.target.selectionStart; render(); const i = $('#q'); i.focus(); i.setSelectionRange(p, p); };
   $$('[data-k]').forEach(b => b.onclick = () => go({ v: 'item', key: b.dataset.k })); if ($('#qv')) $('#qv').onclick = () => go({ v: 'queue' }); if ($('#full')) $('#full').onclick = () => { location.href = './app.html'; };
   $('#lo').onclick = logoutField;
 }
+// ---------- a maintenance notice raised here (the owner, 31/10) ----------
+// The engineer fills it in the field and it goes out with everything else in the queue, so it works with no network.
+// D9 is required. «مهندس التنفيذ» is always him — the server writes his name and ignores anything sent for it.
+const MT_F = [['d9', 'رقم الإشعار D9', 'req'], ['date', 'التاريخ', 'date'], ['office', 'المكتب', 'office'],
+  ['contractor', 'المقاول', 'contractor'], ['station', 'المحطة', ''], ['work_type', 'نوع العمل', 'wtype'],
+  ['work_desc', 'وصف العمل', 'area'], ['reason', 'السبب', ''], ['notes', 'ملاحظات', 'area']];
+const MT_WT = ['مجدول', 'طوارئ'];
+function mtDraft() { return S.mtD || (S.mtD = { date: today(), office: (S.B.offices || [])[0] || '', work_type: 'طوارئ' }); }
+function mtView(A) {
+  const d = mtDraft(), B = S.B, offs = B.offices || [], ctrs = B.contractors || [];
+  const ph = S.mtPh || (S.mtPh = []);
+  const fld = ([k, lb, t]) => {
+    if (t === 'office' || t === 'contractor' || t === 'wtype') { const L = t === 'office' ? offs : t === 'contractor' ? ctrs : MT_WT;
+      return `<label>${esc(lb)}<select data-m="${k}"><option value=""></option>${L.map(x => `<option ${d[k] === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>`; }
+    if (t === 'area') return `<label>${esc(lb)}<textarea data-m="${k}" rows="3">${esc(d[k] || '')}</textarea></label>`;
+    return `<label>${esc(lb)}${t === 'req' ? ' *' : ''}<input data-m="${k}" ${t === 'date' ? 'type="date"' : t === 'req' ? 'inputmode="numeric"' : ''} value="${esc(d[k] || '')}"></label>`; };
+  A.innerHTML = topBar('إشعار صيانة جديد', 1) + `<div class="wrap">
+    <div class="card"><div class="muted" style="margin-bottom:8px">يُسجَّل باسمك (${esc(me())}). رقم الإشعار D9 مطلوب. يعمل بلا إنترنت ويُرسل عند عودة الشبكة، ولن ترى إلا إشعاراتك أنت.</div>
+      ${MT_F.map(fld).join('')}
+      <div style="margin-top:10px"><b>صور الإشعار</b> <span class="muted" id="mtpn">${ph.length ? '(' + ph.length + ')' : ''}</span>
+        <div id="mtph" class="phs">${ph.map((p, i) => `<div class="ph"><img src="${p.du}"><b data-mtrm="${i}">✕</b></div>`).join('')}</div>
+        <label class="upl">📷 تصوير<input type="file" id="mtc" accept="image/*" capture="environment" hidden></label>
+        <label class="upl">🖼 من المعرض<input type="file" id="mtg" accept="image/*" multiple hidden></label> <span id="mtp" class="muted"></span></div>
+      <div class="err" id="mte"></div>
+      <button class="pri big" id="mtsave" style="width:100%;margin-top:10px">حفظ الإشعار</button></div></div>`;
+  wire();
+  $$('[data-m]').forEach(el => el.onchange = el.oninput = () => { d[el.dataset.m] = el.value; });
+  const addPh = inp => async () => { const fs = [...inp.files]; inp.value = ''; for (const f of fs) {
+      try { const im = await shrink(f, 1600, 0.72); ph.push(im); } catch (e) { $('#mte').textContent = e.message; } } render(); };
+  if ($('#mtc')) $('#mtc').onchange = addPh($('#mtc')); if ($('#mtg')) $('#mtg').onchange = addPh($('#mtg'));
+  $$('[data-mtrm]').forEach(b => b.onclick = () => { ph.splice(+b.dataset.mtrm, 1); render(); });
+  $('#mtsave').onclick = async () => {
+    $$('[data-m]').forEach(el => d[el.dataset.m] = el.value);
+    const d9 = String(d.d9 || '').trim();
+    if (!d9) return $('#mte').textContent = 'اكتب رقم الإشعار D9';
+    if (!/^\d{6,12}$/.test(d9)) return $('#mte').textContent = 'رقم الإشعار أرقام فقط (6 إلى 12 رقماً)';
+    if (!String(d.office || '').trim()) return $('#mte').textContent = 'اختر المكتب';
+    $('#mtsave').disabled = true;
+    await enqueue({ t: 'mt', ref: d9, data: Object.assign({}, d, { d9 }), photos: ph.map(p => ({ b64: p.b64, mime: p.mime })) });
+    S.mtD = null; S.mtPh = []; S.msg = 'أُضيف الإشعار ' + d9 + (navigator.onLine ? '' : ' — سيُرسل عند عودة الشبكة');
+    go({ v: 'home' }); };
+}
 function queueView(A) {
   A.innerHTML = topBar('بانتظار الإرسال', 1) + `<div class="wrap">${S.Q.map(op => `<div class="card"><div class="row"><b>${esc(op.ref)}</b><span class="muted">${esc(op.at)}</span><span style="flex:1"></span><button data-dq="${op.id}" style="color:var(--dan)">حذف</button></div>
-    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'ci' ? 'صورة فاتورة المقاول' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
+    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'ci' ? 'صورة فاتورة المقاول' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'mt' ? 'إشعار صيانة ' + esc(op.ref) + (op.photos && op.photos.length ? ' (' + op.photos.length + ' صور)' : '') : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
     <button class="pri big" id="sn" style="width:100%">إرسال الآن</button></div>`;
   wire(); $('#sn').onclick = () => sync(true);
   $$('[data-dq]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذا العمل من الجوال نهائياً؟')) return; await DB.qdel(+b.dataset.dq); S.Q = S.Q.filter(x => x.id !== +b.dataset.dq); render(); });
@@ -834,7 +902,7 @@ function boqView(A) {
 (async () => {
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
   const qa = cleanApi(decodeURIComponent((location.search.match(/[?&]api=([^&]+)/) || [])[1] || '')); if (qa) { await DB.set('api', qa); history.replaceState(null, '', location.pathname); }
-  S.api = qa || (await DB.get('api')) || API_DEFAULT; S.dev = (await DB.get('dev')) || ''; ajiKeep(); S.user = (await DB.get('user')) || null; S.B = (await DB.get('B')) || null; { const it = await DB.get('items'); if (it) { S.IT = it.m; S.itv = it.v; } } S.Q = (await DB.qall()) || []; S.F = (await DB.get('F')) || null; S.noFull = !!(await DB.get('nofull')); try { prepF(); } catch (e) { S.F = null; }
+  S.api = qa || (await DB.get('api')) || API_DEFAULT; S.dev = (await DB.get('dev')) || ''; ajiKeep(); S.user = (await DB.get('user')) || null; S.pid = (await DB.get('pid')) || ''; S.PJ = (await DB.get('PJ')) || null; S.B = (await DB.get(bKey())) || (S.pid ? null : null) || (await DB.get('B')) || null; { const it = await DB.get('items'); if (it) { S.IT = it.m; S.itv = it.v; } } S.Q = (await DB.qall()) || []; S.F = (await DB.get('F')) || null; S.noFull = !!(await DB.get('nofull')); try { prepF(); } catch (e) { S.F = null; }
   history.replaceState(S.r, ''); render(); if (S.dev && navigator.onLine) sync();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
