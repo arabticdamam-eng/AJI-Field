@@ -155,7 +155,7 @@ table.fit td{vertical-align:top}table.fit select{width:100%}
 .s8{background:#E1F5EE;color:#0F6E56}
 table.jt td{padding:4px 6px}table.jt input,table.jt select{padding:4px 6px}table.mt td{cursor:pointer}
 table.rpt{width:auto;min-width:820px;border-collapse:collapse;font-size:13px}table.rpt th,table.rpt td{border:1px solid #8a8a8a;padding:5px 10px;text-align:center;white-space:nowrap;position:static;cursor:default;font-weight:700}
-table.rpt th{background:#D9E2F3;color:#000}table.rpt tr.mu td{background:#D6DCE4}table.rpt td.site{background:#D6DCE4;vertical-align:middle}table.rpt tr.tot td{background:#FFFF00;color:#FF0000}table.rpt .x{border:none;background:transparent !important;font-weight:400;color:var(--mut);text-align:right}
+table.rpt td.rpgo{cursor:pointer}table.rpt td.rpgo:hover{background:#FFF3C4;text-decoration:underline}table.rpt th{background:#D9E2F3;color:#000}table.rpt tr.mu td{background:#D6DCE4}table.rpt td.site{background:#D6DCE4;vertical-align:middle}table.rpt tr.tot td{background:#FFFF00;color:#FF0000}table.rpt .x{border:none;background:transparent !important;font-weight:400;color:var(--mut);text-align:right}
 table.rpt tbody tr:hover td{filter:none}
 button.on{background:#E6F1FB;border-color:#185FA5;color:#185FA5}.sdir{cursor:pointer;font-weight:700;padding:0 3px;border-radius:4px}.sdir.up{color:#3B6D11;background:#EAF3DE}.sdir.down{color:#A32D2D;background:#FCEBEB}
 .rpf{display:inline-block;position:relative}.rpf summary{cursor:pointer;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13px}.rpf[open]>label{display:block;padding:2px 8px}.rpf[open]{background:var(--card);border:1px solid var(--line);border-radius:8px;padding-bottom:4px}
@@ -471,7 +471,12 @@ const isDup=o=>!!o&&!o._draft&&!!o.wo&&(dupMap()[dKey(o)]||0)>1;
 function dupMsg(wo,type){ wo=String(wo||'').trim(); type=String(type||'').trim(); if(!/^\d{6,12}$/.test(wo)||!type) return ''; const cc=tCode(type);
   const hit=S.orders.find(x=>x.wo===wo&&(x.type===type||String(x.ccode||'')===cc)); if(hit) return 'أمر العمل '+wo+' بالنوع '+type+' موجود مسبقاً'+(hit.type&&hit.type!==type?' (مسجل بالنوع '+hit.type+')':'');
   const ar=(S.archO||[]).find(x=>x.wo===wo&&(x.type===type||String(x.ccode||'')===cc)); return ar?'أمر العمل '+wo+' بالنوع '+type+' موجود في الأرشيف — استرجعه من «الأرشيف» بدل إضافته':''; }
+// The orders the monthly report counts inside «Metering Unit» for an office: a real cost, at or under the big-project line,
+// and not cancelled. Same rule as buildReport, so the list a click opens holds exactly the orders the row counted.
+const MU_MAX=50000;
+const isMU=o=>{ const c=+o.cost; return o.cost!==''&&o.cost!=null&&!isNaN(c)&&c>0&&c<=MU_MAX&&!isCancelled(o); };
 const XF = {
+  mu:{label:'عدادات (أقل من 50,000)', fn:o=>isMU(o)},
   stdir:{label:'مرحلة تحتاج تعديل ▲▼', fn:o=>!!stDir(o)},
   dup:{label:'أوامر مكررة', fn:o=>isDup(o)},
   open:{label:'الأوامر المفتوحة', fn:o=>o.open},
@@ -1564,7 +1569,8 @@ function vDash(){
   const own={}; open.filter(o=>o.cur_owner).forEach(o=>{const x=own[o.cur_owner]||(own[o.cur_owner]={n:0,d:0}); x.n++; x.d+=o.cur_since?days(S.B.today,o.cur_since):0;});
   $('#main').innerHTML=`<div class="bar">${S.B.user.offices.length>1?sel('doff','كل المكاتب',uniq('office')):''}${sel('dcon','كل المقاولين',uniq('contractor'))}<span class="sp"></span><span class="muted">اضغط على أي رقم أو عمود أو شريحة لفتح الأوامر · اليوم ${S.B.today}</span><button id="xall">تصدير إكسل موحّد</button></div>
    <div class="kpis"><div class="kpi go" data-go="all">إجمالي الأوامر<b>${list.length}</b></div><div class="kpi go" data-go="open">مفتوحة<b>${open.length}</b></div><div class="kpi go" data-go="late30">متأخرة +30 يوماً (قبل 211)<b class="late">${late30}</b></div>
-   ${(()=>{ const n=list.filter(isDup).length; return n?`<div class="kpi go" data-go="dup" title="نفس الرقم بنفس النوع أكثر من مرة">أوامر مكررة<b class="late">${n}</b></div>`:''; })()}<div class="kpi go" data-go="stdir" title="الإفادة / المرحلة تختلف عن الإجراء الأكثر تقدماً في أولاب">مرحلة تحتاج تعديل ▲▼<b>${list.filter(o=>stDir(o)).length}</b></div><div class="kpi go" data-go="stalled" title="دون ما وصل الإجراء 155 أو ما بعده">متعثرات PDC<b>${list.filter(isStalled).length}</b></div><div class="kpi go" data-go="qfmiss">منفّذة بلا ملف جودة<b class="late">${list.filter(qfMissing).length}</b></div><div class="kpi go" data-go="qfwait">بانتظار مراجعة الجودة<b>${list.filter(o=>o.qf_status==='بانتظار الجودة').length}</b></div><div class="kpi go" data-go="confirmed">مؤكد بلا مستخلص<b>${list.filter(o=>/مؤكد/.test(o.oracle)).length}</b></div></div>
+   ${(()=>{ const n=list.filter(isDup).length; return n?`<div class="kpi go" data-go="dup" title="نفس الرقم بنفس النوع أكثر من مرة">أوامر مكررة<b class="late">${n}</b></div>`:''; })()}${(()=>{ const mu=list.filter(isMU); if(!mu.length) return ''; const v=mu.reduce((s,o)=>s+(+o.cost||0),0);
+     return `<div class="kpi go" data-go="mu" title="الأوامر التي يعدّها التقرير الشهري في صف Metering Unit: تكلفتها أكبر من صفر وأقل من 50,000، وغير ملغاة">عدادات (أقل من 50,000)<b>${mu.length}</b>${canCost()?`<small class="muted">${gFmt(v)} ريال</small>`:''}</div>`; })()}<div class="kpi go" data-go="stdir" title="الإفادة / المرحلة تختلف عن الإجراء الأكثر تقدماً في أولاب">مرحلة تحتاج تعديل ▲▼<b>${list.filter(o=>stDir(o)).length}</b></div><div class="kpi go" data-go="stalled" title="دون ما وصل الإجراء 155 أو ما بعده">متعثرات PDC<b>${list.filter(isStalled).length}</b></div><div class="kpi go" data-go="qfmiss">منفّذة بلا ملف جودة<b class="late">${list.filter(qfMissing).length}</b></div><div class="kpi go" data-go="qfwait">بانتظار مراجعة الجودة<b>${list.filter(o=>o.qf_status==='بانتظار الجودة').length}</b></div><div class="kpi go" data-go="confirmed">مؤكد بلا مستخلص<b>${list.filter(o=>/مؤكد/.test(o.oracle)).length}</b></div></div>
    ${canMoney()?'<div id="dmoney" class="kpis" style="margin-top:8px"><div class="kpi muted">جارٍ حساب القيم المالية من التقرير الشهري…</div></div>':''}
    ${pjSup()&&pjList().length>1?`<div class="card" style="margin-top:10px"><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><b>مقارنة المشاريع</b><span class="sp"></span><button id="pjcb">${S.pjCmp?'تحديث':'عرض المقارنة'}</button></div><div id="pjcmp" class="muted">أرقام كل مشروع جنباً إلى جنب مع الإجمالي.</div></div>`:''}
    <div class="grid">
@@ -1587,16 +1593,22 @@ function vDash(){
   document.querySelectorAll('[data-eng]').forEach(el=>el.onclick=()=>{ if(!tabOn('orders')) return toast(TAB_NO); S.cf={}; const e=el.dataset.eng; S.xf={key:'qfmiss',label:XF.qfmiss.label}; S.f.q=''; S.sort=['since',-1]; S.view='orders'; if(e!=='(غير محدد)') S.cf.site_engineer=[e]; if(f.doff) S.cf.office=[f.doff]; shell(); });
   const AGEK={'لم ينتهِ موعده':'a0','1–7 أيام':'a1','8–30 يوماً':'a2','+30 يوماً':'late30'};
   const clk=fnc=>function(e,els,ch){ if(els.length&&typeof fnc==='function') fnc(ch.data.labels[els[0].index]); }; const hov=function(e,els){ e.native.target.style.cursor=els.length?'pointer':'default'; };
-  const CLK={g1:l=>go('orders',{cur_stage:[stLbl(l)]}), g2:l=>go('orders',{},AGEK[l]), g3:l=>go('orders',{},AGEK[l]), g4:l=>go('orders',{office:[l]}),
+  const CLK={g1:l=>go('orders',{cur_stage:[l]}), g2:l=>go('orders',{},AGEK[l]), g3:l=>go('orders',{},AGEK[l]), g4:l=>go('orders',{office:[l]}),
     g5:l=>go('orders',{oracle:[l==='غير محدد'?'':l]}), g6:l=>go('orders',{contractor:[l]},'late30'), g7:l=>go('stalled',{munib_reason:[l]})};
   Chart.defaults.font.family='Tajawal'; Chart.defaults.color='#5f5e5a';
   const PAL=['#378ADD','#1D9E75','#D85A30','#7F77DD','#EF9F27','#D4537E','#639922','#888780','#185FA5','#993C1D'];
-  const bar=(id,obj,color,horiz=true,top=10)=>{ const e=Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,top);
+  const bar=(id,obj,color,horiz=true,top=10,keep=false)=>{ const e0=Object.entries(obj), es=keep?e0:e0.slice().sort((a,b)=>b[1]-a[1]), e=top?es.slice(0,top):es;
     charts.push(new Chart($('#'+id),{type:'bar',data:{labels:e.map(x=>x[0]),datasets:[{data:e.map(x=>x[1]),backgroundColor:color,borderRadius:4}]},options:{onClick:clk(CLK[id]),onHover:hov,indexAxis:horiz?'y':'x',maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{position:horiz?'right':'left',grid:{display:!horiz}},x:{grid:{display:horiz}}}}})); };
   const pie=(id,obj,colors)=>{ const e=Object.entries(obj).filter(x=>x[1]); const tot=e.reduce((s,x)=>s+x[1],0);
     charts.push(new Chart($('#'+id),{type:'doughnut',data:{labels:e.map(x=>x[0]),datasets:[{data:e.map(x=>x[1]),backgroundColor:colors||PAL,borderWidth:2}]},
       options:{onClick:clk(CLK[id]),onHover:hov,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} (${Math.round(c.raw/tot*100)}%)`}}}}})); };
-  bar('g1',cnt(list,'cur_stage'),'#378ADD',true,16);
+  // every stage and action that has at least one order, in the order of the work-order journey, with its full label
+  // («إجراء - 203 - الانتهاء من تنفيذ الشبكة الكهربائية») instead of the raw cell value, and the box grows to fit them
+  { const m=cnt(list,'cur_stage'), known=stNames(), out={};
+    known.forEach(n=>{ if(m[n]) out[stLbl(n)]=m[n]; });
+    Object.keys(m).forEach(n=>{ if(known.indexOf(n)<0) out[stLbl(n)]=m[n]; });
+    const n=Object.keys(out).length, bx=$('#g1')&&$('#g1').parentNode; if(bx) bx.style.height=Math.max(320,n*26+70)+'px';
+    bar('g1',out,'#378ADD',true,0,true); }
   const ageC=['#B4B2A9','#EF9F27','#D85A30','#A32D2D'];
   charts.push(new Chart($('#g2'),{type:'bar',data:{labels:Object.keys(age),datasets:[{data:Object.values(age),backgroundColor:ageC,borderRadius:4}]},options:{onClick:clk(CLK.g2),onHover:hov,maintainAspectRatio:false,plugins:{legend:{display:false}}}}));
   pie('g3',age,ageC); pie('g4',cnt(list,'office'));
@@ -2501,7 +2513,8 @@ const RPH=['Site','Scheme Number<br>(Meter Units+Projects)','Total Project Cost 
 const m2=x=>(+x||0)?(+x).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'-';
 function reportHtml(rep,edit){
   const pc=x=>(+x||0)?Math.round(+x*100)+'%':'-';
-  const body=rep.sites.map(s=>s.rows.map((x,i)=>`<tr class="${i?'':'mu'}">${i?'':`<td class="site" rowspan="${s.rows.length}">${esc(s.en)}</td>`}<td>${x.label?esc(x.label):esc(x.wo)}</td><td>${m2(x.pdc)}</td><td>${m2(x.aji)}</td>
+  // a row opens what it counted: «Metering Unit» the office's small orders, a project row that order (the owner, 01/11)
+  const body=rep.sites.map(s=>s.rows.map((x,i)=>`<tr class="${i?'':'mu'}">${i?'':`<td class="site" rowspan="${s.rows.length}">${esc(s.en)}</td>`}<td class="rpgo" ${x.label?`data-mu="${esc(s.ar)}" title="افتح أوامر العدادات (أقل من 50,000) في ${esc(s.ar)}"`:`data-wo="${esc(x.key||'')}" title="افتح أمر العمل"`}>${x.label?esc(x.label):esc(x.wo)}</td><td>${m2(x.pdc)}</td><td>${m2(x.aji)}</td>
       <td>${edit&&x.manual?`<input data-rp="${esc(x.key)}" value="${Math.round(x.pct*100)}" inputmode="numeric" style="width:54px;text-align:center" title="نسبة يدوية"> %`:pc(x.pct)}</td><td>${m2(x.sar)}</td><td class="x">${esc(x.contractor||'')}</td><td class="x">${esc(x.office||'')}</td></tr>`).join('')
       +`<tr class="tot"><td>Total</td><td></td><td>${m2(s.tot.pdc)}</td><td>${m2(s.tot.aji)}</td><td></td><td>${m2(s.tot.sar)}</td><td class="x"></td><td class="x"></td></tr>`).join('');
   const m=rep.maint;
@@ -2534,6 +2547,10 @@ async function vReport(){
    <div class="tw" style="max-height:none">${reportHtml(rep,live&&S.B.editable.includes('progress'))}</div><div class="err" id="rperr"></div>`;
   const title=()=>live?P.month:P.sel;
   $('#rpsel').onchange=e=>{ P.sel=e.target.value; vReport(); };
+  // «Metering Unit» opens the office's small orders; a project row opens its order
+  document.querySelectorAll('td[data-mu]').forEach(el=>el.onclick=()=>{ if(!tabOn('orders')) return toast(TAB_NO);
+    S.cf={office:[el.dataset.mu]}; S.xf={key:'mu',label:XF.mu.label}; S.f=S.f||{}; S.f.q=''; S.sort=null; S.page=0; S.view='orders'; shell(); window.scrollTo(0,0); });
+  document.querySelectorAll('td[data-wo]').forEach(el=>el.onclick=()=>{ const k=el.dataset.wo; if(k) openOrder(k); });
   document.querySelectorAll('[data-rpo]').forEach(c=>c.onchange=()=>{ const a=[...document.querySelectorAll('[data-rpo]:checked')].map(x=>x.dataset.rpo); P.offs=a.length===(S.B.lists.office||[]).length||!a.length?null:a; vReport(); });
   document.querySelectorAll('[data-rpp]').forEach(c=>c.onchange=()=>{ const a=[...document.querySelectorAll('[data-rpp]:checked')].map(x=>x.dataset.rpp); P.projs=a.length?a:null; vReport(); });
   document.querySelectorAll('[data-rp]').forEach(el=>el.onchange=async()=>{ const v=el.value.trim(); if(v!==''&&!(+v>=0&&+v<=100)){ toast('النسبة بين 0 و100'); return; }
