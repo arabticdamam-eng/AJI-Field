@@ -101,7 +101,7 @@ table.gs th .fbtn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 header .pjsel{font-size:12px;padding:2px 6px;border-radius:7px;max-width:240px}header .nback{padding:4px 10px;border-radius:8px;font-size:13px;margin-inline-end:6px}
 table.gs th .rsz{position:absolute;top:0;left:-3px;width:8px;height:100%;cursor:col-resize;z-index:6}table.gs th .rsz:hover{background:rgba(24,95,165,.25)}
 table.gs td.dupc{background:#FFC7CE !important;color:#9C0006 !important;font-weight:700}table.gs tr.drf td{background:#FFFBEA}
-</style><style id="cvcss"></style><style>table.gs tr.po-red td{background:#FDECEA}table.gs tr.po-red td.rn{background:#C62828;color:#fff}table.gs tr.po-green td{background:#E8F5E9}table.gs tr.po-green td.rn{background:#2E7D32;color:#fff}table.gs tr.drf td.rn{color:var(--acc);font-weight:700}table.gs td.rn[data-rr]{cursor:pointer}
+</style><style id="cvcss"></style><style>table.gs tr.mr-auto td{background:#FFFDF2}table.gs tr.mr-auto td.rn{background:#A15C00;color:#fff}table.gs tr.po-red td{background:#FDECEA}table.gs tr.po-red td.rn{background:#C62828;color:#fff}table.gs tr.po-green td{background:#E8F5E9}table.gs tr.po-green td.rn{background:#2E7D32;color:#fff}table.gs tr.drf td.rn{color:var(--acc);font-weight:700}table.gs td.rn[data-rr]{cursor:pointer}
 table.gs tfoot td{position:sticky;bottom:0;background:#EEF3F8;font-weight:700;border-top:2px solid var(--acc);cursor:pointer;z-index:2;white-space:nowrap}table.gs tfoot td small{font-weight:500;color:var(--mut);font-size:10px}table.gs tfoot td.rn{z-index:3}
 .gstat{display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-start;padding:6px 10px;background:#F1EFE8;border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;font-size:12px}.gstat .gsi{cursor:pointer}.gstat b{color:var(--acc)}
 .colsl{display:flex;flex-direction:column;gap:2px;max-height:55vh;overflow:auto;margin-bottom:10px}.colsl label{padding:4px 8px;border:1px solid var(--line);border-radius:6px;cursor:grab;display:flex;gap:6px}
@@ -957,7 +957,9 @@ function sheet(base, defCols, opt={}){
   if(A.wire) A.wire({rows:()=>rows, sel:()=>[...new Set([...sel].map(x=>+x.split(',')[0]))].map(r=>rows[r]).filter(Boolean), draw, clear:()=>{ sel.clear(); act=null; }});
   if($('#bulk')) $('#bulk').onclick=()=>bulkEdit(rows);
   if($('#gbulk')) $('#gbulk').onclick=gBulk; if($('#gstu')) $('#gstu').onclick=stageUnifyUI; if($('#gsdir')) $('#gsdir').onclick=()=>{ ST.xf=ST.xf&&ST.xf.key==='stdir'?null:{key:'stdir',label:XF.stdir.label}; draw(); $('#gsdir').classList.toggle('on',!!ST.xf); }; if($('#glundo')) $('#glundo').onclick=localUndo;
-  if($('#gdel')) $('#gdel').onclick=()=>{ const rs=[...new Set([...sel].map(x=>+x.split(',')[0]))].map(r=>rows[r]).filter(Boolean); delRows(DEL, rs); };
+  if($('#gdel')) $('#gdel').onclick=()=>{ let rs=[...new Set([...sel].map(x=>+x.split(',')[0]))].map(r=>rows[r]).filter(Boolean);
+    const sk=DEL&&DEL.skip?rs.filter(DEL.skip).length:0; if(sk) rs=rs.filter(r=>!DEL.skip(r));   // a suggested row holds nothing, so there is nothing to delete
+    if(sk&&!rs.length) return toast('الصفوف المقترحة ليست سجلات محفوظة — لا شيء فيها ليُحذف'); delRows(DEL, rs); };
   if($('#gadd')) $('#gadd').onclick=()=>addOrderForm();
   if($('#xall')) $('#xall').onclick=()=>exportUnified(); if($('#gimp')) $('#gimp').onclick=()=>goImport($('#gimp').dataset.k);
   if($('#gblank')) $('#gblank').onclick=()=>{ modal(`<h3 style="margin-top:0">صفوف فارغة</h3><div class="f"><label>العدد<input id="gb_n" type="number" min="1" max="50" value="3"></label></div>
@@ -3900,24 +3902,50 @@ function vCInv(top,wireTop){
   sheet(rows, CI_COLS, {ad:AD, draft:D, kpis:'<div id="cik" class="kpis"></div>'});
   $('#main').insertAdjacentHTML('afterbegin',top); wireTop();
 }
+// Orders whose journey has reached the matching phase but that are not in the matching file yet (the owner, 31/10).
+// They are shown as suggested rows, not written anywhere: the moment the first matching cell is filled the row becomes a real
+// record. One that is never filled simply stops appearing when the order moves on, so nothing is written to the file by itself.
+function mrCertStep(){ const J=S.B.journey||[];
+  const x=J.find(s=>s.kind==='إجراء'&&s.code==='156')||J.find(s=>s.kind==='إجراء'&&s.code==='230')||J.find(s=>s.kind==='سلة');
+  return x?x.i:Infinity; }
+const MR_AUTO_K=['cert','status','value','required','cover','po','po_status','sap_date','pay_status','notes','gis_date','aj_code','basket'];
+function mrAutoRows(have){
+  if(!S.orders||!S.orders.length) return [];
+  const H={}; have.forEach(r=>H[String(r.key)]=1); const ci=mrCertStep(); if(!isFinite(ci)) return [];
+  return S.orders.filter(o=>!H[String(o.key)]&&!isCancelled(o)&&jSteps(o).some(s=>s&&s.i>=ci))
+    .map(o=>{ const x={_a:1,key:o.key,kind:'إنشاءات',wo:o.wo,ccode:o.ccode,type:o.type,office:o.office,contractor:o.contractor,
+      cert_value:(o.cost==null||o.cost==='')?'':o.cost,basket:o.olap_holder||''};
+      MR_AUTO_K.forEach(k=>{ if(x[k]===undefined) x[k]=''; }); return x; })
+    .sort((a,b)=>String(a.wo).localeCompare(String(b.wo),'ar'));
+}
+function mrSaveCells(recs){ return api('saveMatchRec',S.tok,recs.map(r=>({key:r.key,k:r.k,v:r.v}))).then(r=>{
+  r.rows.forEach(n=>{ const o=(S.mr.rows||[]).find(x=>x.key===n.key); if(o) Object.assign(o,n);
+    const x=!mrInv(n)&&byRef(n.key); if(x){ x.match_cert=n.cert; x.match_status=n.status; x.match_value=n.value; x.match_required=n.required; x.match_cover=n.cover; } }); S.mt=null; }); }
 function vMatchRec(inv,top,wireTop){
-  const R=S.mr, can=R.can&&!roView(), LS=mrLists(), tc=inv?TABC.maint:TABC.matching, cols=inv?MR_IC:MR_CC, rows=R.rows.filter(o=>mrInv(o)===inv);
+  const R=S.mr, can=R.can&&!roView(), LS=mrLists(), tc=inv?TABC.maint:TABC.matching, cols=inv?MR_IC:MR_CC;
+  const real=R.rows.filter(o=>mrInv(o)===inv), AUTO=inv?[]:mrAutoRows(real), rows=real.concat(AUTO);
   S.gst=S.gst||{}; const ST=S.gst[inv?'mrinv':'mrcon']||(S.gst[inv?'mrinv':'mrcon']={cf:{},sort:null,xf:null,f:{q:''}});
   const LK={appr_head:'appr',appr_mgr:'appr',appr_fin:'appr'};
-  const AD={ noImp:1, del:{kind:'match',name:'سجل مطابقة',key:o=>o.key,ref:o=>inv?'فاتورة '+o.inv_seq+' · D9 '+(o.d9||o.n_d9||'')+' · D2 '+(o.wo||''):o.key,done:keys=>{ const K=new Set(keys); R.rows=R.rows.filter(o=>!K.has(o.key)); }}, st:ST, unit:inv?'فاتورة':'أمراً', stk:inv?'inv_seq':'key', lx:inv?['mn']:undefined, file:inv?'الصيانة_والطوارئ_فواتير':'المطابقة_الإنشاءات', sub:inv?'inv':'cons', subName:inv?'الصيانة والطوارئ':'الإنشاءات', orders:false, ordOf:o=>inv?null:byRef(o.key||o.wo), all:cols, lbl:k=>mrLbl(k,inv), val:mrVal,
+  const AD={ noImp:1, del:{kind:'match',name:'سجل مطابقة',skip:o=>!!o._a,key:o=>o.key,ref:o=>inv?'فاتورة '+o.inv_seq+' · D9 '+(o.d9||o.n_d9||'')+' · D2 '+(o.wo||''):o.key,done:keys=>{ const K=new Set(keys); R.rows=R.rows.filter(o=>!K.has(o.key)); }}, st:ST, unit:inv?'فاتورة':'أمراً', stk:inv?'inv_seq':'key', lx:inv?['mn']:undefined, file:inv?'الصيانة_والطوارئ_فواتير':'المطابقة_الإنشاءات', sub:inv?'inv':'cons', subName:inv?'الصيانة والطوارئ':'الإنشاءات', orders:false, ordOf:o=>inv?null:byRef(o.key||o.wo), all:cols, lbl:k=>mrLbl(k,inv), val:mrVal,
     can:(o,k)=>can&&!['key','pct','prev'].concat(MR_NT).includes(k)&&!(inv&&k==='inv_seq'), opts:(o,k)=>LS[LK[k]||k], dates:MR_DATES, wrap:['notes','basket','required'],
     free:['contractor','ccode','aj_code','basket','required','po','pay_status','appr_head','appr_mgr','appr_fin'],
     src:k=>MR_ORD.includes(k)&&!inv?'الإسنادات':MR_NT.includes(k)?'إشعار الصيانة':inv?'الصيانة والطوارئ':'الإنشاءات', clr:k=>MR_ORD.includes(k)&&!inv?TABC.orders:MR_NT.includes(k)?TABC.maint:tc, chip:()=>'',
-    cell:(o,k,v)=>k==='key'?`<span style="color:#888780;font-size:12px">${esc(v)}</span>`:inv&&(k==='wo'||k==='d9')&&v&&!o.n_found&&(k==='d9'||!o.d9)?`${esc(v)} <span class="pill p-d" title="لا يوجد إشعار بهذا الرقم (D9 أو D2) في الصيانة والطوارئ">لا يوجد إشعار</span>`:(k==='cert'||k==='status')&&v?`<span class="pill ${v==='تم'?'p-ok':v==='جاري'?'p-w':'p-d'}">${esc(v)}</span>`:MR_NUM.includes(k)&&v!==''?money(v):esc(v),
-    cls:()=>'', search:o=>[o.key,o.wo,o.d9,o.n_d9,o.po_status,o.contractor,o.n_contractor,o.notes,o.po,o.basket,o.inv_no].join(' '),
+    cell:(o,k,v)=>k==='key'?`<span style="color:#888780;font-size:12px">${esc(v)}</span>${o._a?' <span class="pill p-w" title="وصلت رحلته إلى المطابقة ولم يُدرَج في ملف المطابقة بعد. اكتب في أي خانة مطابقة فيصير سجلاً.">مقترح</span>':''}`:inv&&(k==='wo'||k==='d9')&&v&&!o.n_found&&(k==='d9'||!o.d9)?`${esc(v)} <span class="pill p-d" title="لا يوجد إشعار بهذا الرقم (D9 أو D2) في الصيانة والطوارئ">لا يوجد إشعار</span>`:(k==='cert'||k==='status')&&v?`<span class="pill ${v==='تم'?'p-ok':v==='جاري'?'p-w':'p-d'}">${esc(v)}</span>`:MR_NUM.includes(k)&&v!==''?money(v):esc(v),
+    cls:()=>'', rowCls:o=>o._a?'mr-auto':'', search:o=>[o.key,o.wo,o.d9,o.n_d9,o.po_status,o.contractor,o.n_contractor,o.notes,o.po,o.basket,o.inv_no].join(' '),
     open:o=>{ const x=!inv&&byRef(o.key); if(x) openOrder(x.key); }, undo:null,
-    norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {key:o.key,k,v}; },
-    save:recs=>api('saveMatchRec',S.tok,recs).then(r=>{ r.rows.forEach(n=>{ const o=R.rows.find(x=>x.key===n.key); if(o) Object.assign(o,n); const x=!mrInv(n)&&byRef(n.key); if(x){ x.match_cert=n.cert; x.match_status=n.status; x.match_value=n.value; x.match_required=n.required; x.match_cover=n.cover; } }); S.mt=null; }),
+    norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return o._a?{_a:o,key:o.key,k,v}:{key:o.key,k,v}; },
+    save:async recs=>{ const nw=[...new Set(recs.filter(r=>r._a).map(r=>r._a))];
+      if(nw.length){ for(const o of nw){ const x={kind:'إنشاءات',wo:o.wo,ccode:o.ccode,type:o.type,office:o.office,contractor:o.contractor};
+          if(o.cert_value!=='') x.cert_value=o.cert_value; MR_AUTO_K.forEach(k=>{ if(o[k]!=='') x[k]=o[k]; });
+          await api('addMatchRec',S.tok,x); }
+        await mrLoad(true); S.mt=null; toast('أُضيف '+nw.length+' سجلاً إلى ملف المطابقة'); vMatching(); return; }
+      return mrSaveCells(recs); },
+
     bar:`${can?'<button id="mradd" class="pri">+ '+(inv?'فاتورة':'أمر')+'</button>':''}<button id="mrx">⬇ تصدير ملف ${inv?'الصيانة والطوارئ':'الإنشاءات'}</button><button id="mrxa">⬇ تصدير الملف الموحد للمطابقة</button>${can?'<button id="mri">⬆ استيراد ملف المطابقة</button><input type="file" id="mrf" accept=".xlsx,.xls" style="display:none">':''}`,
     help:inv?'فواتير الصيانة والطوارئ، كل فاتورة مربوطة بإشعارها D9 (المكتب والمقاول والمحطة ونوع العمل تأتي من الإشعار). الملف المصدَّر فيه الفواتير وملخصها وكفر الصيانة.':'أوامر الإنشاءات، ومنها ما حوّلته GIS (بتاريخ تحويله). الاستيراد يضيف ويحدّث بالمفتاح ولا يحذف، ويحدّث أعمدة المطابقة الخمسة في أوامر العمل. يقبل الملف الموحد والمنفصل والقديم، ويقرأ ورقة «القوائم».',
-    onDraw:l=>{ if(!$('#mrk')) return; const sm=k=>Math.round(l.reduce((s,o)=>s+(mrNum(o[k])||0),0)*100)/100;
+    onDraw:l=>{ if(!$('#mrk')) return; const sm=k=>Math.round(l.filter(o=>!o._a).reduce((s,o)=>s+(mrNum(o[k])||0),0)*100)/100, na=l.filter(o=>o._a).length;
       $('#mrk').innerHTML=inv?`<div class="kpi">الفواتير<b>${l.length}</b></div><div class="kpi">صافي الفواتير<b>${money(sm('inv_net'))||0}</b></div><div class="kpi">بالضريبة<b>${money(Math.round(sm('inv_net')*115)/100)||0}</b></div><div class="kpi">معتمدة من المالية<b style="color:var(--ok)">${l.filter(o=>/^\d{4}-/.test(o.appr_fin)).length}</b></div><div class="kpi">بلا إشعار في البرنامج<b class="late">${l.filter(o=>!o.n_found).length}</b></div>`
-        :`<div class="kpi">أوامر الإنشاءات<b>${l.length}</b></div><div class="kpi">منها من GIS<b>${l.filter(o=>o.gis_date).length}</b></div><div class="kpi">قيمة المطابقة<b>${money(sm('value'))||0}</b></div><div class="kpi">موقف المطابقة: متبقي<b class="late">${l.filter(o=>o.status==='متبقي').length}</b></div><div class="kpi">صدر لها PO<b>${l.filter(o=>/^\d+$/.test(o.po)).length}</b></div>`; },
+        :`<div class="kpi">أوامر الإنشاءات<b>${l.length}</b></div><div class="kpi">منها من GIS<b>${l.filter(o=>o.gis_date).length}</b></div><div class="kpi">قيمة المطابقة<b>${money(sm('value'))||0}</b></div><div class="kpi">موقف المطابقة: متبقي<b class="late">${l.filter(o=>o.status==='متبقي').length}</b></div><div class="kpi">صدر لها PO<b>${l.filter(o=>/^\d+$/.test(o.po)).length}</b></div>${na?`<div class="kpi" title="وصلت رحلتها إلى المطابقة ولم تُدرَج في الملف بعد — اكتب في أي خانة مطابقة فتصير سجلاً"><span style="color:#A15C00">مقترحة من الرحلة</span><b style="color:#A15C00">${na}</b></div>`:''}`; },
     wire:()=>{ if($('#mradd')) $('#mradd').onclick=()=>mrAdd(inv); $('#mrx').onclick=()=>mrExport(inv?'maint':'cons'); $('#mrxa').onclick=()=>mrExport('all'); if($('#mri')){ $('#mri').onclick=()=>$('#mrf').click(); $('#mrf').onchange=e=>mrImport(e.target.files[0]); } } };
   const RD=can?{ need:inv?'تسلسل الفاتورة ورقم الإشعار D9 أو أمر العمل D2':'رقم أمر العمل', fields:cols.filter(k=>!['key','pct','prev','n_office','n_contractor','n_station','n_work_type'].includes(k)),
     ready:o=>inv?!!(String(o.inv_seq||'').trim()&&(String(o.wo||'').trim()||String(o.d9||'').trim())):/^\d{6,12}$/.test(String(o.wo||'').trim()),

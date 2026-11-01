@@ -99,6 +99,9 @@ async function switchProj(pid, name) {
   try { toast('جارٍ تبديل المشروع…');
     const r = await call('fieldSwitchProject', S.dev, pid);
     S.pid = pid; await DB.set('pid', pid);
+    // app.html keeps its own session; drop it so it mints a fresh one from the device and lands in the same project
+    try { localStorage.removeItem('wo_tok'); } catch (e) {}
+    S.F = null; await DB.delk('F');
     const cached = await DB.get(bKey()); if (cached) S.B = cached;
     await pull(); S.msg = 'المشروع: ' + (r.name || name || 'الأساسي'); S.q = ''; S.tab = 'o'; go({ v: 'home' }); toast('المشروع الآن: ' + (r.name || name || 'الأساسي')); }
   catch (e) { toast(e.message); } }
