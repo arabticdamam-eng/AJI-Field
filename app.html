@@ -101,7 +101,7 @@ table.gs th .fbtn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 header .pjsel{font-size:12px;padding:2px 6px;border-radius:7px;max-width:240px}header .nback{padding:4px 10px;border-radius:8px;font-size:13px;margin-inline-end:6px}
 table.gs th .rsz{position:absolute;top:0;left:-3px;width:8px;height:100%;cursor:col-resize;z-index:6}table.gs th .rsz:hover{background:rgba(24,95,165,.25)}
 table.gs td.dupc{background:#FFC7CE !important;color:#9C0006 !important;font-weight:700}table.gs tr.drf td{background:#FFFBEA}
-</style><style id="cvcss"></style><style>table.gs tr.mr-auto td{background:#FFFDF2}table.gs tr.mr-auto td.rn{background:#A15C00;color:#fff}table.gs tr.po-red td{background:#FDECEA}table.gs tr.po-red td.rn{background:#C62828;color:#fff}table.gs tr.po-green td{background:#E8F5E9}table.gs tr.po-green td.rn{background:#2E7D32;color:#fff}table.gs tr.drf td.rn{color:var(--acc);font-weight:700}table.gs td.rn[data-rr]{cursor:pointer}
+</style><style id="cvcss"></style><style>table.gs tr.pm-hid td{background:#F1EFE8;color:#888780;font-style:italic}table.gs tr.pm-hid td.rn{background:#888780;color:#fff}table.gs tr.mr-auto td{background:#FFFDF2}table.gs tr.mr-auto td.rn{background:#A15C00;color:#fff}table.gs tr.po-red td{background:#FDECEA}table.gs tr.po-red td.rn{background:#C62828;color:#fff}table.gs tr.po-green td{background:#E8F5E9}table.gs tr.po-green td.rn{background:#2E7D32;color:#fff}table.gs tr.drf td.rn{color:var(--acc);font-weight:700}table.gs td.rn[data-rr]{cursor:pointer}
 table.gs tfoot td{position:sticky;bottom:0;background:#EEF3F8;font-weight:700;border-top:2px solid var(--acc);cursor:pointer;z-index:2;white-space:nowrap}table.gs tfoot td small{font-weight:500;color:var(--mut);font-size:10px}table.gs tfoot td.rn{z-index:3}
 .gstat{display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-start;padding:6px 10px;background:#F1EFE8;border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;font-size:12px}.gstat .gsi{cursor:pointer}.gstat b{color:var(--acc)}
 .colsl{display:flex;flex-direction:column;gap:2px;max-height:55vh;overflow:auto;margin-bottom:10px}.colsl label{padding:4px 8px;border:1px solid var(--line);border-radius:6px;cursor:grab;display:flex;gap:6px}
@@ -151,6 +151,10 @@ table.fit td{vertical-align:top}table.fit select{width:100%}
 .pf.mee td.k{font-weight:700;font-size:14px}.pf.mee td.sg{height:90px;text-align:center}.pf.mee .sig{max-height:78px;max-width:230px}
 .pf .stmp{width:50%;margin:10px auto 0 0;text-align:center;break-inside:avoid}.pf .stamp{height:80px;max-width:100%;object-fit:contain;mix-blend-mode:multiply}.pf.saf .stamp{height:80px}.pf.qua td{height:22px}.pf .stamp.s{height:70px;vertical-align:middle;margin-right:8px}
 @media print{@page{size:A4;margin:9mm}body{background:#fff}body>*:not(#prt){display:none !important}#prt{display:block}.pf *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pf.cvr{padding:14mm 12mm;font-family:Tahoma,Arial,sans-serif}.pf.cvr h2{text-align:center;color:#24406E;margin:6mm 0 2mm}
+.pf.cvr .no{text-align:center;font:700 26px Tahoma;color:#1D2433;border:2px solid #24406E;border-radius:6px;padding:4mm;margin:0 auto 6mm;max-width:70mm}
+.pf.cvr table.ct{width:100%;border-collapse:collapse;font-size:13px}.pf.cvr table.ct td{border:1px solid #9AA3B0;padding:3mm}
+.pf.cvr table.ct td.k{font-weight:700;background:#F7F8FA;width:34%}.pf.cvr .nt{margin-top:8mm;font-size:11px;color:#5B6475;text-align:center}
 #prtsc .scpg{break-before:page;page-break-before:always;text-align:center}#prtsc .scph{font:700 12px Tahoma,Arial;margin-bottom:4mm}#prtsc img{max-width:100%;max-height:255mm;object-fit:contain}}
 .s8{background:#E1F5EE;color:#0F6E56}
 table.jt td{padding:4px 6px}table.jt input,table.jt select{padding:4px 6px}table.mt td{cursor:pointer}
@@ -209,6 +213,85 @@ function renderLogin(msg){
   $('#lgo').onclick = go; $('#lpw').onkeydown = e => { if (e.key==='Enter') go(); };
   const pj = n => { const el=$('#lpj'); if (el&&n) el.textContent=' · '+n; }; if (S.pname) pj(S.pname); else api('appInfo').then(r => { S.pname=(r&&r.name)||''; pj(S.pname); }).catch(() => {});
 }
+// ---------- «ملفي»: توقيعي وإجازتي وبياناتي (قرار المالك 02-11) ----------
+// كل مستخدم يرى ملفه هو فقط. الرفع يستبدل القديم. والتوقيع يُرسم بالإصبع أو يُرفع صورةً.
+async function myProfileModal(){
+  modal('<div class="loading">جارٍ التحميل…</div>');
+  let P; try{ P=await api('myProfile',S.tok); }catch(e){ return modal(`<div class="err">${esc(e.message)}</div><div style="margin-top:10px"><button onclick="closeModal()">إغلاق</button></div>`); }
+  const draw=()=>{
+    modal(`<h3 style="margin-top:0">👤 ملفي</h3>
+     <div class="card" style="margin-bottom:10px;line-height:1.9"><b>${esc(P.name)}</b>
+       <div class="muted">${esc(P.role)}${P.job?' · '+esc(P.job):''}${P.emp_no?' · الرقم الوظيفي '+esc(P.emp_no):''}</div>
+       <div class="muted">${P.offices.length?'المكاتب: '+esc(P.offices.join('، ')):''}${P.modules.length?' · الوحدات: '+esc(P.modules.join('، ')):''}</div></div>
+
+     <div class="card" style="margin-bottom:10px"><h3 style="margin-top:0">توقيعي</h3>
+       <div class="muted" style="font-size:12px;margin-bottom:6px">يظهر في النماذج والمحاضر التي تحرّرها. الرفع يستبدل القديم.</div>
+       ${P.sig.has?`<img src="${P.sig.url}" style="max-width:260px;max-height:90px;border:1px solid var(--line);border-radius:6px;background:#fff;display:block;margin-bottom:6px">
+         <div class="muted" style="font-size:11px;margin-bottom:6px">آخر تحديث ${esc((P.sig.at||'').slice(0,16))}</div>`:'<div class="muted" style="margin-bottom:6px">لا يوجد توقيع.</div>'}
+       <div class="bar"><button class="pri" id="sgdraw">✍ ارسم توقيعك</button>
+         <label class="upl">🖼 رفع صورة<input type="file" id="sgup" accept="image/*" style="display:none"></label>
+         <span id="sgp" class="muted"></span></div></div>
+
+     <div class="card" style="margin-bottom:10px"><h3 style="margin-top:0">إجازتي</h3>
+       <div class="muted" style="font-size:12px;margin-bottom:6px">إجازة مزاولة المهنة — PDF أو صورة. الرفع يستبدل القديمة.</div>
+       ${P.lic.has?`<a href="${P.lic.url}" target="_blank" rel="noopener">📄 فتح الإجازة المرفوعة</a>
+         <div class="muted" style="font-size:11px;margin:4px 0 6px">آخر تحديث ${esc((P.lic.at||'').slice(0,16))}</div>`:'<div class="muted" style="margin-bottom:6px">لا توجد إجازة.</div>'}
+       <div class="bar"><label class="upl">📎 رفع الإجازة<input type="file" id="lcup" accept="application/pdf,image/*" style="display:none"></label>
+         <label class="upl">📷 تصويرها<input type="file" id="lccam" data-img="1" data-cam="1" style="display:none"></label>
+         <span id="lcp" class="muted"></span></div></div>
+
+     <div class="err" id="mperr"></div>
+     <div style="display:flex;gap:8px;margin-top:10px"><button id="mppw">تغيير كلمة السر</button><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+
+    $('#mppw').onclick=()=>{ closeModal(); renderChangePw(); };
+
+    const reload=async msg=>{ try{ P=await api('myProfile',S.tok); }catch(e){} toast(msg); draw(); };
+
+    if($('#sgup')) $('#sgup').onchange=async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return;
+      $('#sgp').textContent='جارٍ الرفع…';
+      try{ const im=await shrinkImg(f,900,0.9); await api('uploadSignature',S.tok,P.name,P.emp_no||'',im.b64,im.mime); await reload('حُفظ توقيعك'); }
+      catch(err){ $('#sgp').textContent=''; $('#mperr').textContent=err.message; } };
+
+    if($('#sgdraw')) $('#sgdraw').onclick=()=>sigDrawModal(P,()=>reload('حُفظ توقيعك'));
+
+    const upLic=async f=>{ if(!f) return; $('#lcp').textContent='جارٍ الرفع…';
+      try{ let b64,mime=(f.type||'').toLowerCase();
+        if(/pdf/.test(mime)){ if(f.size>10*1024*1024) throw new Error('الملف أكبر من 10 ميغابايت');
+          b64=await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=no; r.readAsDataURL(f); }); }
+        else { const im=await shrinkImg(f,1800,0.8); b64=im.b64; mime=im.mime; }
+        await api('uploadLicense',S.tok,P.name,b64,mime); await reload('حُفظت إجازتك'); }
+      catch(err){ $('#lcp').textContent=''; $('#mperr').textContent=err.message; } };
+    if($('#lcup'))  $('#lcup').onchange =e=>{ const f=e.target.files[0]; e.target.value=''; upLic(f); };
+    if($('#lccam')) $('#lccam').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; upLic(f); };
+  };
+  draw();
+}
+
+// رسم التوقيع بالإصبع أو بالفأرة — أسهل من تصوير ورقة في الميدان
+function sigDrawModal(P,done){
+  modal(`<h3 style="margin-top:0">✍ ارسم توقيعك</h3>
+   <div class="muted" style="margin-bottom:8px">وقّع بإصبعك على المربع (أو بالفأرة). ثم «حفظ».</div>
+   <canvas id="sgc" style="width:100%;max-width:520px;height:200px;border:2px dashed var(--line);border-radius:8px;background:#fff;touch-action:none;display:block"></canvas>
+   <div class="err" id="sgerr"></div>
+   <div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="sgsave">حفظ</button><button id="sgclr">مسح</button><span class="sp"></span><button onclick="closeModal()">إلغاء</button></div>`);
+  const c=$('#sgc'), r=c.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1);
+  c.width=Math.round(r.width*dpr); c.height=Math.round(200*dpr);
+  const x=c.getContext('2d'); x.scale(dpr,dpr); x.lineWidth=2.4; x.lineCap='round'; x.lineJoin='round'; x.strokeStyle='#1D2433';
+  let drawing=false, dirty=false, lx=0, ly=0;
+  const pt=e=>{ const b=c.getBoundingClientRect(), t=e.touches?e.touches[0]:e; return [t.clientX-b.left, t.clientY-b.top]; };
+  const down=e=>{ e.preventDefault(); drawing=true; [lx,ly]=pt(e); };
+  const move=e=>{ if(!drawing) return; e.preventDefault(); const [a,b]=pt(e); x.beginPath(); x.moveTo(lx,ly); x.lineTo(a,b); x.stroke(); lx=a; ly=b; dirty=true; };
+  const up=()=>{ drawing=false; };
+  c.addEventListener('pointerdown',down); c.addEventListener('pointermove',move);
+  window.addEventListener('pointerup',up); c.addEventListener('pointerleave',up);
+  $('#sgclr').onclick=()=>{ x.clearRect(0,0,c.width,c.height); dirty=false; };
+  $('#sgsave').onclick=async()=>{ if(!dirty) return $('#sgerr').textContent='ارسم توقيعك أولاً';
+    $('#sgsave').disabled=true;
+    try{ const b64=c.toDataURL('image/png').split(',')[1];
+      await api('uploadSignature',S.tok,P.name,P.emp_no||'',b64,'image/png'); closeModal(); done(); }
+    catch(e){ $('#sgerr').textContent=e.message; $('#sgsave').disabled=false; } };
+}
+
 function renderChangePw(force){
   modal(`<h3 style="margin-top:0">${force?'غيّر كلمة السر المؤقتة قبل المتابعة':'تغيير كلمة السر'}</h3>
   <div class="f"><label>كلمة السر الحالية<input id="p0" type="password"></label><label>الجديدة (6 أحرف على الأقل)<input id="p1" type="password"></label><label>تأكيد الجديدة<input id="p2" type="password"></label></div>
@@ -410,7 +493,7 @@ function shell(){
    <span class="chip">${esc(u.name)} · ${esc(u.role)}${u.offices.length<(S.B.lists.office||[]).length?' · '+esc(u.offices.join('، ')):''}</span></div></header>
    <div class="scrim" id="mscr"></div><aside class="drw" aria-label="القائمة"><div class="dh"><div><b>متابعة أوامر العمل</b>${pj?'<small>'+pj+'</small>':''}</div><button id="mcl" title="إغلاق">✕</button></div>
    <nav>${groups.map(([g,ks])=>`<div class="grp">${g}</div>`+ks.map(k=>`<a data-v="${k}" class="${S.view===k?'on':''}" style="${tc(k)}"><i></i>${tabName(k)}</a>`).join('')).join('')}</nav>
-   <div class="df">${window.AJI_APP?'<a class="mapp" href="./index.html">📱 عملي في الميدان (أوامري والنماذج والصور)</a>':''}<div class="u">${esc(u.name)}<small>${esc(u.role)}${u.offices.length?' · '+esc(u.offices.join('، ')):''}</small></div><button onclick="menu(false);renderChangePw()">كلمة السر</button><button onclick="logout()" style="color:var(--dan)">خروج</button></div></aside><main id="main"></main>`;
+   <div class="df">${window.AJI_APP?'<a class="mapp" href="./index.html">📱 عملي في الميدان (أوامري والنماذج والصور)</a>':''}<div class="u">${esc(u.name)}<small>${esc(u.role)}${u.offices.length?' · '+esc(u.offices.join('، ')):''}</small></div><button onclick="menu(false);myProfileModal()">👤 ملفي</button><button onclick="menu(false);renderChangePw()">كلمة السر</button><button onclick="logout()" style="color:var(--dan)">خروج</button></div></aside><main id="main"></main>`;
   if(open) document.body.classList.add('mopen');
   $('#mbtn').onclick=()=>menu(true); $('#mscr').onclick=$('#mcl').onclick=()=>menu(false);
   document.querySelectorAll('.drw nav a').forEach(a => a.onclick = () => goView(a.dataset.v));
@@ -1802,7 +1885,7 @@ async function formsModal(wo,g){
    <div class="kv"><div><span>المكتب:</span> ${esc(o.office)}</div><div><span>المقاول:</span> ${esc(o.contractor)}</div>${o.maint?`<div><span>المحطة:</span> ${esc(o.station||'')}</div>`:`<div><span>الحي:</span> ${esc(o.district||'')}</div><div><span>مهندس الموقع:</span> ${esc(o.site_engineer||'—')}</div>`}</div>
    ${list.length?`<div class="tw" style="max-height:60vh"><table><thead><tr><th>النموذج</th><th>التاريخ</th><th>${g==='vio'?'المخالفة':g==='site'?'الملاحظات':'المحاور'}</th>${g==='vio'?'<th>الغرامة</th>':''}<th>الكاتب</th><th>صور</th><th></th></tr></thead><tbody>${list.map(f=>`<tr><td>${FK[f.kind].i} ${esc(FK[f.kind].t)} <b>${esc(f.seq)}</b></td><td>${esc(f.date)}</td><td class="wrap"><span>${esc(fmSum(f))}</span></td>${g==='vio'?`<td>${money(f.total)}</td>`:''}<td>${esc(f.author)}</td><td>${f.photos.length||''}</td><td style="white-space:nowrap"><button data-open="${esc(f.id)}">${f.can?'فتح / تعديل':'عرض'}</button> <button data-prt="${esc(f.id)}">🖨 طباعة</button></td></tr>`).join('')}</tbody></table></div>${g==='vio'&&tot?`<div style="margin-top:6px">إجمالي الغرامات: <b>${money(tot)}</b> ريال</div>`:''}`:`<div class="card muted" style="margin:8px 0">لا توجد ${G.t} لهذا الأمر بعد.</div>`}`);
   const back=()=>formsModal(wo,g);
-  document.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>formEditor({kind:b.dataset.new,wo:o.key},o,back));
+  document.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>fmNewForm(b.dataset.new,o,back));
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>formEditor(list.find(f=>f.id===b.dataset.open),o,back));
   document.querySelectorAll('[data-prt]').forEach(b=>b.onclick=()=>printForm(list.find(f=>f.id===b.dataset.prt),o));
 }
@@ -1886,9 +1969,29 @@ function shrinkImg(file,max,q,png){ return new Promise((ok,no)=>{ const url=URL.
     const du=png?c.toDataURL('image/png'):c.toDataURL('image/jpeg',q||0.72); ok({du,b64:du.split(',')[1],mime:png?'image/png':'image/jpeg'}); };
   im.onerror=()=>{ URL.revokeObjectURL(url); no(new Error('تعذّر قراءة الصورة: '+file.name)); }; im.src=url; }); }
 
+// Before a new form opens: is this a form the program builds, or a ready copy the engineer already has
+// signed on paper? (the owner, 02-11). «نسخة جاهزة» keeps a full record — number, date, contractor — so the
+// paper gets a number in the system to be filed and reviewed by; only its content is the attachment.
+function formMode(kind,o,back,then){
+  const K=FK[kind]||{t:'نموذج'};
+  modal(`<h3 style="margin-top:0">${esc(K.i||'')} ${esc(K.t)} — ${o.maint?'إشعار D9 '+esc(o.wo):'أمر العمل '+esc(o.wo)}</h3>
+   <div class="muted" style="margin-bottom:10px">كيف تريد إنشاءه؟</div>
+   <div style="display:flex;flex-direction:column;gap:8px">
+     <button class="pri big" id="fm_new" style="text-align:right;padding:12px">📝 نموذج جديد من البرنامج
+       <div style="font-weight:400;font-size:12px;opacity:.85;margin-top:3px">تملأ الحقول، ويبنيه البرنامج ويطبعه بترويسة الشركة</div></button>
+     <button class="big" id="fm_up" style="text-align:right;padding:12px">📎 رفع نسخة جاهزة
+       <div style="font-weight:400;font-size:12px;color:var(--mut);margin-top:3px">عندك ${esc(K.t)} موقّعة بخط اليد أو محضر قديم: ترفع PDF أو صورة أو تصوّرها بالكاميرا، وتملأ أقل القليل</div></button>
+   </div>
+   <div class="muted" style="margin-top:10px;font-size:12px">في الحالتين يُسجَّل برقمه وتاريخه ومقاوله، ويُحتسب في العدّادات وفي التصدير.</div>
+   <div style="display:flex;gap:8px;margin-top:10px"><span class="sp"></span><button onclick="closeModal()">إلغاء</button></div>`);
+  $('#fm_new').onclick=()=>then(false); $('#fm_up').onclick=()=>then(true);
+}
+const fmNewForm=(kind,o,back)=>formMode(kind,o,back,up=>formEditor({kind,wo:o.key||o.wo,data:up?{src:'upload'}:{}},o,back));
+
 async function formEditor(f,o,back){
   let M; try{ M=await fmMeta(); }catch(e){ return toast(e.message); }
   const kind=f.kind, K=FK[kind], isNew=!f.id, ro=!isNew&&!f.can, d=JSON.parse(JSON.stringify(f.data||{}));
+  const UP=d.src==='upload';   // «نسخة جاهزة»: المرفق هو الوثيقة، والحقول أقلّها
   let photos=(f.photos||[]).slice(), fresh=[], busy=0; const prev={};
   if(isNew){ const ct=M.contracts.find(c=>c.short===o.contractor||c.name===o.contractor);
     Object.assign(d,{date:S.B.today,time:nowHM(),contractor:ct?ct.name:(o.contractor||''),location:o.district||'',author:S.B.user.name,stamp:'1'});
@@ -1912,16 +2015,20 @@ async function formEditor(f,o,back){
     quality:inp('desc','وصف المخالفة',{area:3,full:1})+inp('statement','إفادة المقاول',{area:2,full:1})+inp('contractor_rep','اسم ممثل المقاول'),
     meeting:inp('topics','محاور الاجتماع',{area:6,full:1})+inp('justify','مبررات المقاول (إن أفاد بها)',{area:4,full:1}),
     site:inp('notes','الملاحظات',{area:5,full:1})+inp('contractor_rep','اسم ممثل المقاول')+inp('pdc_rep','اسم ممثل شركة الكهرباء')}[kind];
-  modal(`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">${K.i} ${K.t} ${isNew?'— جديد':'رقم '+esc(f.seq)} · أمر العمل ${esc(o.wo)}${o.type?'-'+esc(o.type):''}</h3><span class="sp"></span>${ro?'<span class="pill p-w">عرض فقط</span>':''}</div>
+  modal(`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">${K.i} ${K.t} ${isNew?'— جديد':'رقم '+esc(f.seq)}${UP?' <span class="pill p-w">نسخة مرفوعة</span>':''} · أمر العمل ${esc(o.wo)}${o.type?'-'+esc(o.type):''}</h3><span class="sp"></span>${ro?'<span class="pill p-w">عرض فقط</span>':''}</div>
    <div class="muted" style="margin:4px 0 8px">${esc(o.office||'')} · ${esc(o.contractor||'')}${f.by_name?' · أدخله '+esc(f.by_name)+' '+esc((f.updated_at||'').slice(0,16)):''}</div>
    <div id="fed"><div class="f">${sib.length>1&&!ro?`<label>نوع أمر العمل (الرقم له أكثر من نوع)<select id="fkey">${sib.map(x=>`<option value="${esc(x.key)}" ${x.key===o.key?'selected':''}>${esc(x.type||'—')} · استشاري ${esc(x.ccode||'—')}</option>`).join('')}</select></label>`:''}${top}</div>
-   ${kind!=='meeting'&&kind!=='site'?`<div class="card" style="margin:10px 0"><h3>${kind==='safety'?'تفاصيل المخالفات':'بنود الغرامة'}</h3><div class="tw" style="max-height:none"><table class="fit"><thead><tr><th>#</th><th>البند</th>${kind==='safety'?'<th>رقم البند</th><th>الفئة</th><th>التكرار</th>':'<th>الكمية</th>'}<th>القيمة</th><th>الإجمالي</th><th></th></tr></thead><tbody id="fit"></tbody></table></div>
+   ${UP?`<div class="card" style="margin:10px 0;background:#FFFBEA"><b>نسخة جاهزة</b>
+     <div class="muted" style="font-size:12px;margin-top:4px">الوثيقة هي الملف الذي ترفعه في «النسخة المرفقة» أدناه. املأ ما تحته فقط — والباقي اختياري.
+     ${kind==='safety'||kind==='quality'?'ولو أردت احتساب الغرامة في البرنامج، اختر بنودها من زر «إظهار بنود الغرامة».':''}</div>
+     ${(kind==='safety'||kind==='quality')?'<button id="fitems" style="margin-top:6px">إظهار بنود الغرامة</button>':''}</div>`:''}
+   ${kind!=='meeting'&&kind!=='site'?`<div class="card" id="fitemsbox" style="margin:10px 0${UP?';display:none':''}"><h3>${kind==='safety'?'تفاصيل المخالفات':'بنود الغرامة'}</h3><div class="tw" style="max-height:none"><table class="fit"><thead><tr><th>#</th><th>البند</th>${kind==='safety'?'<th>رقم البند</th><th>الفئة</th><th>التكرار</th>':'<th>الكمية</th>'}<th>القيمة</th><th>الإجمالي</th><th></th></tr></thead><tbody id="fit"></tbody></table></div>
      ${ro?'':'<button id="fadd" style="margin-top:6px">+ بند</button>'} <span style="margin-right:12px">الإجمالي: <b id="ftot">0</b> ريال</span></div>`:''}
    <div class="f" style="margin-top:8px">${after}</div>
    <div class="card" style="margin:10px 0"><h3>الصور <span class="muted" id="fphn"></span></h3><div id="fph" class="phs"></div>
      ${ro?'':'<label class="upl">📷 تصوير بالكاميرا<input type="file" id="fphc" data-img="1" data-cam="1" style="display:none"></label> <label class="upl">🖼 إضافة صور<input type="file" id="fphf" data-img="1" multiple style="display:none"></label> <span id="fphp" class="muted"></span><div class="muted" style="font-size:12px;margin-top:6px">صورة الكاميرا تُختم بشعار الشركة والوقت والموقع ورقم الأمر والحي واسم المهندس، ويلزمها السماح بالموقع. صور المعرض تُرفع بلا ختم. صورة واحدة تفتح نافذة القص والتدوير قبل الرفع، ولقص صورة غير مختومة اضغط ✂ عليها.</div>'}</div>
-   <div class="card" style="margin:10px 0"><h3>النسخة المرفقة <span class="muted" id="fscn"></span></h3>
-     <div class="muted" style="font-size:12px;margin-bottom:6px">نسخة ${esc(K.t)} موقّعة بخط اليد أو محضر قديم: ارفع ملف PDF أو صورة، أو صوّره بالكاميرا. تُطبع مع النموذج في صفحة مستقلة ليوقّعها المقاول ويُعلّقها.</div>
+   <div class="card" style="margin:10px 0${UP?';border-color:var(--acc)':''}"><h3>النسخة المرفقة ${UP?'<span class="pill p-w">مطلوبة</span>':''}<span class="muted" id="fscn"></span></h3>
+     <div class="muted" style="font-size:12px;margin-bottom:6px">${UP?'هذه هي وثيقة السجل. ارفع ملف PDF أو صورة، أو صوّرها بالكاميرا — ويُطبع معها غلاف مختصر بالترقيم.':'نسخة '+esc(K.t)+' موقّعة بخط اليد أو محضر قديم: ارفع ملف PDF أو صورة، أو صوّره بالكاميرا. تُطبع مع النموذج في صفحة مستقلة ليوقّعها المقاول ويُعلّقها.'}</div>
      <div id="fsc" class="phs"></div>
      ${ro?'':'<label class="upl">📷 تصوير النسخة<input type="file" id="fscc" data-img="1" data-cam="1" style="display:none"></label> <label class="upl">📎 رفع ملف (PDF أو صورة)<input type="file" id="fscf" accept="application/pdf,image/*" multiple style="display:none"></label> <span id="fscp" class="muted"></span>'}</div>
    <div class="f"><label>${kind==='meeting'?'ممثل الاستشاري':kind==='site'?'ممثل الاستشاري (محرر البطاقة)':'محرر المحضر (الاستشاري)'}<input data-d="author" list="dlsig" value="${esc(d.author||'')}" ${R}><span id="fsig" class="muted" style="font-size:12px"></span></label>
@@ -1965,6 +2072,7 @@ async function formEditor(f,o,back){
       catch(e){ toast(e.message); } }
     $('#fscp').textContent=''; busy--; };
   if($('#fscf')) $('#fscf').onchange=pickSc($('#fscf')); if($('#fscc')) $('#fscc').onchange=pickSc($('#fscc'));
+  if($('#fitems')) $('#fitems').onclick=()=>{ const b2=$('#fitemsbox'); if(!b2) return; const on=b2.style.display==='none'; b2.style.display=on?'':'none'; $('#fitems').textContent=on?'إخفاء بنود الغرامة':'إظهار بنود الغرامة'; };
   drawSc();
   const drawPh=()=>{ $('#fphn').textContent=(photos.filter(p=>!isSc(p)).length)?'('+photos.filter(p=>!isSc(p)).length+')':'';
     $('#fph').innerHTML=photos.filter(p=>!isSc(p)).map(p=>`<div class="ph"><a href="${phView(p.id)}" target="_blank" rel="noopener" title="فتح بالحجم الكامل / حفظ"><img loading="lazy" src="${prev[p.id]||phUrl(p.id,400)}"></a>${ro?'':`<b data-rm="${esc(p.id)}" title="حذف الصورة">✕</b>${p.st?'':`<i data-cr="${esc(p.id)}" title="قص أو تدوير">✂</i>`}`}${p.loc?`<a class="pl" href="https:\/\/maps.google.com\/?q=${esc(p.loc)}" target="_blank" rel="noopener" title="مكان التقاط الصورة على الخريطة">📍</a>`:''}</div>`).join('')+(photos.length?'':'<span class="muted">لا توجد صور.</span>');
@@ -1983,9 +2091,12 @@ async function formEditor(f,o,back){
   const collect=()=>{ document.querySelectorAll('#fed [data-d]').forEach(el=>d[el.dataset.d]=el.value.trim()); d.stamp=$('#fstamp').checked?'1':'0'; };
   const leave=()=>{ if(fresh.length) api('removeFormPhotos',S.tok,fresh).catch(()=>{}); fresh=[]; back?back():closeModal(); };
   const save=async(pr)=>{ if(busy) return $('#ferr').textContent='انتظر حتى ينتهي رفع الصور'; collect(); $('#ferr').textContent='';
-    if(kind!=='meeting'&&kind!=='site'&&!d.items.some(it=>(it.text||'').trim())) return $('#ferr').textContent='أضف بنداً واحداً على الأقل';
-    if(kind==='meeting'&&!d.topics) return $('#ferr').textContent='اكتب محاور الاجتماع';
-    if(kind==='site'&&!d.notes&&!d.start_date) return $('#ferr').textContent='اكتب الملاحظات أو تاريخ البدء';
+    if(UP){ if(!photos.some(p=>p.sc==='1')) return $('#ferr').textContent='ارفع النسخة الجاهزة (PDF أو صورة) أو صوّرها بالكاميرا — هي وثيقة هذا السجل'; }
+    else {
+      if(kind!=='meeting'&&kind!=='site'&&!d.items.some(it=>(it.text||'').trim())) return $('#ferr').textContent='أضف بنداً واحداً على الأقل';
+      if(kind==='meeting'&&!d.topics) return $('#ferr').textContent='اكتب محاور الاجتماع';
+      if(kind==='site'&&!d.notes&&!d.start_date) return $('#ferr').textContent='اكتب الملاحظات أو تاريخ البدء';
+    }
     ['fsave','fsavep'].forEach(id=>$('#'+id).disabled=true);
     try{ const r=await api('saveForm',S.tok,{id:f.id||'',kind,wo:$('#fkey')?$('#fkey').value:(o.key||o.wo),data:d,photos}); fresh=[]; fmSetCounts(r.key,r.counts); if(r.moved) fmSetCounts(r.moved.key,r.moved.counts); toast('تم حفظ '+K.t+' رقم '+r.form.seq);
       if(pr) await printForm(r.form,o); if(back) back(); else closeModal(); }
@@ -1999,14 +2110,37 @@ async function formEditor(f,o,back){
 
 const A4_H=990;
 function fitOnePage(p){ const el=p.querySelector('.pf'); if(!el) return; el.style.zoom=''; const w=Math.round((210-18)*96/25.4); p.style.cssText='display:block;position:absolute;left:-9999px;top:0;width:'+w+'px;background:#fff'; const h=el.scrollHeight; p.style.cssText=''; if(h>A4_H) el.style.zoom=String(Math.max(0.5,Math.floor(A4_H/h*1000)/1000)); }
+// غلاف مختصر لنسخة جاهزة: أهم ما فيه الترقيم، ليُؤرشف الورق ويُراجع برقمه في النظام
+function fmCoverHtml(f,o,M){
+  const d=f.data||{}, e=x=>esc(x==null?'':x), L=M.logos||{}, K=FK[f.kind]||{t:''};
+  const isMt=d.src2==='maint'||!!o.maint;
+  const row=(a,b)=>`<tr><td class="k">${e(a)}</td><td class="v">${e(b)}</td></tr>`;
+  return `<div class="pf cvr">
+    <div class="logos">${L.se?`<img src="${L.se}">`:'<span></span>'}${L.aji?`<img src="${L.aji}">`:'<span></span>'}</div>
+    <h2>${e(K.t)}</h2>
+    <div class="no">رقم ${e(f.seq||'')}</div>
+    <table class="ct"><tbody>
+      ${row(isMt?'رقم الإشعار D9':'رقم أمر العمل', String(f.wo||o.wo||'').replace(/^D9:/,'')+(o.type&&!isMt?' - '+o.type:''))}
+      ${row('المكتب', f.office||o.office||'')}
+      ${row('المقاول', FULLC(d.contractor||o.contractor||''))}
+      ${row('التاريخ', d.date||'')}
+      ${d.location||o.district?row('الموقع', d.location||o.district):''}
+      ${row('محرّر النموذج', d.author||f.by_name||'')}
+      ${d.notes?row('ملاحظات', d.notes):''}
+    </tbody></table>
+    <div class="nt">الوثيقة المعتمدة هي النسخة المرفقة في الصفحات التالية. هذا الغلاف للأرشفة والمراجعة برقم النموذج.</div>
+  </div>`;
+}
 async function printForm(f,o){
   let M; try{ M=await fmMeta(); }catch(e){ return toast(e.message); }
   o=o||fmOrder(f.wo,f); toast('جارٍ تجهيز الطباعة…');
   let sg=f.sg||{sig:'',emp_no:''}; const ak=String(f.data.author||'').trim(); S.sigC=S.sigC||{}; if(f.sg&&ak) S.sigC[ak]=f.sg; if(!f.sg&&ak){ try{ sg=S.sigC[ak]||(S.sigC[ak]=await api('formSig',S.tok,ak)); }catch(e){} }
   let p=$('#prt'); if(!p){ p=document.createElement('div'); p.id='prt'; document.body.appendChild(p); }
-  p.innerHTML=fmPrintHtml(f,o,M,sg);
+  // «نسخة جاهزة»: لا حقول ليبني منها البرنامج نموذجاً — غلاف مختصر بالترقيم، ثم المرفق (قرار المالك 02-11)
+  const isUp=(f.data||{}).src==='upload';
+  p.innerHTML=isUp?fmCoverHtml(f,o,M):fmPrintHtml(f,o,M,sg);
   await Promise.all([...p.querySelectorAll('img')].map(im=>im.complete?1:new Promise(r=>{ im.onload=im.onerror=r; setTimeout(r,12000); })));
-  fitOnePage(p);
+  if(!isUp) fitOnePage(p);
   // the attached copy prints after the form, a page each, so the contractor signs it by hand and posts it (the owner, 31/10)
   const SC=(f.photos||[]).filter(x=>x.sc==='1'), pdfs=SC.filter(x=>/pdf/i.test(String(x.mt||''))), imgs=SC.filter(x=>!/pdf/i.test(String(x.mt||'')));
   if(imgs.length){ const box=document.createElement('div'); box.id='prtsc';
@@ -2190,9 +2324,9 @@ async function vForms(){
       <datalist id="nfwl">${woOpts()}</datalist><div class="err" id="nferr"></div><button class="pri" id="nfgo">متابعة</button> <button onclick="closeModal()">إلغاء</button>`);
     $('#nf_wo').focus(); $('#nfgo').onclick=async()=>{ const raw=$('#nf_wo').value.trim(), kd=$('#nf_k').value; const pk=pickOrder(raw);
       if(pk.err&&/^4\d{5,}$/.test(raw)){ if(!['safety','quality'].includes(kd)) return $('#nferr').textContent='على إشعار الصيانة تُكتب مخالفات السلامة والجودة فقط';
-        let r; try{ r=await api('listForms',S.tok,'D9:'+raw); }catch(e){ return $('#nferr').textContent=e.message; } return formEditor({kind:kd,wo:'D9:'+raw},r.order,null); }
+        let r; try{ r=await api('listForms',S.tok,'D9:'+raw); }catch(e){ return $('#nferr').textContent=e.message; } return fmNewForm(kd,Object.assign({},r.order,{key:'D9:'+raw}),null); }
       if(pk.err) return $('#nferr').textContent=pk.err;
-      formEditor({kind:kd,wo:pk.o.key},pk.o,null); }; };
+      fmNewForm(kd,pk.o,null); }; };
   if($('#gimp')) $('#gimp').onclick=()=>goImport($('#gimp').dataset.k);
 
   if($('#ffph')) $('#ffph').onclick=photosFromDrive; $('#ffpa').onclick=()=>printAll(S.ffRows||[]); $('#ffps').onclick=()=>printAll(L.filter(x=>F.pick[x.id]).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(+b.seq)-(+a.seq))); $('#ffpc').onclick=()=>{ F.pick={}; shell(); };
@@ -2378,7 +2512,7 @@ function permitPick(id){ const i=document.createElement('input'); i.type='file';
 function goPermits(wo){ if(!tabOn('permits')) return toast(TAB_NO); S.gst=S.gst||{}; S.gst.permits={cf:wo?{wo:[String(wo)]}:{},sort:['end_date',-1],xf:null,f:{q:''}}; S.view='permits'; shell(); window.scrollTo(0,0); }
 async function vPermits(){
   $('#main').innerHTML='<div class="loading">جارٍ التحميل…</div>';
-  let R; try{ R=S.pm||(S.pm=await api('listPermits',S.tok)); }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
+  let R; try{ R=S.pm||(S.pm=await api('listPermits',S.tok,!!S.pmShowHidden)); }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
   if(S.view!=='permits') return;
   const H=R.headers, obj=x=>{ const o={}; H.forEach((k,i)=>o[k]=x[i]); return o; }; let L=R.L||(R.L=R.rows.map(obj)); const today=S.B.today;
   const u=k=>[...new Set(L.map(x=>x[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'ar'));
@@ -2387,14 +2521,16 @@ async function vPermits(){
   const AD={ del:{kind:'permits',name:'طلب تصريح',key:o=>o.id,ref:o=>(o.req_no||'بلا رقم طلب')+' · '+(o.wo||'')+' · '+(o.contractor||''),done:()=>{ S.pm=null; }}, st:ST, unit:'طلباً', stk:'wo', file:'التصاريح', orders:false, ordOf:x=>x.wo?byRef(x.wo):null, all:Object.keys(PL), lbl:k=>PL[k]||k, val:(o,k)=>o[k]==null?'':o[k], can:(o,k)=>!!R.can&&!PM_RO.includes(k),
     opts:(o,k)=>k==='status'?R.statuses:k==='cert'?['تم','رفض']:k==='contractor'?CONTR():k==='stage'?['تم ادخال جميع المراحل','جاري العمل']:undefined,
     dates:['assign_date','start_date','end_date'], wrap:['notes'], free:['contractor','stage','cert'], src:()=>'التصاريح', clr:()=>tc, chip:()=>'',
-    cell:(o,k,v)=>k==='notes'?richHtml(v):k==='wo'&&v?`<span class="wo">${esc(v)}</span>`:k==='file_url'?(()=>{ const fl=pmFiles(o), n=fl.filter(f=>!f.hid).length; return (v?`<a class="atb2" href="${esc(v)}" target="_blank" rel="noopener">📄 فتح</a> `:'')+(n>1||fl.some(f=>f.hid)?`<button class="pml" data-pm="${esc(o.id)}" title="كل ملفات التصريح">${n} ملفات</button> `:'')+(R.can?`<button class="pmu" data-pm="${esc(o.id)}" title="رفع صورة تصريح أو PDF — تُحفظ مع الملفات السابقة">+ رفع</button>`+(v?` <button class="pmx" data-pm="${esc(o.id)}" title="إخفاء هذا الملف (لا يُحذف، ويُرجع من قائمة الملفات)">✕</button>`:''):''); })():esc(v), cls:(o,k)=>(k==='end_date'||k==='status')&&expired(o)?'late':'',
+    cell:(o,k,v)=>k==='notes'?richHtml(v):k==='wo'&&v?`<span class="wo">${esc(v)}</span>`:k==='file_url'?(()=>{ const fl=pmFiles(o), n=fl.filter(f=>!f.hid).length; return (v?`<a class="atb2" href="${esc(v)}" target="_blank" rel="noopener">📄 فتح</a> `:'')+(n>1||fl.some(f=>f.hid)?`<button class="pml" data-pm="${esc(o.id)}" title="كل ملفات التصريح">${n} ملفات</button> `:'')+(R.can?`<button class="pmu" data-pm="${esc(o.id)}" title="رفع صورة تصريح أو PDF — تُحفظ مع الملفات السابقة">+ رفع</button>`+(v?` <button class="pmx" data-pm="${esc(o.id)}" title="إخفاء هذا الملف (لا يُحذف، ويُرجع من قائمة الملفات)">✕</button>`:''):''); })():esc(v), cls:(o,k)=>(k==='end_date'||k==='status')&&expired(o)?'late':'', rowCls:o=>o.hidden==='1'?'pm-hid':'',
     search:o=>[o.req_no,o.wo,o.contractor,o.permit_no,o.status,o.notes].join(' '), open:o=>{ if(o._draft) return permitForm(o); const x=o.wo?byRef(o.wo):null; if(x) openOrder(x.key); else permitForm(o); }, undo:R.can?(()=>undoLast('pm')):null,
     norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('savePermitCells',S.tok,recs).then(r=>{ r.rows.forEach(x=>{ const n={}; r.headers.forEach((k,i)=>n[k]=x[i]); const o=L.find(y=>y.id===n.id); if(o) Object.assign(o,n); const i=R.rows.findIndex(y=>y[0]===n.id); if(i>=0) R.rows[i]=H.map(k=>n[k]); }); S.orders.forEach(o=>{ o.permit_n=o.permit_n; }); }),
-    bar:R.can?'<button class="pri" id="pnew">+ طلب تصريح</button><button id="pundo">↶ تراجع</button>':'', hint:'، نقرتان على الصف تفتح أمر العمل (أو نموذج الطلب إن لم يكن له أمر في البرنامج)',
+    bar:(R.can?'<button class="pri" id="pnew">+ طلب تصريح</button><button id="pundo">↶ تراجع</button>':'')
+      +((R.hiddenN||S.pmShowHidden)?`<button id="pmhid" class="${S.pmShowHidden?'on':''}" title="طلبات أوامر العدادات (الرمز ${esc(R.meterCcode||'912')}) مخفية لأنها لا تحتاج تصريحاً. أظهرها لمراجعتها أو إرجاعها.">${S.pmShowHidden?'إخفاء طلبات العدادات':'إظهار المخفية ('+(R.hiddenN||0)+')'}</button>`:''), hint:'، نقرتان على الصف تفتح أمر العمل (أو نموذج الطلب إن لم يكن له أمر في البرنامج)',
     onDraw:l=>{ if(!$('#pk')) return; const n=st=>l.filter(x=>x.status===st).length;
       $('#pk').innerHTML=`<div class="kpi">الطلبات<b>${l.length}</b></div><div class="kpi">لم يتم التقديم<b>${n('لم يتم التقديم على تصريح')}</b></div><div class="kpi">قيد التنسيق والاعتماد<b>${n('قيد التنسيق والاعتماد')}</b></div><div class="kpi">بانتظار السداد<b>${n('بانتظار السداد')}</b></div><div class="kpi">صدر التصريح<b>${n('تم صدور التصريح')}</b></div><div class="kpi">شهادة إتمام الأعمال<b>${l.filter(x=>x.cert==='تم').length}</b></div><div class="kpi">تصاريح منتهية بلا شهادة<b class="${l.filter(expired).length?'late':''}">${l.filter(expired).length}</b></div><div class="kpi">مرفوض / ملغي<b>${n('تم الرفض')+n('ملغي')}</b></div>`; },
-    wire:g=>{ if($('#pnew')) $('#pnew').onclick=()=>permitForm(null); if($('#pundo')) $('#pundo').onclick=()=>undoForm('pm',AD.lbl); } };
+    wire:g=>{ if($('#pnew')) $('#pnew').onclick=()=>permitForm(null); if($('#pundo')) $('#pundo').onclick=()=>undoForm('pm',AD.lbl);
+      if($('#pmhid')) $('#pmhid').onclick=()=>{ S.pmShowHidden=!S.pmShowHidden; S.pm=null; vPermits(); }; } };
   const again=()=>{ R.L=null; S.pm=null; S.orders.forEach(o=>{ o.permit_n=o.permit_n; }); vPermits(); };
   const PD=R.can&&!roView()?{ need:'رقم أمر العمل أو رقم الطلب', fields:Object.keys(PL).filter(k=>!PM_RO.includes(k)), ready:o=>!!(String(o.wo||'').trim()||String(o.req_no||'').trim()),
     init:()=>({status:'لم يتم التقديم على تصريح'}), fill:(o,k)=>{ if(k!=='wo') return; const x=byRef(o.wo); if(!x) return; o.wo=x.wo; if(!o.contractor) o.contractor=x.contractor||''; if(!o.wo_type) o.wo_type=x.type||''; if(!o.assign_date) o.assign_date=x.assign_date||''; },
@@ -2409,6 +2545,9 @@ async function vPermits(){
       ${o.updated_by?`<div class="muted" style="margin-top:6px">آخر تعديل: ${esc(o.updated_by)} ${esc((o.updated_at||'').slice(0,16))}</div>`:''}<div class="err" id="perr"></div>
       <div style="display:flex;gap:8px;margin-top:8px">${ro?'':'<button class="pri" id="psave">حفظ</button>'}${!ro&&!isNew?'<button id="pdel" style="color:var(--dan);border-color:var(--dan)">حذف</button>':''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
     if($('#psave')) $('#psave').onclick=async()=>{ const x={id:o.id||''}; document.querySelectorAll('[data-p]').forEach(el=>x[el.dataset.p]=el.value.trim());
+      // أوامر العدادات (الرمز 912) لا تحتاج تصريحاً عادةً — تنبيه وتأكيد، لا منع (قرار المالك 02-11)
+      if(isNew&&x.wo){ let mtr=false; try{ mtr=await api('permitIsMeter',S.tok,x.wo); }catch(e){}
+        if(mtr&&!confirm('أمر العمل '+x.wo+' رمزه '+(R.meterCcode||'912')+' (عدادات) ولا يحتاج تصريح حفر عادةً.\n\nهل تريد إضافة الطلب على أي حال؟')) return; }
       $('#psave').disabled=true; try{ await api('savePermit',S.tok,x); closeModal(); toast('تم الحفظ'); if(o._draft){ const D=(S.gst.permits||{}).drafts||[], i=D.indexOf(o); if(i>=0) D.splice(i,1); } S.pm=null; const v=S.view; await start(); S.view=v; shell(); }catch(e){ $('#perr').textContent=e.message; $('#psave').disabled=false; } };
     if($('#pfup')) $('#pfup').onclick=()=>{ closeModal(); permitPick(o.id); }; if($('#pfrm')) $('#pfrm').onclick=()=>{ closeModal(); permitFilesModal(o.id); };
     if($('#pdel')) $('#pdel').onclick=async()=>{ if(!confirm('حذف طلب التصريح رقم '+o.id+'؟ ينتقل إلى الأرشيف ← المحذوفات ويمكن استرجاعه.')) return;
