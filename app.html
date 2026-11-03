@@ -1995,7 +1995,7 @@ async function formEditor(f,o,back){
   let photos=(f.photos||[]).slice(), fresh=[], busy=0; const prev={};
   if(isNew){ const ct=M.contracts.find(c=>c.short===o.contractor||c.name===o.contractor);
     Object.assign(d,{date:S.B.today,time:nowHM(),contractor:ct?ct.name:(o.contractor||''),location:o.district||'',author:S.B.user.name,stamp:'1'});
-    if(kind==='safety') Object.assign(d,{dept:(S.B.project||{}).dept||'',circle:o.group||'',contract_no:ct?ct.no:'',safety_rep:ct?ct.rep:'',action:'غرامة مالية',items:[{rep:'1'}]});
+    if(kind==='safety') Object.assign(d,{dept:(S.B.project||{}).dept||'',circle:o.group||'',contract_no:ct?ct.no:'',safety_rep:ct?ct.rep:'',action:'غرامة مالية',items:[{}]});
     if(kind==='quality') Object.assign(d,{items:[{qty:'1'}]});
     if(kind==='meeting') Object.assign(d,{place:o.district||''});
     if(kind==='site') Object.assign(d,{dept:(S.B.project||{}).dept||'',circle:o.group||'',office:o.office||'',start_date:S.B.today,target_date:o.due_date||''}); }
@@ -2049,9 +2049,9 @@ async function formEditor(f,o,back){
         <td><input data-it="${i}" data-f="price" value="${esc(it.price||'')}" inputmode="decimal" style="width:80px" ${R}></td><td><b>${money(t)}</b></td><td>${ro?'':`<button data-rmi="${i}" title="حذف البند">✕</button>`}</td></tr>`; }).join('');
     $('#ftot').textContent=money(tot)||'0';
     document.querySelectorAll('#fit [data-fi]').forEach(s=>s.onchange=()=>{ const x=FL[+s.value]; if(!x) return; const it=d.items[+s.dataset.fi]; Object.assign(it,{text:x.text,code:x.code||'',cat:x.cat||'',price:x.price||''}); drawItems(); });
-    document.querySelectorAll('#fit [data-it]').forEach(el=>el.oninput=()=>{ d.items[+el.dataset.it][el.dataset.f]=el.value; if(['rep','qty','price'].includes(el.dataset.f)){ const it=d.items[+el.dataset.it], n=(kind==='safety'?1:(+it.qty||0)); el.closest('tr').children[kind==='safety'?6:4].innerHTML='<b>'+money(n*(+it.price||0))+'</b>'; let s=0; d.items.forEach(x=>s+=(+(kind==='safety'?x.rep:x.qty)||0)*(+x.price||0)); $('#ftot').textContent=money(s)||'0'; } });
+    document.querySelectorAll('#fit [data-it]').forEach(el=>el.oninput=()=>{ d.items[+el.dataset.it][el.dataset.f]=el.value; if(['rep','qty','price'].includes(el.dataset.f)){ const it=d.items[+el.dataset.it], n=(kind==='safety'?1:(+it.qty||0)); el.closest('tr').children[kind==='safety'?6:4].innerHTML='<b>'+money(n*(+it.price||0))+'</b>'; let s=0; d.items.forEach(x=>s+=(kind==='safety'?1:(+x.qty||0))*(+x.price||0)); $('#ftot').textContent=money(s)||'0'; } });
     document.querySelectorAll('#fit [data-rmi]').forEach(b=>b.onclick=()=>{ d.items.splice(+b.dataset.rmi,1); drawItems(); }); };
-  drawItems(); if($('#fadd')) $('#fadd').onclick=()=>{ d.items.push(kind==='safety'?{rep:'1'}:{qty:'1'}); drawItems(); };
+  drawItems(); if($('#fadd')) $('#fadd').onclick=()=>{ d.items.push(kind==='safety'?{}:{qty:'1'}); drawItems(); };
   // the attached copies live in the same list as the photos, marked sc:'1', so they are saved and fetched exactly like them
   const isSc=p=>p&&p.sc==='1', isPdf=p=>/pdf/i.test(String(p.mt||''));
   const drawSc=()=>{ const L=photos.filter(isSc); if(!$('#fsc')) return; $('#fscn').textContent=L.length?'('+L.length+')':'';
@@ -2313,7 +2313,7 @@ async function vForms(){
     cell:(x,k,v)=>k==='pick'?`<span class="pkb" data-pk="${esc(x.id)}" style="cursor:pointer;font-size:16px">${F.pick[x.id]?'☑':'☐'}</span>`:k==='kind'?`${(FK[x.kind]||{}).i||''} ${esc(v)}`:k==='seq'?`<b>${esc(v)}</b>`:k==='total'?money(v):k==='sum'?`<span>${esc(v)}</span>`:k==='act'?`<span style="white-space:nowrap"><button data-fo="${esc(x.id)}">فتح</button> <button data-fp="${esc(x.id)}">🖨</button></span>`:esc(v),
     cls:()=>'', search:x=>[x.wo,x.sum,x.author,x.contractor,x.seq,x.id].join(' '), match, open:async x=>{ const f=await get(x.id); if(f) formEditor(f,fmOrder(f.wo,f),null); }, undo:null,
     norm:(o,k,v)=>v, put:()=>({}), save:()=>Promise.resolve(),
-    bar:`<button class="pri" id="ffnew">+ نموذج جديد</button><button id="ffpa" title="طباعة كل النماذج الظاهرة حسب الفلتر، نموذج في كل صفحة">🖨 طباعة الكل</button><button id="ffps" class="pri" style="display:none"></button><button id="ffpc" style="display:none" title="إلغاء التحديد">✕ إلغاء التحديد</button><button id="ffst" title="كتابة إفادة المقاول (مثل: رفض المقاول التوقيع) في كل مخالفات السلامة والجودة الظاهرة حسب الفلتر، أو المحددة فقط">✍ إفادة المقاول</button>${S.B.admin?'<button id="ffph" title="صور المخالفات المستخرجة من إكسل، مرفوعة في مجلد على Drive بأسماء مثل S12_1.jpg">استيراد الصور من Drive</button>':''}`,
+    bar:`<button class="pri" id="ffnew">+ نموذج جديد</button><button id="ffpa" title="طباعة كل النماذج الظاهرة حسب الفلتر، نموذج في كل صفحة">🖨 طباعة الكل</button><button id="ffps" class="pri" style="display:none"></button><button id="ffpc" style="display:none" title="إلغاء التحديد">✕ إلغاء التحديد</button>${S.B.admin?`<button id="ffreb" title="إرجاع قيم كل المخالفات — حتى القديمة — إلى القيمة الأساسية للبند في جدول الغرامات، ومسح خانة التكرار. لا يرفع التكرارُ قيمةَ المخالفة.">↺ إرجاع القيم الأساسية</button>`:''}<button id="ffst" title="كتابة إفادة المقاول (مثل: رفض المقاول التوقيع) في كل مخالفات السلامة والجودة الظاهرة حسب الفلتر، أو المحددة فقط">✍ إفادة المقاول</button>${S.B.admin?'<button id="ffph" title="صور المخالفات المستخرجة من إكسل، مرفوعة في مجلد على Drive بأسماء مثل S12_1.jpg">استيراد الصور من Drive</button>':''}`,
     help:'الفلتر ▾ في رأس كل عمود، والترتيب بالضغط على اسم العمود. ☐ لتحديد نماذج للطباعة أو لإفادة المقاول. نقرتان على الصف أو «فتح» لفتح النموذج. للبحث عن عدة نماذج اكتب أرقامها مفصولة بمسافة: 12 15 Q7.',
     onDraw:l=>{ S.ffRows=l; const n=k=>l.filter(x=>x.kind===k).length, tot=l.reduce((s,x)=>s+(+x.total||0),0); if(!$('#ffk')) return;
       $('#ffk').innerHTML=`<div class="kpi">مخالفات سلامة<b>${n('safety')}</b></div><div class="kpi">مخالفات جودة<b>${n('quality')}</b></div><div class="kpi">محاضر اجتماع<b>${n('meeting')}</b></div><div class="kpi">بطاقات تسليم الموقع<b>${n('site')}</b></div><div class="kpi">إجمالي الغرامات (ريال)<b>${money(tot)||0}</b></div>`; },
@@ -2330,6 +2330,20 @@ async function vForms(){
   if($('#gimp')) $('#gimp').onclick=()=>goImport($('#gimp').dataset.k);
 
   if($('#ffph')) $('#ffph').onclick=photosFromDrive; $('#ffpa').onclick=()=>printAll(S.ffRows||[]); $('#ffps').onclick=()=>printAll(L.filter(x=>F.pick[x.id]).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(+b.seq)-(+a.seq))); $('#ffpc').onclick=()=>{ F.pick={}; shell(); };
+      if($('#ffreb')) $('#ffreb').onclick=async()=>{
+        if(!confirm('إرجاع قيم كل المخالفات — حتى القديمة — إلى القيمة الأساسية للبند، ومسح خانة التكرار.\n\nالقيم السابقة تُحفظ في سجل الحركات قبل التغيير.\n\nمتابعة؟')) return;
+        const b=$('#ffreb'); b.disabled=true; b.textContent='جارٍ الإصلاح…';
+        let R; try{ R=await api('finesRebase',S.tok); }catch(e){ b.disabled=false; b.textContent='↺ إرجاع القيم الأساسية'; return alert(e.message); }
+        const tb=(H,rows)=>`<div class="tw" style="max-height:28vh"><table class="gs"><thead><tr>${H.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+        modal(`<h3 style="margin-top:0">تم إرجاع القيم الأساسية</h3>
+         <div class="card" style="margin-bottom:10px;line-height:1.9">غُيّر <b>${R.items}</b> بنداً في <b>${R.forms}</b> نموذجاً.
+          ${R.nNear?`<div class="muted">منها <b>${R.nNear}</b> طوبقت <b>بالأقرب منطقياً</b> — راجعها أدناه.</div>`:''}
+          ${R.nMiss?`<div class="muted">و<b>${R.nMiss}</b> بنداً لم يُطابَق فبقي كما هو.</div>`:''}</div>
+         ${R.changed.length?`<div class="muted" style="margin:4px 0">ما تغيّر:</div>`+tb(['النموذج','المقاول','البند','من','إلى','المطابقة'],R.changed.map(c=>`<tr><td>${esc(c.ref)}</td><td>${esc(c.contractor)}</td><td style="white-space:normal;min-width:220px">${esc(c.text)}</td><td>${esc(c.was||'—')}</td><td><b>${esc(c.now)}</b></td><td>${esc(c.how)}</td></tr>`)):''}
+         ${R.near.length?`<div class="muted" style="margin:10px 0 4px">المطابقات التقريبية — نص البند عندك مقابل البند الذي طوبق به:</div>`+tb(['البند في المخالفة','طوبق بـ','القيمة'],R.near.map(c=>`<tr><td style="white-space:normal;min-width:220px">${esc(c.text)}</td><td style="white-space:normal;min-width:220px">${esc(c.matched||'')}</td><td><b>${esc(c.now)}</b></td></tr>`)):''}
+         ${R.misses.length?`<div class="muted" style="margin:10px 0 4px">لم يُطابَق — بقي كما هو:</div>`+tb(['النموذج','البند','قيمته'],R.misses.map(c=>`<tr><td>${esc(c.ref)}</td><td style="white-space:normal;min-width:260px">${esc(c.text)}</td><td>${esc(c.price||'—')}</td></tr>`)):''}
+         <div style="margin-top:12px"><button class="pri" onclick="closeModal();S.ff=null;shell()">إغلاق وتحديث</button></div>`);
+      };
   $('#ffst').onclick=()=>{ const nP=Object.keys(F.pick).length; const src=nP?L.filter(x=>F.pick[x.id]):(S.ffRows||[]); const V=src.filter(x=>x.kind==='safety'||x.kind==='quality');
     if(!V.length) return toast('لا توجد مخالفات سلامة أو جودة '+(nP?'محددة':'ظاهرة بهذه الفلاتر'));
     const ns=V.filter(x=>x.kind==='safety').length, nq=V.length-ns;
@@ -2526,11 +2540,40 @@ async function vPermits(){
     norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('savePermitCells',S.tok,recs).then(r=>{ r.rows.forEach(x=>{ const n={}; r.headers.forEach((k,i)=>n[k]=x[i]); const o=L.find(y=>y.id===n.id); if(o) Object.assign(o,n); const i=R.rows.findIndex(y=>y[0]===n.id); if(i>=0) R.rows[i]=H.map(k=>n[k]); }); S.orders.forEach(o=>{ o.permit_n=o.permit_n; }); }),
     bar:(R.can?'<button class="pri" id="pnew">+ طلب تصريح</button><button id="pundo">↶ تراجع</button>':'')
-      +((R.hiddenN||S.pmShowHidden)?`<button id="pmhid" class="${S.pmShowHidden?'on':''}" title="طلبات أوامر العدادات (الرمز ${esc(R.meterCcode||'912')}) مخفية لأنها لا تحتاج تصريحاً. أظهرها لمراجعتها أو إرجاعها.">${S.pmShowHidden?'إخفاء طلبات العدادات':'إظهار المخفية ('+(R.hiddenN||0)+')'}</button>`:''), hint:'، نقرتان على الصف تفتح أمر العمل (أو نموذج الطلب إن لم يكن له أمر في البرنامج)',
+      +((R.can&&R.meterN)?`<button id="pmdrop" title="إخفاء طلبات التصاريح التي تخص أوامر العدادات (الرمز ${esc(R.meterCcode||'912')}، الأنواع ${esc((R.meterTypes||['801','401']).join(' و'))}) — إخفاء قابل للإرجاع، لا حذف.">🔢 إخفاء أوامر العدادات (${R.meterN})</button>`:'')
+      +((R.hiddenN||S.pmShowHidden)?`<button id="pmhid" class="${S.pmShowHidden?'on':''}" title="طلبات أوامر العدادات (الرمز ${esc(R.meterCcode||'912')}) مخفية لأنها لا تحتاج تصريحاً. أظهرها لمراجعتها أو إرجاعها.">${S.pmShowHidden?'إخفاء طلبات العدادات':'إظهار المخفية ('+(R.hiddenN||0)+')'}</button>`:'')
+      +((R.can&&R.hiddenN&&S.pmShowHidden)?`<button id="pmback" title="إرجاع كل الطلبات المخفية إلى الجدول كما كانت">↩ إرجاع المخفية (${R.hiddenN})</button>`:''), hint:'، نقرتان على الصف تفتح أمر العمل (أو نموذج الطلب إن لم يكن له أمر في البرنامج)',
     onDraw:l=>{ if(!$('#pk')) return; const n=st=>l.filter(x=>x.status===st).length;
       $('#pk').innerHTML=`<div class="kpi">الطلبات<b>${l.length}</b></div><div class="kpi">لم يتم التقديم<b>${n('لم يتم التقديم على تصريح')}</b></div><div class="kpi">قيد التنسيق والاعتماد<b>${n('قيد التنسيق والاعتماد')}</b></div><div class="kpi">بانتظار السداد<b>${n('بانتظار السداد')}</b></div><div class="kpi">صدر التصريح<b>${n('تم صدور التصريح')}</b></div><div class="kpi">شهادة إتمام الأعمال<b>${l.filter(x=>x.cert==='تم').length}</b></div><div class="kpi">تصاريح منتهية بلا شهادة<b class="${l.filter(expired).length?'late':''}">${l.filter(expired).length}</b></div><div class="kpi">مرفوض / ملغي<b>${n('تم الرفض')+n('ملغي')}</b></div>`; },
     wire:g=>{ if($('#pnew')) $('#pnew').onclick=()=>permitForm(null); if($('#pundo')) $('#pundo').onclick=()=>undoForm('pm',AD.lbl);
-      if($('#pmhid')) $('#pmhid').onclick=()=>{ S.pmShowHidden=!S.pmShowHidden; S.pm=null; vPermits(); }; } };
+      if($('#pmhid')) $('#pmhid').onclick=()=>{ S.pmShowHidden=!S.pmShowHidden; S.pm=null; vPermits(); };
+      // لا إخفاء جماعي بتأكيد أعمى: يُعرض أولاً ماذا سيُخفى، بالتفصيل وبعيّنة.
+      if($('#pmdrop')) $('#pmdrop').onclick=async()=>{
+        modal('<div class="loading">جارٍ الحساب…</div>');
+        let P; try{ P=await api('permitMeterPreview',S.tok); }
+        catch(e){ return modal(`<div class="err">${esc(e.message)}</div><div style="margin-top:10px"><button onclick="closeModal()">إغلاق</button></div>`); }
+        if(!P.n) return modal(`<h3 style="margin-top:0">لا يوجد ما يُخفى</h3><div class="muted">لا طلب ظاهر يخص أوامر العدادات.</div><div style="margin-top:12px"><button onclick="closeModal()">إغلاق</button></div>`);
+        const rows=Object.keys(P.by).sort((a,b)=>P.by[b]-P.by[a]);
+        modal(`<h3 style="margin-top:0">إخفاء طلبات أوامر العدادات</h3>
+         <div class="card" style="margin-bottom:10px;line-height:1.9">
+           سيُخفى <b>${P.n}</b> طلباً من أصل <b>${P.total}</b> ظاهر.
+           <div class="muted">أوامر العدادات رمزها الاستشاري ${esc(P.ccode)}، وأنواع المقاول المقابلة لها اليوم: ${esc(P.types.join('، ')||'—')}.</div>
+         </div>
+         <div class="tw" style="max-height:30vh"><table class="gs"><thead><tr><th>نوع أمر العمل</th><th>عدد الطلبات</th></tr></thead>
+          <tbody>${rows.map(k=>`<tr><td>${esc(k)}</td><td>${P.by[k]}</td></tr>`).join('')}</tbody></table></div>
+         <div class="muted" style="margin:10px 0 4px">عيّنة مما سيُخفى:</div>
+         <div class="tw" style="max-height:24vh"><table class="gs"><thead><tr><th>أمر العمل</th><th>النوع</th><th>الحالة</th></tr></thead>
+          <tbody>${P.sample.map(s=>`<tr><td>${esc(s.wo)}</td><td>${esc(s.type)}</td><td>${esc(s.status)}</td></tr>`).join('')}</tbody></table></div>
+         <div class="card" style="margin-top:10px">لا شيء يُحذف. تبقى كلها في الملف، ويظهر زر «إظهار المخفية» لإرجاعها متى شئت.</div>
+         <div style="margin-top:12px;display:flex;gap:8px"><button class="pri" id="pmgo">أخفِ ${P.n} طلباً</button><button onclick="closeModal()">إلغاء</button></div>`);
+        $('#pmgo').onclick=async()=>{ const b=$('#pmgo'); b.disabled=true; b.textContent='جارٍ الإخفاء…';
+          try{ const r=await api('permitsHideMeters',S.tok); closeModal(); toast(r.changed?`أُخفي ${r.changed} طلباً`:'لا يوجد ما يُخفى'); S.pm=null; S.pmShowHidden=false; vPermits(); }
+          catch(e){ b.disabled=false; b.textContent='أخفِ'; alert(e.message); } }; };
+      if($('#pmback')) $('#pmback').onclick=async()=>{
+        if(!confirm(`إرجاع ${R.hiddenN} طلباً مخفياً إلى الجدول؟`)) return;
+        const b=$('#pmback'); b.disabled=true; b.textContent='جارٍ الإرجاع…';
+        try{ const r=await api('permitsHideMeters',S.tok,true); toast(`أُرجع ${r.changed} طلباً`); S.pm=null; S.pmShowHidden=false; vPermits(); }
+        catch(e){ b.disabled=false; alert(e.message); } }; } };
   const again=()=>{ R.L=null; S.pm=null; S.orders.forEach(o=>{ o.permit_n=o.permit_n; }); vPermits(); };
   const PD=R.can&&!roView()?{ need:'رقم أمر العمل أو رقم الطلب', fields:Object.keys(PL).filter(k=>!PM_RO.includes(k)), ready:o=>!!(String(o.wo||'').trim()||String(o.req_no||'').trim()),
     init:()=>({status:'لم يتم التقديم على تصريح'}), fill:(o,k)=>{ if(k!=='wo') return; const x=byRef(o.wo); if(!x) return; o.wo=x.wo; if(!o.contractor) o.contractor=x.contractor||''; if(!o.wo_type) o.wo_type=x.type||''; if(!o.assign_date) o.assign_date=x.assign_date||''; },
