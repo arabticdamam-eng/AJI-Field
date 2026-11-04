@@ -101,6 +101,69 @@ table.gs th .fbtn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 header .pjsel{font-size:12px;padding:2px 6px;border-radius:7px;max-width:240px}header .nback{padding:4px 10px;border-radius:8px;font-size:13px;margin-inline-end:6px}
 table.gs th .rsz{position:absolute;top:0;left:-3px;width:8px;height:100%;cursor:col-resize;z-index:6}table.gs th .rsz:hover{background:rgba(24,95,165,.25)}
 table.gs td.dupc{background:#FFC7CE !important;color:#9C0006 !important;font-weight:700}table.gs tr.drf td{background:#FFFBEA}
+</style><style id="rwd">
+/* ===== التخطيط المتجاوب — من الجوال أولاً (قرار المالك 04-11) =====
+   القاعدة هنا للجوال، ثم تتوسّع عند 601 (لوحي) و1025 (شاشة). كل ما سبقها يبقى كما هو. */
+:root{--sbw:min(300px,86vw)}
+html,body{-webkit-text-size-adjust:100%}
+.tw{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.sheet{max-height:calc(100dvh - 190px)}
+/* النماذج: عمود واحد على الجوال */
+.f{grid-template-columns:1fr}
+.f label{font-size:13px}
+.f input,.f select,.f textarea,.box input,.box select,.box textarea{font-size:16px;min-height:38px}   /* 16px يمنع تكبير iOS */
+.modal .box{width:100%;max-width:100%;padding:14px 12px 24px}
+.mx{top:6px;margin:0;position:fixed;left:10px}
+/* الأشرطة والأزرار: تلتف، وأهداف لمس أكبر */
+.bar{gap:6px}
+.bar button,.bar .pill,.bar label{min-height:36px}
+.top{gap:8px;padding:8px 10px}
+.top .chip,.top .nback{display:none}
+.ptitle{font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand small{display:none}
+.ghint{display:none}   /* إرشاد لوحة المفاتيح لا يخص اللمس */
+/* المربعات: عمودان على الجوال */
+.kpis{grid-template-columns:repeat(2,1fr);gap:8px}
+.kpi{padding:10px}
+.kpi b{font-size:18px}
+/* الداشبورد: عمود واحد */
+.dgrid,.charts,.chart2{grid-template-columns:1fr!important}
+canvas{max-width:100%}
+/* الشاشة اللوحية */
+@media (min-width:601px){
+  .f{grid-template-columns:repeat(2,1fr)}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .kpi{padding:12px} .kpi b{font-size:inherit}
+  .modal .box{padding:18px 20px 28px}
+  .mx{position:sticky;top:0;left:auto;float:left;margin:-10px -12px 0 6px}
+  .top{gap:12px;padding:10px 16px} .ptitle{font-size:15px} .brand small{display:inline}
+  .ghint{display:block}
+  .f input,.f select,.f textarea,.box input,.box select,.box textarea{font-size:14px;min-height:0}
+  .bar button,.bar .pill,.bar label{min-height:0}
+}
+/* الشاشة */
+@media (min-width:1025px){
+  .f{grid-template-columns:repeat(3,1fr)}
+  .modal .box{width:min(980px,100%)}
+  .top .chip,.top .nback{display:inline-flex}
+  .dgrid,.charts,.chart2{grid-template-columns:revert!important}
+}
+/* ===== القائمة: ثابتة أو منزلقة — تقرّرها body.sb-on التي يضبطها applyMenu() ===== */
+body.sb-on .drw{transform:none;box-shadow:none;border-left:1px solid var(--line);z-index:4;top:0}
+body.sb-on .scrim{display:none}
+body.sb-on #mbtn,body.sb-on #mcl{display:none}
+body.sb-on header,body.sb-on main{margin-right:var(--sbw)}
+body.sb-on main{max-width:calc(1500px)}
+.df select.mmode{font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:#fff;width:auto;min-height:0}
+.df .mml{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut);margin-top:6px}
+/* ===== مربعات الأرقام: تلوين عند التمرير وتكبير عند الضغط (قرار المالك 04-11) ===== */
+.kpi{transition:background-color .4s ease,transform .4s ease,box-shadow .4s ease;position:relative;cursor:pointer}
+@media (hover:hover){ .kpi:hover{background:rgb(62,204,247);border-color:rgb(62,204,247);transform:scale(1.1);z-index:3;box-shadow:0 6px 18px rgba(0,0,0,.15)} }
+.kpi.tch{background:rgb(62,204,247);border-color:rgb(62,204,247);transform:scale(1.1);z-index:3;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+.kpi:active{transform:scale(1.1);z-index:3;box-shadow:0 8px 24px rgba(0,0,0,.25);background:rgb(62,204,247);border-color:rgb(62,204,247)}
+.kpi:hover b,.kpi:active b,.kpi.tch b{color:#102a33}
+@media print{.kpi{transition:none;transform:none!important;background:var(--card)!important}}
+@media print{body.sb-on header,body.sb-on main{margin-right:0} .drw{display:none}}
 </style><style id="cvcss"></style><style>table.gs tr.pm-hid td{background:#F1EFE8;color:#888780;font-style:italic}table.gs tr.pm-hid td.rn{background:#888780;color:#fff}table.gs tr.mr-auto td{background:#FFFDF2}table.gs tr.mr-auto td.rn{background:#A15C00;color:#fff}table.gs tr.po-red td{background:#FDECEA}table.gs tr.po-red td.rn{background:#C62828;color:#fff}table.gs tr.po-green td{background:#E8F5E9}table.gs tr.po-green td.rn{background:#2E7D32;color:#fff}table.gs tr.drf td.rn{color:var(--acc);font-weight:700}table.gs td.rn[data-rr]{cursor:pointer}
 table.gs tfoot td{position:sticky;bottom:0;background:#EEF3F8;font-weight:700;border-top:2px solid var(--acc);cursor:pointer;z-index:2;white-space:nowrap}table.gs tfoot td small{font-weight:500;color:var(--mut);font-size:10px}table.gs tfoot td.rn{z-index:3}
 .gstat{display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-start;padding:6px 10px;background:#F1EFE8;border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;font-size:12px}.gstat .gsi{cursor:pointer}.gstat b{color:var(--acc)}
@@ -399,7 +462,17 @@ const autoTabs=(role,mods)=>{ const m=String(mods||'').split(',').map(x=>x.trim(
 // ---------- side menu: ☰ at the top right opens the sections grouped by work ----------
 const MGRP=[['الرئيسية',['where','inbox','dash','mine']],['أوامر العمل',['orders','daily','stalled','matching','boq']],['الصيانة والتصاريح',['maint','permits']],['الجودة والسلامة',['forms','quality']],['التقارير',['report','olap']],['الإدارة',['users','import']]];
 const tabName=k=>k==='users'?'المستخدمون ورحلة أمر العمل':k==='import'?'الاستيراد':TABL[k]||k;
-function menu(on){ document.body.classList.toggle('mopen',on===undefined?!document.body.classList.contains('mopen'):!!on); }
+// وضع القائمة (قرار المالك 04-11): يُحفظ لكل مستخدم على جهازه
+document.addEventListener('touchstart',e=>{const k=e.target.closest&&e.target.closest('.kpi');if(k)k.classList.add('tch')},{passive:true});['touchend','touchcancel'].forEach(t=>document.addEventListener(t,()=>document.querySelectorAll('.kpi.tch').forEach(k=>k.classList.remove('tch')),{passive:true}));
+const MENU_KEY='wo_menu';
+function menuMode(){ try{ return localStorage.getItem(MENU_KEY)||'auto'; }catch(e){ return 'auto'; } }
+function setMenuMode(m){ try{ localStorage.setItem(MENU_KEY,m); }catch(e){} applyMenu(); }
+// ثابتة إن: تلقائي وعرض ≥1025 · أو «ثابتة دائماً» وعرض ≥820 (الجوال أضيق من أن يتسع لها) · وإلا منزلقة
+function applyMenu(){ const m=menuMode(), w=window.innerWidth, on=m==='pin'?w>=820:m==='hide'?false:w>=1025;
+  document.body.classList.toggle('sb-on',on); if(on) document.body.classList.remove('mopen');
+  const sel=document.getElementById('mmode'); if(sel&&sel.value!==m) sel.value=m; }
+window.addEventListener('resize',()=>{ clearTimeout(window._mnT); window._mnT=setTimeout(applyMenu,120); });
+function menu(on){ if(document.body.classList.contains('sb-on')&&on!==false) return; document.body.classList.toggle('mopen',on===undefined?!document.body.classList.contains('mopen'):!!on); }
 function goView(k){ menu(false); S.view=k; S.page=0; S.cf={}; S.xf=null; S.sort=null; S.f.q=''; shell(); window.scrollTo(0,0); }
 // ---------- several projects: the owner and the projects manager move between projects, add projects, and see them side by side ----------
 const pjSup=()=>!!(S.B&&S.B.projects&&S.B.projects.sup);
@@ -493,9 +566,10 @@ function shell(){
    <span class="chip">${esc(u.name)} · ${esc(u.role)}${u.offices.length<(S.B.lists.office||[]).length?' · '+esc(u.offices.join('، ')):''}</span></div></header>
    <div class="scrim" id="mscr"></div><aside class="drw" aria-label="القائمة"><div class="dh"><div><b>متابعة أوامر العمل</b>${pj?'<small>'+pj+'</small>':''}</div><button id="mcl" title="إغلاق">✕</button></div>
    <nav>${groups.map(([g,ks])=>`<div class="grp">${g}</div>`+ks.map(k=>`<a data-v="${k}" class="${S.view===k?'on':''}" style="${tc(k)}"><i></i>${tabName(k)}</a>`).join('')).join('')}</nav>
-   <div class="df">${window.AJI_APP?'<a class="mapp" href="./index.html">📱 عملي في الميدان (أوامري والنماذج والصور)</a>':''}<div class="u">${esc(u.name)}<small>${esc(u.role)}${u.offices.length?' · '+esc(u.offices.join('، ')):''}</small></div><button onclick="menu(false);myProfileModal()">👤 ملفي</button><button onclick="menu(false);renderChangePw()">كلمة السر</button><button onclick="logout()" style="color:var(--dan)">خروج</button></div></aside><main id="main"></main>`;
+   <div class="df">${window.AJI_APP?'<a class="mapp" href="./index.html">📱 عملي في الميدان (أوامري والنماذج والصور)</a>':''}<div class="u">${esc(u.name)}<small>${esc(u.role)}${u.offices.length?' · '+esc(u.offices.join('، ')):''}</small></div><div class="mml">القائمة <select class="mmode" id="mmode" title="تلقائي: ثابتة على الشاشة الواسعة ومنزلقة على الجوال · ثابتة: تبقى ظاهرة على اللوحي والشاشة · مخفية: وراء ☰ دائماً"><option value="auto">تلقائي</option><option value="pin">ثابتة دائماً</option><option value="hide">مخفية دائماً</option></select></div><button onclick="menu(false);myProfileModal()">👤 ملفي</button><button onclick="menu(false);renderChangePw()">كلمة السر</button><button onclick="logout()" style="color:var(--dan)">خروج</button></div></aside><main id="main"></main>`;
   if(open) document.body.classList.add('mopen');
   $('#mbtn').onclick=()=>menu(true); $('#mscr').onclick=$('#mcl').onclick=()=>menu(false);
+  applyMenu(); if($('#mmode')) $('#mmode').onchange=e=>setMenuMode(e.target.value);
   document.querySelectorAll('.drw nav a').forEach(a => a.onclick = () => goView(a.dataset.v));
   if($('#pjsel')) $('#pjsel').onchange=e=>{ const v=e.target.value; e.target.value=pjCur(); if(v==='__adm') projModal(); else if(v==='__all'){ S.pjCmp=1; goView('dash'); } else if(v!==pjCur()) projGo(v); };
   if($('#nback')) $('#nback').onclick=navBack; if($('#nfwd')) $('#nfwd').onclick=navFwd;
@@ -548,7 +622,7 @@ const canMaintInv=()=>!!S.B;        // الصيانة والطوارئ: فوات
 const canCost=()=>canLead();        // الإسنادات: التكلفة الفعلية
 const pdcVal=o=>{ const n=gNum(o.cost); return n==null?'':n; }, ajiVal=o=>{ const n=gNum(o.cost); return n==null?'':Math.round(n*ajiShare()*100)/100; };
 const qfOwn = o => (o.own_why ? o.own_why==='ملف جودة مرفوض' : o.qf_status==='مرفوض') && !!o.cur_owner;
-const val = (o,k) => k==='contractor' ? CSHOW(o[k],'cn') : k==='last_action'||k==='last_action_con'||k==='munib_action' ? actLbl(o[k]) : k==='pdc_val' ? pdcVal(o) : k==='aji_val' ? ajiVal(o) : k==='why_mine' ? whyMine(o) : k==='own_why' ? (o.cur_owner?(qfOwn(o)?'ملف جودة مرفوض':'الرحلة'):'') : k==='att' ? (o.folder_id?'له مجلد':'') : k==='cur_stage' ? stLbl(o.cur_stage) : k==='stage' ? stLbl(o.stage) : k==='munib_delay' ? (o.munib_status&&o.due_date?Math.max(days(S.B.today,o.due_date),0):'') : k==='jpct' ? oPct(o) : k==='jstep' ? jStep(o) : k==='vio' ? (o.vio_n||'') : k==='mom' ? (o.mom_n||'') : k==='site' ? (o.site_n||'') : k==='boq' ? (o.boq_st||'') : k==='qf' ? (o.qf_status||'بلا ملف') : k==='left' ? (o.left===''?'':(o.exec?o.left:'—')) : k==='since' ? (o.cur_since?days(S.B.today,o.cur_since):'') : (o[k]??'');
+const val = (o,k) => k==='last_action'||k==='last_action_con'||k==='munib_action' ? actLbl(o[k]) : k==='pdc_val' ? pdcVal(o) : k==='aji_val' ? ajiVal(o) : k==='why_mine' ? whyMine(o) : k==='own_why' ? (o.cur_owner?(qfOwn(o)?'ملف جودة مرفوض':'الرحلة'):'') : k==='att' ? (o.folder_id?'له مجلد':'') : k==='cur_stage' ? stLbl(o.cur_stage) : k==='stage' ? stLbl(o.stage) : k==='munib_delay' ? (o.munib_status&&o.due_date?Math.max(days(S.B.today,o.due_date),0):'') : k==='jpct' ? oPct(o) : k==='jstep' ? jStep(o) : k==='vio' ? (o.vio_n||'') : k==='mom' ? (o.mom_n||'') : k==='site' ? (o.site_n||'') : k==='boq' ? (o.boq_st||'') : k==='qf' ? (o.qf_status||'بلا ملف') : k==='left' ? (o.left===''?'':(o.exec?o.left:'—')) : k==='since' ? (o.cur_since?days(S.B.today,o.cur_since):'') : (o[k]??'');
 // duplicates: the same number with the same type, or a type standing for the same consultant code
 const tCode=t=>{ t=String(t||'').trim(); if(!t) return ''; const C=S.tmap&&S.tmapN===S.orders.length?S.tmap:(S.tmapN=S.orders.length,S.tmap=(()=>{ const m={}; S.orders.forEach(o=>{ if(o.type&&o.ccode&&!m[o.type]) m[o.type]=String(o.ccode); }); return m; })()); return C[t]||t; };
 const dKey=o=>String(o.wo||'').trim()+'|'+(String(o.ccode||'').trim()||tCode(o.type));
@@ -796,7 +870,12 @@ function sheet(base, defCols, opt={}){
           Object.keys(o).forEach(k=>delete o[k]); Object.assign(o,rec); if(!DF.noPush) base.push(o); toast(DF.done?DF.done(o):'أُضيف السجل'); if(DF.after) setTimeout(DF.after,0); }
         catch(e){ delete o._busy; throw e; } } };
     A.cls=(o,k)=>(o&&o._draft?'drf ':'')+(o&&o._dup&&(k==='wo'||k==='type')?'dupc ':'')+(CL0?CL0(o,k):''); }
-  const lbl=A.lbl, val=A.val, canEditCell=A.can, optsFor=A.opts;
+  // اسم المقاول المعروض يتبع القسم، ومن مكان واحد يمرّ به كل جدول: الصيانة
+  // وفواتيرها تعرض اسم الصيانة، وما سواها اسم الإنشاءات. المحفوظ لا يتغيّر.
+  // (وُضع هنا لا في كل جدول، لأن ترقيع الجداول واحداً واحداً أسقط جدولين من قبل.)
+  const CWHERE = (S.view==='maint' || (S.view==='matching' && S.gsub==='inv')) ? 'mt' : 'cn';
+  const lbl=A.lbl, canEditCell=A.can, optsFor=A.opts;
+  const val=(o,k)=> k==='contractor' ? CSHOW(A.val(o,k),CWHERE) : A.val(o,k);
   const canAdd = S.B.admin || S.B.user.role==='قائد مكتب';
   const DEL = A.del!==undefined ? A.del : (!opt.ad ? ORD_DEL : null);
   const EDITABLE = !RO && base.slice(0,80).some(o=>defCols.concat(A.all||[],cols).some(k=>canEditCell(o,k)));
@@ -806,7 +885,7 @@ function sheet(base, defCols, opt={}){
    `<div class="bar">${A.pre||''}<input id="gq" placeholder="بحث سريع — أو عدة أرقام أوامر مفصولة بمسافة" title="اكتب أو الصق (من Excel) عدة أرقام أوامر مفصولة بمسافة أو فاصلة أو سطر" value="${esc(ST.f.q||'')}" style="min-width:200px">
      <span id="chips"></span><span class="sp"></span><span id="gsave" class="muted"></span><span class="muted" id="cnt"></span>
      ${A.bar!==undefined?A.bar:((canAdd?'<button id="gadd">+ أمر عمل</button>':'')+(!opt.ad?`<button id="gsdir" class="${ST.xf&&ST.xf.key==='stdir'?'on':''}" title="الأوامر التي تختلف مرحلتها عن الإجراء الأكثر تقدماً في أولاب (الاستشاري أو المقاول)">▲▼ مراحل تحتاج تعديل (${base.filter(o=>stDir(o)).length})</button>`:'')+(canBulk()?'<button id="bulk">تعديل جماعي</button>':'')+(S.B.editable.length?'<button id="gundo">↶ تراجع</button>':''))}${DF?'<button id="gblank" title="صفوف فارغة تكتب فيها مباشرة، أو تلصق فيها صفوفاً منسوخة">+ صفوف فارغة</button>':''}${GBULK?'<button id="gbulk" title="قيمة واحدة لعمود في الصفوف المحددة أو في كل الصفوف الظاهرة">تعديل جماعي</button>':''}${LUNDO?'<button id="glundo" title="Ctrl+Z">↶ تراجع</button>':''}${DEL&&!RO&&S.B.admin?'<button id="gdel" title="حدّد خلية في كل صف تريد حذفه">🗑 حذف المحدد</button>':''}<button id="gcols">الأعمدة</button><button id="gtall" title="عرض الملاحظات والنصوص الطويلة كاملة" class="${S.tall?'on':''}">↕ توسيع الصفوف</button><button id="gtot" title="صف الإجمالي أسفل الجدول (مثل Excel). Ctrl + نقرة على رأس عمود تحدده كاملاً" class="${totOn()?'on':''}">Σ الإجمالي</button><button id="xls">تصدير Excel</button>${S.view==='orders'&&!S.B.field?'<button id="xall">تصدير إكسل موحّد</button><button id="xarch" title="الأوامر المنتهية المنقولة إلى ملف الأرشيف">الأرشيف</button>':''}${A.noImp?'':impBtn()}</div>
-   <div class="muted" style="font-size:12px;margin:-4px 0 6px">${A.help!==undefined?A.help:`اختر خلية أو عدة خلايا (سحب / Shift / Ctrl) ثم اكتب أو اختر من القائمة ▾ — يُطبَّق على كل الخلايا المحددة ويُحفظ تلقائياً. Ctrl+C / Ctrl+V للنسخ واللصق، Delete للمسح، Ctrl+Z للتراجع${A.hint!==undefined?A.hint:'، نقرتان على رقم الأمر لفتح سجله'}.`}</div>
+   <div class="muted ghint" style="font-size:12px;margin:-4px 0 6px">${A.help!==undefined?A.help:`اختر خلية أو عدة خلايا (سحب / Shift / Ctrl) ثم اكتب أو اختر من القائمة ▾ — يُطبَّق على كل الخلايا المحددة ويُحفظ تلقائياً. Ctrl+C / Ctrl+V للنسخ واللصق، Delete للمسح، Ctrl+Z للتراجع${A.hint!==undefined?A.hint:'، نقرتان على رقم الأمر لفتح سجله'}.`}</div>
    <div id="tbox" class="tw sheet${S.tall?' tall':''}" tabindex="0"></div><div id="gstat" class="gstat" style="display:none"></div>`;
   const GID='g'+Date.now()+Math.random(); { const t=$('#tbox'); if(t) t.dataset.g=GID; }
   let rows=[], allRows=[], sel=new Set(), act=null, anchor=null, dragging=false; S.gundo=A.undo||(()=>{});
@@ -1139,7 +1218,7 @@ function qfModal(wo){
   const o=byRef(wo); if(!o) return; const s=QF_ST[o.qf_status||'']||QF_ST[''];
   const up=canUploadQF(o), qe=S.B.qe;
   modal(`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">ملف الجودة — أمر العمل ${esc(o.wo)}${o.type?'-'+esc(o.type):''}</h3><span class="qfb ${s.c}">${s.i} ${esc(s.t)}</span><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>
-   <div class="kv"><div><span>المكتب:</span> ${esc(o.office)}</div><div><span>المقاول:</span> ${esc(o.contractor)}</div><div><span>مهندس الموقع:</span> ${esc(o.site_engineer||'—')}</div><div><span>المرحلة:</span> ${esc(stLbl(o.cur_stage))}</div></div>
+   <div class="kv"><div><span>المكتب:</span> ${esc(o.office)}</div><div><span>المقاول:</span> ${esc(CSHOW(o.contractor,'cn'))}</div><div><span>مهندس الموقع:</span> ${esc(o.site_engineer||'—')}</div><div><span>المرحلة:</span> ${esc(stLbl(o.cur_stage))}</div></div>
    ${o.qf_id?`<div class="card" style="margin:8px 0"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><a class="qfopen" href="${esc(o.qf_url)}" target="_blank" rel="noopener">📄 فتح الملف</a><span class="muted">${esc(o.qf_name)}</span></div>
      <div class="muted" style="margin-top:6px">رفعه ${esc(o.qf_by)} — ${esc(o.qf_at)}</div>${o.qf_note?`<div style="margin-top:6px" class="${o.qf_status==='مرفوض'?'late':''}"><b>ملاحظة الجودة:</b> ${esc(o.qf_note)}</div>`:''}</div>`:'<div class="card muted" style="margin:8px 0">لم يُرفع ملف جودة بعد.</div>'}
    ${up?`<div class="card" style="margin:8px 0"><h3>${o.qf_id?(qe?'رفع نسخة معدّلة (تحل محل القديمة وتُعتمد)':'رفع نسخة جديدة (تحل محل القديمة)'):'رفع ملف الجودة'}</h3>
@@ -1196,7 +1275,7 @@ function qdDraw(C,V){ const X=V.ctx, o=X.o, d=V.d, P=V.plan, ed=X.canEdit, qs=QF
         ${ed?`<div class="qdpb"><label class="qdcam">📷<input type="file" data-img="1" data-cam="1" data-qup="${s}" hidden></label><label class="qdcam qdgal">🖼<input type="file" data-img="1" data-qup="${s}" multiple hidden></label></div>`:''}</div>`; }).join('')}</div>`; }).join('');
   const missN=V.miss.length;
   modal(`<div class="qdm"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">ملف الجودة — ${X.d9?'إشعار الصيانة D9 '+esc(o.wo):'أمر العمل '+esc(o.wo)+(o.type?'-'+esc(o.type):'')}</h3><span class="qfb ${qs.c}">${qs.i} ${esc(qs.t)}</span><span class="pill">${esc(qdProgTxt(V.prog))}</span><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>
-   <div class="kv"><div><span>المكتب:</span> ${esc(o.office||'')}</div><div><span>المقاول:</span> ${esc(o.contractor||'')}</div><div><span>${X.d9?'مهندس التنفيذ':'مهندس الموقع'}:</span> ${esc(o.site_engineer||'—')}</div>${X.d9?`<div><span>المحطة:</span> ${esc(o.station||'')}</div><div style="grid-column:1/-1"><span>وصف العمل:</span> ${esc(o.work_desc||'')}</div>`:`<div><span>المرحلة:</span> ${esc(stLbl(o.cur_stage||''))}</div>`}</div>
+   <div class="kv"><div><span>المكتب:</span> ${esc(o.office||'')}</div><div><span>المقاول:</span> ${esc(CSHOW(o.contractor||'',X.d9?'mt':'cn'))}</div><div><span>${X.d9?'مهندس التنفيذ':'مهندس الموقع'}:</span> ${esc(o.site_engineer||'—')}</div>${X.d9?`<div><span>المحطة:</span> ${esc(o.station||'')}</div><div style="grid-column:1/-1"><span>وصف العمل:</span> ${esc(o.work_desc||'')}</div>`:`<div><span>المرحلة:</span> ${esc(stLbl(o.cur_stage||''))}</div>`}</div>
    ${V.qf&&V.qf.id?`<div class="card" style="margin:8px 0"><a class="qfopen" href="${esc(V.qf.url)}" target="_blank" rel="noopener">📄 فتح ملف الجودة</a> <span class="muted">${esc(V.qf.by||'')} — ${esc(V.qf.at||'')}</span>${V.qf.note?`<div style="margin-top:6px" class="${V.qf.status==='مرفوض'?'late':''}"><b>ملاحظة الجودة:</b> ${esc(V.qf.note)}</div>`:''}</div>`:''}
    ${ed?`<div class="bar" style="margin:8px 0">${P.hasNet?`<label>الشبكة <select id="qdnet"><option value="" ${!P.net?'selected':''}>— اختر —</option><option value="g" ${P.net==='g'?'selected':''}>أرضي</option><option value="o" ${P.net==='o'?'selected':''}>هوائي</option><option value="b" ${P.net==='b'?'selected':''}>أرضي وهوائي</option></select></label>${P.needNet?'<span class="late">اختر نوع الشبكة لتظهر نماذجها</span>':''}`:''}
      ${X.d9?`<label>نوع العمل <select id="qdmw">${C.mw.map(k=>`<option value="${k}" ${P.cats[0]===k?'selected':''}>${esc(C.ph[k].name)}</option>`).join('')}</select></label>`:`<span class="muted">المعدّات (تحدد الصور المطلوبة):</span>${C.eq.map(e=>`<label class="qdeq"><input type="checkbox" data-qeq="${e}" ${P.cats.includes(e)?'checked':''}> ${esc(C.ph[e].name)}</label>`).join('')}`}</div>`:''}
@@ -1652,7 +1731,7 @@ function vDash(){
   const cnt=(arr,k)=>arr.reduce((m,o)=>{const v=typeof k==='function'?k(o):o[k]; if(v) m[v]=(m[v]||0)+1; return m;},{});
   const ex=list.filter(o=>o.exec), late30=ex.filter(o=>o.left<-30).length;
   const age={'لم ينتهِ موعده':ex.filter(o=>o.left>=0||o.left==='').length,'1–7 أيام':ex.filter(o=>o.left<0&&o.left>=-7).length,'8–30 يوماً':ex.filter(o=>o.left<-7&&o.left>=-30).length,'+30 يوماً':late30};
-  const sel=(k,lbl,opts)=>`<select id="${k}"><option value="">${lbl}</option>${opts.map(o=>`<option ${f[k]===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  const sel=(k,lbl,opts)=>`<select id="${k}"><option value="">${lbl}</option>${opts.map(o=>`<option value="${esc(o)}" ${f[k]===o?'selected':''}>${esc(k==='dcon'?CSHOW(o,'cn'):o)}</option>`).join('')}</select>`;   // المعروض اسم الإنشاءات، والقيمة الاسم المحفوظ فتبقى الفلترة صحيحة
   const own={}; open.filter(o=>o.cur_owner).forEach(o=>{const x=own[o.cur_owner]||(own[o.cur_owner]={n:0,d:0}); x.n++; x.d+=o.cur_since?days(S.B.today,o.cur_since):0;});
   $('#main').innerHTML=`<div class="bar">${S.B.user.offices.length>1?sel('doff','كل المكاتب',uniq('office')):''}${sel('dcon','كل المقاولين',uniq('contractor'))}<span class="sp"></span><span class="muted">اضغط على أي رقم أو عمود أو شريحة لفتح الأوامر · اليوم ${S.B.today}</span><button id="xall">تصدير إكسل موحّد</button></div>
    <div class="kpis"><div class="kpi go" data-go="all">إجمالي الأوامر<b>${list.length}</b></div><div class="kpi go" data-go="open">مفتوحة<b>${open.length}</b></div><div class="kpi go" data-go="late30">متأخرة +30 يوماً (قبل 211)<b class="late">${late30}</b></div>
@@ -1886,7 +1965,7 @@ async function formsModal(wo,g){
   const o=Object.assign({},fmOrder(wo),r.order); if(!o.maint) o.key=keyOf(o); wo=o.key; const list=r.forms.filter(f=>G.kinds.includes(f.kind)), tot=list.reduce((s,f)=>s+(+f.total||0),0);
   if(o.maint) mtSetCount(o.wo,String(list.length||'')); else fmSetCounts(wo,{vio_n:String(r.forms.filter(f=>f.kind!=='meeting'&&f.kind!=='site').length||''),mom_n:String(r.forms.filter(f=>f.kind==='meeting').length||''),site_n:String(r.forms.filter(f=>f.kind==='site').length||'')});
   modal(`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">${G.t} — ${o.maint?'إشعار الصيانة D9 '+esc(o.wo):'أمر العمل '+esc(o.wo)+(o.type?'-'+esc(o.type):'')}</h3><span class="sp"></span>${G.kinds.map(k=>`<button class="pri" data-new="${k}">+ ${FK[k].t}</button>`).join('')}<button onclick="closeModal()">إغلاق</button></div>
-   <div class="kv"><div><span>المكتب:</span> ${esc(o.office)}</div><div><span>المقاول:</span> ${esc(o.contractor)}</div>${o.maint?`<div><span>المحطة:</span> ${esc(o.station||'')}</div>`:`<div><span>الحي:</span> ${esc(o.district||'')}</div><div><span>مهندس الموقع:</span> ${esc(o.site_engineer||'—')}</div>`}</div>
+   <div class="kv"><div><span>المكتب:</span> ${esc(o.office)}</div><div><span>المقاول:</span> ${esc(CSHOW(o.contractor,o.maint?'mt':'cn'))}</div>${o.maint?`<div><span>المحطة:</span> ${esc(o.station||'')}</div>`:`<div><span>الحي:</span> ${esc(o.district||'')}</div><div><span>مهندس الموقع:</span> ${esc(o.site_engineer||'—')}</div>`}</div>
    ${list.length?`<div class="tw" style="max-height:60vh"><table><thead><tr><th>النموذج</th><th>التاريخ</th><th>${g==='vio'?'المخالفة':g==='site'?'الملاحظات':'المحاور'}</th>${g==='vio'?'<th>الغرامة</th>':''}<th>الكاتب</th><th>صور</th><th></th></tr></thead><tbody>${list.map(f=>`<tr><td>${FK[f.kind].i} ${esc(FK[f.kind].t)} <b>${esc(f.seq)}</b></td><td>${esc(f.date)}</td><td class="wrap"><span>${esc(fmSum(f))}</span></td>${g==='vio'?`<td>${money(f.total)}</td>`:''}<td>${esc(f.author)}</td><td>${f.photos.length||''}</td><td style="white-space:nowrap"><button data-open="${esc(f.id)}">${f.can?'فتح / تعديل':'عرض'}</button> <button data-prt="${esc(f.id)}">🖨 طباعة</button></td></tr>`).join('')}</tbody></table></div>${g==='vio'&&tot?`<div style="margin-top:6px">إجمالي الغرامات: <b>${money(tot)}</b> ريال</div>`:''}`:`<div class="card muted" style="margin:8px 0">لا توجد ${G.t} لهذا الأمر بعد.</div>`}`);
   const back=()=>formsModal(wo,g);
   document.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>fmNewForm(b.dataset.new,o,back));
@@ -2613,7 +2692,7 @@ async function vMaint(){
   S.gst=S.gst||{}; const ST=S.gst.maint||(S.gst.maint={cf:{},sort:['date',-1],xf:null,f:{q:''}}); const tc=TABC.maint, RO=['id','month','updated_at','updated_by'];
   const XL={month:'الشهر',updated_at:'آخر تحديث',updated_by:'بواسطة',reason:ML.reason,mvio:'المخالفات',mqf:'ملف الجودة',matt:'المرفقات',inv_link:'فاتورة المطابقة',inv_state:'حالة الفاتورة'};
   const AD={ del:{kind:'maint',name:'إشعار صيانة',key:o=>o.id,ref:o=>'D9 '+(o.d9||'—')+' · '+(o.station||'')+' · '+(o.date||''),done:()=>{ S.mt=null; }}, st:ST, unit:'إشعاراً', stk:'id', file:'الصيانة_والطوارئ', orders:false, lx:['mi'], all:Object.keys(ML).concat(['inv_link','inv_state','mr_wo','mr_po','mvio','mqf','matt','month','updated_at','updated_by','qf_status','qd_prog','qd_rej']),
-    lbl:k=>ML[k]||XL[k]||({qf_status:'حالة ملف الجودة',qd_prog:'تقدم مستندات الجودة',qd_rej:'مستندات جودة مرفوضة',mr_wo:'رقم أمر العمل',mr_po:'رقم أمر الشراء (PO)'}[k])||k, val:(o,k)=>k==='month'?(o.date||'').slice(0,7):k==='mvio'?(o.vio_n||''):k==='mqf'?(o.qf_status||o.qd_prog||''):k==='matt'?'':k==='contractor'?CSHOW(o[k],'mt'):(o[k]==null?'':o[k]), can:()=>false,   // جدول الصيانة للقراءة فقط: كل إدخال وتعديل عبر نموذج الإشعار وحده (قرار المالك 03-11)
+    lbl:k=>ML[k]||XL[k]||({qf_status:'حالة ملف الجودة',qd_prog:'تقدم مستندات الجودة',qd_rej:'مستندات جودة مرفوضة',mr_wo:'رقم أمر العمل',mr_po:'رقم أمر الشراء (PO)'}[k])||k, val:(o,k)=>k==='month'?(o.date||'').slice(0,7):k==='mvio'?(o.vio_n||''):k==='mqf'?(o.qf_status||o.qd_prog||''):k==='matt'?'':(o[k]==null?'':o[k]), can:()=>false,   // جدول الصيانة للقراءة فقط: كل إدخال وتعديل عبر نموذج الإشعار وحده (قرار المالك 03-11)
     opts:(o,k)=>k==='office'?S.B.lists.office:k==='work_type'?['مجدول','طوارئ']:k==='status'?MSTAT:MCHK.includes(k)?['تم']:k==='contractor'?CONTR_MT():k==='engineer'?PEOPLE():undefined,
     dates:['date'], wrap:['work_desc','notes','reason'], free:['contractor','engineer'], src:k=>k==='inv_link'||k==='inv_state'||k==='mr_wo'||k==='mr_po'?'المطابقة والصرف':k==='mvio'?'المخالفات والمحاضر':k==='mqf'||/^q[fd]_/.test(k)?'ملفات الجودة':k==='matt'?'البرنامج':'الصيانة والطوارئ', clr:k=>k==='inv_link'||k==='inv_state'?TABC.matching:k==='mvio'?TABC.forms:k==='mqf'||/^q[fd]_/.test(k)?TABC.quality:k==='matt'?TABC.mine:tc, chip:()=>'',
     cell:(o,k,v)=>k==='inv_aji'&&o.inv_link?`<span title="من فواتير المطابقة والصرف">${esc(money(v)||v)} 🔗</span>`:k==='inv_state'&&v?`<span class="pill ${/المالية/.test(v)&&!/بانتظار/.test(v)?'p-ok':'p-w'}">${esc(v)}</span>`:k==='mvio'?mtCell(o):k==='mqf'?mqCell(o):k==='matt'?(String(o.d9||'').trim()?`<span class="fmb fm0 atb" data-att="D9:${esc(String(o.d9).trim())}" title="مرفقات الإشعار">📁</span>`:''):['work_desc','notes','reason'].includes(k)?richHtml(v):esc(['inv_aji','inv_con'].includes(k)?(money(v)||v):v), cls:(o,k)=>k==='status'&&o.status&&o.status!=='تم التنفيذ'&&o.status!=='ملغي'?'late':'',
@@ -2632,15 +2711,44 @@ async function vMaint(){
   sheet(L, ['id','date','d9','mvio','mqf','matt','d1','office','contractor','station','work_type','work_desc','engineer','status'].concat(MCHK,['inv_aji','inv_con','notes']), {ad:AD, draft:null /* الإنشاء من «+ إشعار جديد» وحده */,
     kpis:`<div id="mk" class="kpis"></div>`+(R.can?`<div class="bar"><label>نسبة إنجاز الصيانة والطوارئ في التقرير الشهري % <input id="mpct" value="${esc(R.pct||'')}" style="width:70px" inputmode="decimal"></label><button id="mpsave">حفظ النسبة</button></div>`:(R.pct!==''&&R.pct!=null?`<div class="muted" style="margin-bottom:8px">نسبة إنجاز الصيانة في التقرير الشهري: ${esc(R.pct)}%</div>`:''))});
   if($('#mpsave')) $('#mpsave').onclick=()=>api('setMaintPct',S.tok,$('#mpct').value).then(p=>{ R.pct=p; S.rpMeta=null; toast('تم حفظ نسبة إنجاز الصيانة'); }).catch(e=>toast(e.message));
+  // حقول النموذج تُبنى من أعمدة الصيانة نفسها لا بتعداد يدوي: أي عمود يُضاف
+  // لاحقاً يظهر هنا تلقائياً. (D2 كان موجوداً في الورقة وغائباً عن النموذج،
+  // فلما صار الجدول للقراءة فقط لم يبقَ له مدخل أصلاً — قرار المالك 04-11.)
+  const MF_SYS=['id','updated_at','updated_by','month','c_wo','c_po','c_inv_no','c_inv_state','c_qf_state'];
+  const MF_OPT={ date:{type:'date'}, office:{sel:S.B.lists.office}, contractor:{list:'mdc'},
+    work_type:{sel:['مجدول','طوارئ']}, status:{sel:MSTAT}, engineer:{list:'mde'},
+    work_desc:{area:1,full:1}, reason:{full:1}, notes:{area:1,full:1} };
+  const MF_TAIL=['inv_aji','inv_con','notes'];                       // تبقى بعد «المتابعة» كما هي
+  const MF_SRC={ inv_link:'المطابقة والصرف', inv_state:'المطابقة والصرف', mr_wo:'المطابقة والصرف', mr_po:'المطابقة والصرف',
+    vio_n:'المخالفات والمحاضر', mvio:'المخالفات والمحاضر', qf_status:'ملفات الجودة', qd_prog:'ملفات الجودة',
+    qd_rej:'ملفات الجودة', mqf:'ملفات الجودة', matt:'البرنامج' };
+  const MF_RO_LBL={ vio_n:'عدد المخالفات', qd_prog:'تقدم مستندات الجودة', qf_status:'حالة ملف الجودة',
+    qd_rej:'مستندات جودة مرفوضة', inv_link:'رقم فاتورة أرابتك', inv_state:'حالة الفاتورة',
+    mr_wo:'رقم أمر العمل', mr_po:'رقم أمر الشراء (PO)', mvio:'المخالفات والمحاضر', mqf:'ملف الجودة', matt:'المرفقات' };
+  // الخمس المكتوبة باليد (قرار المالك 04-11): الفارغ يعرض المحسوب كتلميح رمادي، والمكتوب يغلب عليه
+  const MF_HAND={ m_wo:['رقم أمر العمل','mr_wo'], m_po:['رقم أمر الشراء (PO)','mr_po'], m_inv_no:['رقم فاتورة أرابتك','inv_link'],
+    m_inv_state:['حالة الفاتورة','inv_state'], m_qf_state:['حالة ملف الجودة','qf_status'] };
+  const MF_HAND_RO=Object.keys(MF_HAND).map(k=>MF_HAND[k][1]);     // المحسوبة التي صار لها خانة يد — لا تُعرض مرتين
+  const mfLbl=k=>ML[k]||(MF_HAND[k]&&MF_HAND[k][0])||MF_RO_LBL[k]||XL[k]||k;
+  const mfRoVal=(o,k)=>k==='mvio'?(o.vio_n||''):k==='mqf'?(o.qf_status||o.qd_prog||''):k==='matt'?(o.attach||''):(o[k]==null?'':o[k]);
+  const mfCols=()=>{ const H=(R&&R.headers)?R.headers.slice():[]; ['mvio','mqf','matt'].forEach(k=>{ if(H.indexOf(k)<0) H.push(k); }); return H; };
   function maintForm(o){ const isNew=!o, ro=!R.can; o=o||{date:S.B.today,office:(S.B.user.offices.length===1?S.B.user.offices[0]:''),work_type:'مجدول',status:'جار التنفيذ'};
     // يُعرض اسم المقاول كما يُكتب في الصيانة؛ المحفوظ يبقى الاسم الرئيسي لأن الخادم يوحّده
     o=Object.assign({},o,{contractor:CSHOW(o.contractor,'mt')}); const D=ro?'disabled':'';
-    const inp=(k,opt={})=>`<label${opt.full?' style="grid-column:1/-1"':''}>${ML[k]}${opt.sel?`<select data-m="${k}" ${D}><option value=""></option>${opt.sel.map(x=>`<option ${x===o[k]?'selected':''}>${esc(x)}</option>`).join('')}</select>`:opt.area?`<textarea data-m="${k}" rows="2" ${D}>${esc(o[k]||'')}</textarea>`:`<input data-m="${k}"${opt.type?` type="${opt.type}"`:''}${opt.list?` list="${opt.list}"`:''} value="${esc(o[k]||'')}" ${D}>`}</label>`;
+    o._calc={ m_wo:o.c_wo||'', m_po:o.c_po||'', m_inv_no:o.c_inv_no||'', m_inv_state:o.c_inv_state||'', m_qf_state:o.c_qf_state||'' };
+    const COLS=mfCols().filter(k=>MF_SYS.indexOf(k)<0);
+    const MF_IN=COLS.filter(k=>!MF_SRC[k]&&MCHK.indexOf(k)<0&&MF_TAIL.indexOf(k)<0&&!MF_HAND[k]).map(k=>[k,MF_OPT[k]||{}]);
+    const MF_IN2=MF_TAIL.filter(k=>COLS.indexOf(k)>=0).map(k=>[k,MF_OPT[k]||{}]);
+    // الخمس بالترتيب، وتلميح كل خانة هو ما يحسبه البرنامج من المطابقة والجودة
+    const MF_HANDL=Object.keys(MF_HAND).filter(k=>COLS.indexOf(k)>=0).map(k=>[k,{ph:isNew?'':String(o._calc&&o._calc[k]||'')}]);
+    const MF_RO=isNew?[]:COLS.filter(k=>MF_SRC[k]&&MF_HAND_RO.indexOf(k)<0).map(k=>[k,MF_SRC[k]]);
+    const inp=(k,opt={})=>`<label${opt.full?' style="grid-column:1/-1"':''}>${mfLbl(k)}${opt.sel?`<select data-m="${k}" ${D}><option value=""></option>${opt.sel.map(x=>`<option ${x===o[k]?'selected':''}>${esc(x)}</option>`).join('')}</select>`:opt.area?`<textarea data-m="${k}" rows="2" ${D}>${esc(o[k]||'')}</textarea>`:`<input data-m="${k}"${opt.type?` type="${opt.type}"`:''}${opt.list?` list="${opt.list}"`:''}${opt.ph?` placeholder="${esc(opt.ph)}" title="ما يحسبه البرنامج من المطابقة والجودة؛ اكتب فوقه إن أردت"`:''} value="${esc(o[k]||'')}" ${D}>`}</label>`;
     modal(`<h3 style="margin-top:0">${isNew?'إشعار جديد':'إشعار رقم '+esc(o.id)}${ro?' <span class="pill p-w">عرض فقط</span>':''}</h3><div class="f">
-      ${inp('date',{type:'date'})}${inp('d9')}${inp('d1')}${inp('office',{sel:S.B.lists.office})}${inp('contractor',{list:'mdc'})}${inp('station')}${inp('work_type',{sel:['مجدول','طوارئ']})}${inp('status',{sel:MSTAT})}${inp('engineer',{list:'mde'})}
-      ${inp('work_desc',{area:1,full:1})}${inp('reason',{full:1})}</div>
+      ${MF_IN.map(([k,opt])=>inp(k,opt)).join('')}</div>
       <div class="card" style="margin:10px 0"><div class="muted" style="margin-bottom:6px">المتابعة</div><div class="bar">${MCHK.map(k=>`<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-mc="${k}" ${o[k]?'checked':''} ${D}>${ML[k]}</label>`).join('')}</div></div>
-      <div class="f">${inp('inv_aji')}${inp('inv_con')}${inp('notes',{area:1,full:1})}</div>
+      <div class="card" style="margin:10px 0"><div class="muted" style="margin-bottom:6px">أمر العمل والفاتورة والجودة <span style="font-weight:400">— ما تكتبه هنا يغلب على ما يحسبه البرنامج؛ والفارغ يعرض المحسوب كتلميح</span></div><div class="f">${MF_HANDL.map(([k,opt])=>inp(k,opt)).join('')}</div></div>
+      <div class="f">${MF_IN2.map(([k,opt])=>inp(k,opt)).join('')}</div>
+      ${MF_RO.length?`<div class="card" style="margin:10px 0"><div class="muted" style="margin-bottom:6px">من أقسام أخرى — للعرض فقط</div><div class="f">${MF_RO.map(([k,src])=>`<label>${esc(mfLbl(k))}<input value="${esc(mfRoVal(o,k))}" readonly title="${esc(src)}" style="background:#F4F3EE"></label>`).join('')}</div></div>`:''}
       <datalist id="mdc">${CONTR_MT().map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="mde">${PEOPLE().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
       ${o.updated_by?`<div class="muted" style="margin-top:6px">آخر تعديل: ${esc(o.updated_by)} ${esc((o.updated_at||'').slice(0,16))}</div>`:''}<div class="err" id="merr"></div>
       <div style="display:flex;gap:8px;margin-top:8px">${ro?'':'<button class="pri" id="msave">حفظ</button>'}${!ro&&!isNew?'<button id="mdel" style="color:var(--dan);border-color:var(--dan)">حذف</button>':''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
