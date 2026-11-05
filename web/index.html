@@ -8,6 +8,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#f6f5f1;--card:#fff;--line:#e4e2da;--txt:#1f1e1c;--mut:#6b6a64;--acc:#0E7C86;--accbg:#DDF2F4;--acc2:#0A626A;--accln:#A9D5D9;--btnbg:#F3FAFB;--dan:#A32D2D;--danbg:#FCEBEB;--ok:#3B6D11;--okbg:#EAF3DE;--warn:#854F0B;--warnbg:#FAEEDA;--onacc:#fff;--th:#f1efe8;--hov:#faf9f5;--sel:#c4daf4;--drf:#FFFBEA;--kpih:#9FDDE3;--shadow:rgba(0,0,0,.18);--chart:#5f5e5a}
 /* الوضع الليلي: نفس المتغيرات بقيم داكنة — تلقائي حسب الجهاز ما لم يختر المستخدم */
@@ -275,17 +276,30 @@ const RICH_RE=/\[(أحمر|أخضر|أزرق|برتقالي|بنفسجي)\]([\s\
 const richHtml=v=>esc(v).replace(RICH_RE,(m,c,t)=>'<span style="color:'+RICH_C[c]+';font-weight:500">'+t+'</span>');
 const richPlain=v=>String(v==null?'':v).replace(RICH_RE,'$2');
 try{ S.tall=!!localStorage.getItem('wo_tall'); }catch(e){}
-const api = (fn, ...a) => new Promise((ok, no) => (READ_FN.test(fn)||(S.wseq=(S.wseq||0)+1), google.script.run.withSuccessHandler(ok).withFailureHandler(e => { if (/انتهت الجلسة/.test(e.message)) { logout(); } no(e); })[fn](...a)));
+const api0 = (fn, ...a) => new Promise((ok, no) => (READ_FN.test(fn)||(S.wseq=(S.wseq||0)+1), google.script.run.withSuccessHandler(ok).withFailureHandler(e => { if (/انتهت الجلسة/.test(e.message)) { logout(); } no(e); })[fn](...a)));
+// ---- القراءة المباشرة من Supabase (المرحلة أ): الأوامر تأتي من القاعدة بصلاحيات المستخدم دون المرور بخادم جوجل ----
+const SB_URL='https://cnauqprdllsboiayfrgn.supabase.co', SB_KEY='sb_publishable_5yNIdQ9FRbZ_-Dq76qLDCA_24If5Do2', SB_DOM='users.aji-energy.local';
+let SB=null; try{ if(window.supabase&&supabase.createClient) SB=supabase.createClient(SB_URL,SB_KEY,{db:{schema:'g'},auth:{persistSession:true,storageKey:'aji_sb',autoRefreshToken:true}}); }catch(e){ SB=null; }
+const sbEmail=id=>String(id||'').trim().toLowerCase()+'@'+SB_DOM;
+async function sbLogin(id,pw){ if(!SB) return false; for(let i=0;i<2;i++){ try{ const r=await SB.auth.signInWithPassword({email:sbEmail(id),password:pw}); if(!r.error) return true; }catch(e){} await new Promise(r=>setTimeout(r,1500)); } return false; }
+async function sbSession(){ if(!SB) return null; try{ const r=await SB.auth.getSession(); return r.data&&r.data.session||null; }catch(e){ return null; } }
+async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_orders'); if(r.error) throw new Error(r.error.message||'direct read'); S.direct={at:Date.now(),ms:Date.now()-t0}; return r.data; }
+// listOrders/bootAll: مباشرة من القاعدة حين تكون الجلسة موجودة والمشروع المعروض هو الأول؛ وإلا عبر الخادم كما كان
+async function api(fn, ...a){
+  if(fn==='listOrders'&&!pjCur()&&await sbSession()){ try{ return await sbOrders(); }catch(e){ console.warn('direct listOrders',e.message); } }
+  if(fn==='bootAll'&&await sbSession()){ const d=sbOrders().catch(e=>{ console.warn('direct bootAll',e.message); return null; }); const b=await api0('boot',...a); const o=(b.projects&&b.projects.cur)?null:await d; if(o){ b.orders=o; return b; } b.orders=await api0('listOrders',...a); return b; }
+  return api0(fn,...a);
+}
 const toast = m => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 3500); };
 const days = (a, b) => Math.round((new Date(a) - new Date(b)) / 864e5);
 const LBL = {tasks:'تاسك أمر العمل',boq:'المقايسة',wo:'رقم أمر العمل',type:'النوع',ccode:'رمز استشاري',office:'المكتب',district:'الحي',contractor:'المقاول',group:'الجهة المنفذة',assign_date:'تاريخ الإسناد',duration:'المدة',due_date:'تاريخ الانتهاء',desc:'التوصيف',engineer:'المهندس المسند',site_engineer:'مهندس الموقع',site_date:'آخر حضور',cost:'التكلفة الفعلية',last_action:'آخر إجراء استشاري',last_action_con:'آخر إجراء مقاول',oracle:'موقف أولاب',po:'رقم PO',stage:'الإفادة / المرحلة',notes:'ملاحظات',cur_stage:'المرحلة الحالية',cur_owner:'المسؤول الحالي',cur_since:'منذ',blocker:'العائق',blocker_owner:'جهة العائق',next_action:'الخطوة التالية',followup_date:'تاريخ المتابعة',munib_status:'في تقرير المتعثرات',munib_action:'الإجراء (المتعثرات)',munib_reason:'سبب التعثر',munib_remarks:'ملاحظات المتعثرات',munib_delay:'التأخير (يوم)',munib_permit_date:'تاريخ التصريح',munib_outage:'حالة التطفئات (جهد متوسط)',munib_out_done:'الفصولات المنتهية',munib_out_left:'الفصولات المتبقية',permit:'التصريح',materials:'صرف المواد',match_basket:'السلة الحالية',match_status:'موقف المطابقة',match_value:'قيمة المطابقة',match_required:'المطلوب للمطابقة',match_cert:'شهادة الإنجاز',match_cover:'رقم الكفر',updated_at:'آخر تحديث',updated_by:'بواسطة',left:'الأيام المتبقية',qf:'ملف الجودة',qf_at:'تاريخ رفع الملف',qf_by:'رفعه',qf_note:'ملاحظة الجودة',qf_status:'حالة ملف الجودة',vio:'المخالفات',site:'بطاقات تسليم الموقع',mom:'محاضر الاجتماع',consultant:'الاستشاري',last_action_date:'تاريخ آخر إجراء',olap_holder:'السلة (الجهة الحالية)',jstep:'خطوة الرحلة',jpct:'نسبة الإنجاز %',progress:'نسبة المشروع اليدوية %',days_since:'عدد الأيام منذ الإسناد',att:'المرفقات',permit_n:'عدد طلبات التصاريح',permit_state:'حالة آخر تصريح',own_why:'سبب المسؤولية',why_mine:'لماذا عندي',pdc_val:'قيمة PDC',aji_val:'قيمة أرابتك',qf_owner:'مسؤول ملف الجودة',site_engs:'مهندسو الأمر في الجدول اليومي',exec_date:'تاريخ التنفيذ',vio_n:'عدد المخالفات',mom_n:'عدد المحاضر',site_n:'عدد بطاقات تسليم الموقع',qd_prog:'تقدم مستندات الجودة',qd_rej:'مستندات جودة مرفوضة',qf_name:'اسم ملف الجودة',qf_url:'رابط ملف الجودة',boq_st:'حالة المقايسة'};
 
-function logout(){ if (S.tok) google.script.run.logout(S.tok); localStorage.removeItem('wo_tok'); S.tok=''; S.pendB=null; S.B=null; BC.del('boot'); menu(false); renderLogin(); }
+function logout(){ if (S.tok) google.script.run.logout(S.tok); if(SB) try{ SB.auth.signOut(); }catch(e){} localStorage.removeItem('wo_tok'); S.tok=''; S.pendB=null; S.B=null; BC.del('boot'); menu(false); renderLogin(); }
 function renderLogin(msg){
   $('#app').innerHTML = `<div class="login"><h2>متابعة أوامر العمل</h2><div class="muted" style="margin-bottom:12px">أرابتك جردانة<span id="lpj"></span></div>
   <input id="lid" placeholder="رقم الهوية / الإقامة" inputmode="numeric"><input id="lpw" type="password" placeholder="كلمة السر">
   <div class="err" id="lerr">${esc(msg||'')}</div><button class="pri" style="width:100%" id="lgo">دخول</button></div>`;
-  const go = () => { $('#lerr').textContent=''; api('login', $('#lid').value, $('#lpw').value).then(r => { S.tok=r.token; localStorage.setItem('wo_tok', r.token); start(); }).catch(e => $('#lerr').textContent = e.message); };
+  const go = () => { $('#lerr').textContent=''; api('login', $('#lid').value, $('#lpw').value).then(async r => { S.tok=r.token; localStorage.setItem('wo_tok', r.token); await sbLogin($('#lid').value, $('#lpw').value); start(); }).catch(e => $('#lerr').textContent = e.message); };
   $('#lgo').onclick = go; $('#lpw').onkeydown = e => { if (e.key==='Enter') go(); };
   const pj = n => { const el=$('#lpj'); if (el&&n) el.textContent=' · '+n; }; if (S.pname) pj(S.pname); else api('appInfo').then(r => { S.pname=(r&&r.name)||''; pj(S.pname); }).catch(() => {});
 }
