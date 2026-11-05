@@ -727,7 +727,7 @@ function applyF(list, cols, ST, A){ ST=ST||S; A=A||GRID0;
   const q=((ST.f||{}).q||'').trim(), mt=!A.match&&gMulti(q), MS=mt&&new Set(mt);
   return list.filter(o => (!q || (A.match?A.match(o,q):mt?gWords(o,A).some(w=>MS.has(w)):A.search(o).includes(q)))
     && (!ST.xf || (((A.kf||{})[ST.xf.key]||XF[ST.xf.key]||{fn:()=>true}).fn)(o))
-    && Object.entries(ST.cf||{}).every(([k,vals]) => !vals || vals.includes(String(A.val(o,k)))));
+    && Object.entries(ST.cf||{}).every(([k,vals]) => !vals || vals.includes(String(A.val(o,k))) || (k==='contractor' && (vals.includes(String(A.rawVal?A.rawVal(o,k):o.contractor)) || vals.includes(CSHOW(String(o.contractor||''),'cn')) || vals.includes(CSHOW(String(o.contractor||''),'mt'))))));
 }
 function sortList(list, ST, A){ ST=ST||S; A=A||GRID0; const val=A.val;
   if(!ST.sort) return list; const [k,d]=ST.sort;
@@ -899,7 +899,7 @@ function sheet(base, defCols, opt={}){
   // (وُضع هنا لا في كل جدول، لأن ترقيع الجداول واحداً واحداً أسقط جدولين من قبل.)
   const CWHERE = (S.view==='maint' || (S.view==='matching' && S.gsub==='inv')) ? 'mt' : 'cn';
   const lbl=A.lbl, canEditCell=A.can, optsFor=A.opts;
-  const val=(o,k)=> k==='contractor' ? CSHOW(A.val(o,k),CWHERE) : A.val(o,k);
+  const rawVal=A.val; A.rawVal=rawVal; const val=(o,k)=> k==='contractor' ? CSHOW(rawVal(o,k),CWHERE) : rawVal(o,k); A.val=val;
   const canAdd = S.B.admin || S.B.user.role==='قائد مكتب';
   const DEL = A.del!==undefined ? A.del : (!opt.ad ? ORD_DEL : null);
   const EDITABLE = !RO && base.slice(0,80).some(o=>defCols.concat(A.all||[],cols).some(k=>canEditCell(o,k)));
