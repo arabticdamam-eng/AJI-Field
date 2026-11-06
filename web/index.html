@@ -598,6 +598,7 @@ function shell(){
   const tc=k=>`--tc:${(TC(k)||[])[0]||''};--tt:${(TC(k)||[])[1]||''}`, open=document.body.classList.contains('mopen');
   const groups=MGRP.map(([g,ks])=>[g,ks.filter(k=>S.tabsOn.includes(k))]).filter(x=>x[1].length);
   const pj=S.B.project&&S.B.project.name?esc(S.B.project.name):'';
+  const navSc=[...document.querySelectorAll('.drw, .drw nav')].map(e=>e.scrollTop); // القائمة تبقى حيث كانت بعد فتح شاشة
   $('#app').innerHTML = `<header><div class="top"><button id="mbtn" title="القائمة" aria-label="القائمة">☰</button><button id="thm" class="thm" onclick="cycleTheme()" aria-label="المظهر">◐</button>
    ${navPrev()?`<button id="nback" class="nback" title="رجوع إلى ${esc(tabName(navPrev().v))}">→ ${esc(tabName(navPrev().v))}</button>`:''}${navNext()?`<button id="nfwd" class="nback" title="للأمام إلى ${esc(tabName(navNext().v))}">${esc(tabName(navNext().v))} ←</button>`:''}<span class="ptitle" style="${tc(S.view)}"><i></i>${esc(tabName(S.view))}</span><span class="sp"></span><span class="sync${S.syncing?' on':''}" id="syncm">⟳ تحديث البيانات…</span>
    <span class="brand">متابعة أوامر العمل${pjSup()?` <select id="pjsel" class="pjsel" title="المشروع">${pjList().map(p=>`<option value="${esc(p.id)}" ${p.id===pjCur()?'selected':''}>${esc(p.name)}</option>`).join('')}<option value="__all">◫ مقارنة كل المشاريع</option><option value="__adm">⚙ إدارة المشاريع…</option></select>`:(pj?' <small>· '+pj+'</small>':'')}</span>
@@ -609,6 +610,7 @@ function shell(){
   $('#mbtn').onclick=()=>menu(true); $('#mscr').onclick=$('#mcl').onclick=()=>menu(false);
   applyMenu(); applyTheme(); if($('#mmode')) $('#mmode').onchange=e=>setMenuMode(e.target.value);
   document.querySelectorAll('.drw nav a').forEach(a => a.onclick = () => goView(a.dataset.v));
+  [...document.querySelectorAll('.drw, .drw nav')].forEach((e,i)=>{ if(navSc[i]) e.scrollTop=navSc[i]; });
   if($('#pjsel')) $('#pjsel').onchange=e=>{ const v=e.target.value; e.target.value=pjCur(); if(v==='__adm') projModal(); else if(v==='__all'){ S.pjCmp=1; goView('dash'); } else if(v!==pjCur()) projGo(v); };
   if($('#nback')) $('#nback').onclick=navBack; if($('#nfwd')) $('#nfwd').onclick=navFwd;
   ({where:vWhere, inbox:vInbox, orders:vOrders, mine:vMine, daily:vDaily, stalled:vStalled, matching:vMatching, dash:vDash, users:vUsers, import:vImport, quality:vQuality, forms:vForms, boq:vBoq, maint:vMaint, permits:vPermits, report:vReport, olap:vOlap})[S.view]();
