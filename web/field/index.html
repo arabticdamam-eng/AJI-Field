@@ -85,7 +85,7 @@ async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op
 // ردّه {google} ← خادم Google كما كان (لم يُكتب شيء). الحفظ يحمل رقماً ثابتاً لكل عمل في قائمة الإرسال، فإعادته بعد انقطاع لا تكرره.
 const EDGE_URL = 'https://cnauqprdllsboiayfrgn.supabase.co/functions/v1/aji?forceFunctionRegion=eu-central-1';
 const EDGE_RD = /^(fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet)$/;
-const EDGE_NO = /^qdBuild$/;   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
+const EDGE_NO = /^(qdBuild|uploadSignature|deleteSignature)$/;   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
 let RID = null;
 async function edgeTry(fn, args) {
   try { if (!ON_NEW || localStorage.getItem('aji_edge') === '0' || EDGE_NO.test(fn) || (fn !== 'fieldLogin' && !S.dev)) return null; } catch (e) { return null; }

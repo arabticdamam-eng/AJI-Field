@@ -298,7 +298,7 @@ async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_order
 // القراءة: عند أي عطل ← Google. الحفظ: يحمل رقماً فريداً (rid)؛ عند انقطاع يُعاد إلى الخادم الجديد بنفس الرقم (لا يتكرر الحفظ)، ولا يُرسل إلى Google.
 // الإيقاف لهذا المتصفح: localStorage aji_edge = 0
 const EDGE_URL=SB_URL+'/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|task|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos)/;
+const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|task|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature)/;
 const edgeOk=fn=>{ try{ return !!window.AJI_APP&&localStorage.getItem('aji_edge')!=='0'&&!pjCur()&&!EDGE_NO.test(fn); }catch(e){ return false; } };
 async function callX(fn,...a){
   if(edgeOk(fn)){ const rd=READ_FN.test(fn), t0=Date.now(), rid=rd?'':(Date.now().toString(36)+Math.random().toString(36).slice(2,10)); let j=null;
