@@ -300,7 +300,7 @@ async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_order
 const EDGE_URL=SB_URL+'/functions/v1/aji?forceFunctionRegion=eu-central-1';
 const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|task|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature)/;
 const edgeOk=fn=>{ try{ return !!window.AJI_APP&&localStorage.getItem('aji_edge')!=='0'&&!pjCur()&&!EDGE_NO.test(fn); }catch(e){ return false; } };
-async function callX(fn,...a){
+async function callX(fn,...a){ if(!READ_FN.test(fn)) acClear();
   if(edgeOk(fn)){ const rd=READ_FN.test(fn), t0=Date.now(), rid=rd?'':(Date.now().toString(36)+Math.random().toString(36).slice(2,10)); let j=null;
     for(let i=0;i<(rd?1:3)&&!j;i++){ try{ const r=await fetch(EDGE_URL,{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY},body:JSON.stringify({fn,args:a,rid})}); if(r.ok) j=await r.json(); }catch(e){ j=null; } if(!j&&!rd) await new Promise(r=>setTimeout(r,800*(i+1))); }
     if(!j&&!rd) throw new Error('تعذّر الوصول إلى الخادم — تحقق هل حُفظ التعديل ثم أعد المحاولة');
@@ -308,6 +308,22 @@ async function callX(fn,...a){
       if(j.err){ if(/انتهت الجلسة/.test(j.err)) logout(); throw new Error(j.err); } return j.ok; }
     if(j&&j.google){ S.edgeG=S.edgeG||{}; S.edgeG[fn]=j.google; } }
   return api0(fn,...a); }
+// ---- قراءة بذاكرة للشاشات (07-11): تعرض آخر ما حُمّل فوراً وتجدّد في الخلفية؛ إن تغيّر شيء تُعاد الشاشة نفسها بصمت
+// (إلا والمستخدم يكتب أو أمامه نافذة). أي حفظ يمسح الذاكرة، فما بعده يُقرأ جديداً.
+const AC={};
+// المفتاح يشمل الجلسة والمشروع: مستخدم آخر أو مشروع آخر لا يرى ذاكرة غيره
+const acKey=(fn,a)=>fn+'|'+String(a[0]||'').slice(0,12)+'|'+pjCur()+'|'+JSON.stringify(a.slice(1));
+function apiC(redraw,fn,...a){ const key=acKey(fn,a), c=AC[key], v=S.view, us=S.usub;
+  const fresh=api(fn,...a).then(d=>{ const j=JSON.stringify(d), was=AC[key]; AC[key]={d,j};
+    if(c&&was&&was.j!==j){ const go=()=>{ if(S.view!==v||S.usub!==us) return; if(busyUI()) return setTimeout(go,1500); try{ redraw(); }catch(e){} }; setTimeout(go,0); }
+    return d; });
+  if(c){ fresh.catch(()=>{}); return Promise.resolve(JSON.parse(c.j)); }
+  return fresh; }
+const acClear=()=>{ Object.keys(AC).forEach(k=>delete AC[k]); };
+// تسخين بعد الدخول بثوانٍ: الفتح الأول لهذه الشاشات أيضاً من الذاكرة
+function acWarm(){ if(S.acW) return; S.acW=1; setTimeout(()=>{ const t=S.B&&S.B.today; if(!t||!S.tok) return; const W=[];
+  try{ if(tabOn('daily')) W.push(['listDaily',S.tok,t,t]); if(tabOn('boq')) W.push(['boqList',S.tok]); if(tabOn('report')) W.push(['reportMeta',S.tok,t.slice(0,7)]); if(S.B.admin) W.push(['listUsers',S.tok]); }catch(e){}
+  W.forEach(x=>{ const k=acKey(x[0],x.slice(1)); if(!AC[k]) api(...x).then(d=>{ if(!AC[k]) AC[k]={d,j:JSON.stringify(d)}; }).catch(()=>{}); }); },2500); }
 // listOrders/bootAll: مباشرة من القاعدة حين تكون الجلسة موجودة والمشروع المعروض هو الأول؛ وإلا عبر الخادم كما كان
 async function api(fn, ...a){
   if(fn==='listOrders'&&!pjCur()&&await sbSession()){ try{ return await sbOrders(); }catch(e){ console.warn('direct listOrders',e.message); } }
@@ -323,7 +339,7 @@ const toast = m => { const d = document.createElement('div'); d.className = 'toa
 const days = (a, b) => Math.round((new Date(a) - new Date(b)) / 864e5);
 const LBL = {tasks:'تاسك أمر العمل',boq:'المقايسة',wo:'رقم أمر العمل',type:'النوع',ccode:'رمز استشاري',office:'المكتب',district:'الحي',contractor:'المقاول',group:'الجهة المنفذة',assign_date:'تاريخ الإسناد',duration:'المدة',due_date:'تاريخ الانتهاء',desc:'التوصيف',engineer:'المهندس المسند',site_engineer:'مهندس الموقع',site_date:'آخر حضور',cost:'التكلفة الفعلية',last_action:'آخر إجراء استشاري',last_action_con:'آخر إجراء مقاول',oracle:'موقف أولاب',po:'رقم PO',stage:'الإفادة / المرحلة',notes:'ملاحظات',cur_stage:'المرحلة الحالية',cur_owner:'المسؤول الحالي',cur_since:'منذ',blocker:'العائق',blocker_owner:'جهة العائق',next_action:'الخطوة التالية',followup_date:'تاريخ المتابعة',munib_status:'في تقرير المتعثرات',munib_action:'الإجراء (المتعثرات)',munib_reason:'سبب التعثر',munib_remarks:'ملاحظات المتعثرات',munib_delay:'التأخير (يوم)',munib_permit_date:'تاريخ التصريح',munib_outage:'حالة التطفئات (جهد متوسط)',munib_out_done:'الفصولات المنتهية',munib_out_left:'الفصولات المتبقية',permit:'التصريح',materials:'صرف المواد',match_basket:'السلة الحالية',match_status:'موقف المطابقة',match_value:'قيمة المطابقة',match_required:'المطلوب للمطابقة',match_cert:'شهادة الإنجاز',match_cover:'رقم الكفر',updated_at:'آخر تحديث',updated_by:'بواسطة',left:'الأيام المتبقية',qf:'ملف الجودة',qf_at:'تاريخ رفع الملف',qf_by:'رفعه',qf_note:'ملاحظة الجودة',qf_status:'حالة ملف الجودة',vio:'المخالفات',site:'بطاقات تسليم الموقع',mom:'محاضر الاجتماع',consultant:'الاستشاري',last_action_date:'تاريخ آخر إجراء',olap_holder:'السلة (الجهة الحالية)',jstep:'خطوة الرحلة',jpct:'نسبة الإنجاز %',progress:'نسبة المشروع اليدوية %',days_since:'عدد الأيام منذ الإسناد',att:'المرفقات',permit_n:'عدد طلبات التصاريح',permit_state:'حالة آخر تصريح',own_why:'سبب المسؤولية',why_mine:'لماذا عندي',pdc_val:'قيمة PDC',aji_val:'قيمة أرابتك',qf_owner:'مسؤول ملف الجودة',site_engs:'مهندسو الأمر في الجدول اليومي',exec_date:'تاريخ التنفيذ',vio_n:'عدد المخالفات',mom_n:'عدد المحاضر',site_n:'عدد بطاقات تسليم الموقع',qd_prog:'تقدم مستندات الجودة',qd_rej:'مستندات جودة مرفوضة',qf_name:'اسم ملف الجودة',qf_url:'رابط ملف الجودة',boq_st:'حالة المقايسة'};
 
-function logout(){ if (S.tok) google.script.run.logout(S.tok); if(SB) try{ SB.auth.signOut(); }catch(e){} localStorage.removeItem('wo_tok'); S.tok=''; S.pendB=null; S.B=null; BC.del('boot'); menu(false); renderLogin(); }
+function logout(){ acClear(); if (S.tok) google.script.run.logout(S.tok); if(SB) try{ SB.auth.signOut(); }catch(e){} localStorage.removeItem('wo_tok'); S.tok=''; S.pendB=null; S.B=null; BC.del('boot'); menu(false); renderLogin(); }
 function renderLogin(msg){
   $('#app').innerHTML = `<div class="login"><h2>متابعة أوامر العمل</h2><div class="muted" style="margin-bottom:12px">أرابتك جردانة<span id="lpj"></span></div>
   <input id="lid" placeholder="رقم الهوية / الإقامة" inputmode="numeric"><input id="lpw" type="password" placeholder="كلمة السر">
@@ -484,6 +500,7 @@ function applyBoot(raw){
   const r = S.B.orders; delete S.B.orders;
   S.orders = r.rows.map(x => { const o={}; r.headers.forEach((k,i)=>o[k]=x[i]); derive(o); return o; });
   if (S.B.field && !(S.B.tabs&&S.B.tabs.list) && !['mine','daily','forms','maint'].includes(S.view)) S.view='mine';
+  acWarm();
 }
 // the fresh copy waits while a window is open or a cell is being typed in, so nothing under the user's hands changes
 function applyFresh(){ const raw=S.pendB; S.pendB=null; if(!raw) return;
@@ -841,7 +858,7 @@ const LINKS={
     of:(d,X)=>d?X[d.key]||null:null, val:(r,k)=>r[k]==null?'':r[k], can:k=>(S.B.admin||S.B.user.role==='قائد مكتب')&&DL_EDIT.includes(k), noCreate:1,
     opts:k=>k==='engineer'?PEOPLE():undefined, dates:['date'],
     save:L=>api('saveDailyCells',S.tok,L.map(x=>({id:x.r.id,k:x.k,v:x.v}))).then(r=>{ r.rows.forEach(y=>{ const n=LXOBJ(r.headers,y), o=S.dlAll.L.find(z=>z.id===n.id); if(o) Object.assign(o,n); }); }) },
-  bq:{ grp:'المقايسة', tab:'boq', on:()=>tabOn('boq'), ready:()=>!!(S.bqList&&S.items), load:()=>Promise.all([boqItemsLoad(),api('boqList',S.tok).then(r=>{ S.bqList=r; })]), clr:()=>TABC.boq,
+  bq:{ grp:'المقايسة', tab:'boq', on:()=>tabOn('boq'), ready:()=>!!(S.bqList&&S.items), load:()=>Promise.all([boqItemsLoad(),(S.bqList?Promise.resolve(S.bqList):apiC(()=>{},'boqList',S.tok)).then(r=>{ S.bqList=r; })]), clr:()=>TABC.boq,
     keys:()=>['st','n','df'].concat(S.bqList&&S.bqList.price?['pv','dv']:[]).concat(['upd','appr']), lbl:k=>({st:'حالة المقايسة',n:'بنود المقايسة',df:'بنود بفرق',pv:'قيمة المخطط',dv:'قيمة المنفذ',upd:'آخر تعديل للمقايسة',appr:'اعتمد المقايسة'})[k]||k,
     ix:()=>{ const m={}; S.bqList.rows.forEach(r=>m[r.key]=r); return m; }, of:(d,X)=>d?X[d.key]||null:null, can:()=>false, num:['pv','dv'],
     val:(r,k)=>{ const P=c=>+((S.items.m[c]||[])[4]||0), v=w=>Math.round(r.lines.reduce((s,l)=>s+(w==='p'?+l.p||0:(l.d===''||l.d==null?0:+l.d))*P(l.c),0)*100)/100;
@@ -1729,7 +1746,7 @@ const DL_EDIT=['date','wo','office','work','desc','time','engineer','phone','rec
 async function vDaily(){
   const d=S.f.dday||S.B.today, d2=S.f.dday2||S.f.dday||S.B.today, can=S.B.admin||S.B.user.role==='قائد مكتب'; S.f.dday=d; S.f.dday2=d2;
   $('#main').innerHTML='<div class="loading">جارٍ التحميل…</div>';
-  S.dlAll=null; let r; try{ r=await api('listDaily',S.tok,d,d2); }catch(e){ $('#main').innerHTML='<div class="card err">'+esc(e.message)+'</div>'; return; }
+  S.dlAll=null; let r; try{ r=await apiC(vDaily,'listDaily',S.tok,d,d2); }catch(e){ $('#main').innerHTML='<div class="card err">'+esc(e.message)+'</div>'; return; }
   if(S.view!=='daily') return;
   const L=r.rows.map(x=>{const o={};r.headers.forEach((k,i)=>o[k]=x[i]);return o;}); const tc=TABC.daily, names=S.B.people.map(p=>p.name);
   // empty rows added in this session stay on screen until filled (an empty row is not listed again after leaving)
@@ -1940,7 +1957,7 @@ function jobsModal(after){ const L=jobsList();
   $('#jbsave').onclick=async()=>{ try{ const r=await api('saveJobs',S.tok,$('#jbl').value.split(/\n/)); S.B.settings=S.B.settings||{}; S.B.settings.jobs=JSON.stringify(r); closeModal(); toast('حُفظت الوظائف'); if(after) after(); }catch(e){ $('#jberr').textContent=e.message; } }; }
 async function vUsersList(){
   $('#usub').innerHTML='<div class="loading">جارٍ التحميل…</div>';
-  const us=await api('listUsers',S.tok);
+  const us=await apiC(vUsersList,'listUsers',S.tok);
   S.B.people=us.filter(x=>x.active==='نعم').map(x=>({id:x.id,name:x.name,job:x.job,role:x.role,offices:x.offices}));
   if(S.view!=='users'||(S.usub||'users')!=='users'||!$('#usub')) return;
   $('#usub').innerHTML=`<div class="bar"><span class="muted">${us.length} مستخدماً. الدور يحدد الصلاحيات، والمكاتب تحدد الأوامر التي يراها.</span><span class="sp"></span>${impBtn('users')}<button id="ustor" title="المستخدَم من Google Drive وأكبر مجلدات المرفقات وملفاتها">💾 المساحة</button><button id="ujobs">🧩 الوظائف</button><button id="ulic">📜 إجازات المهندسين</button><button id="usig">✍️ توقيعات المهندسين</button><button class="pri" id="uadd">مستخدم جديد</button></div>
@@ -2601,7 +2618,7 @@ function vUsers(){ const sub=S.usub||'users';
   if(sub==='journey') vJourney(); else if(sub==='ctr') vContractors(); else if(sub==='project') vProject(); else if(sub==='qdcat') vQdCat(); else vUsersList(); }
 
 // the project's contractors: short name (tables), full name (forms); a rename reaches every file, a stop only hides the name
-async function vContractors(){ $('#usub').innerHTML='<div class="loading">جارٍ التحميل…</div>'; let L; try{ L=await api('listContractors',S.tok); }catch(e){ $('#usub').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
+async function vContractors(){ $('#usub').innerHTML='<div class="loading">جارٍ التحميل…</div>'; let L; try{ L=await apiC(vContractors,'listContractors',S.tok); }catch(e){ $('#usub').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
   if(S.view!=='users'||S.usub!=='ctr'||!$('#usub')) return; const q=(S.ctrQ||'').trim();
   const rows=L.filter(x=>!q||[x.name,x.full,x.aliases,x.contract_no,x.safety_rep].join(' ').includes(q)).sort((a,b)=>(b.active-a.active)||(b.n-a.n)||a.name.localeCompare(b.name,'ar'));
   $('#usub').innerHTML=`<div class="bar"><input id="ctq" placeholder="بحث" value="${esc(q)}" style="max-width:220px"><span class="muted">${L.filter(x=>x.active).length} مقاولاً فعّالاً${L.some(x=>!x.active)?' · '+L.filter(x=>!x.active).length+' موقوفاً':''}</span><span class="sp"></span><button class="pri" id="ctadd">+ مقاول</button></div>
@@ -2961,7 +2978,7 @@ function reportHtml(rep,edit){
 async function vReport(){
   const P=S.rp=S.rp||{sel:'',month:S.B.today.slice(0,7)};
   $('#main').innerHTML='<div class="loading">جارٍ التحميل…</div>';
-  let M; try{ M=await api('reportMeta',S.tok,P.sel||P.month); }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
+  let M; try{ M=await apiC(vReport,'reportMeta',S.tok,P.sel||P.month); }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
   let rep, saved=null; const ro=!S.B.admin;
   if(ro&&!P.sel){ if(!M.months.length){ $('#main').innerHTML='<div class="card muted">لا توجد نسخة محفوظة من التقرير الشهري بعد. يحفظها المدير في آخر كل شهر، وتظهر لك هنا للاطلاع.</div>'; return; } P.sel=M.months[0].month; }
   if(P.sel){ try{ saved=await api('getReport',S.tok,P.sel); rep=saved.data; }catch(e){ if(ro){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; } toast(e.message); P.sel=''; } }
@@ -3973,7 +3990,7 @@ async function boqModal(key){
 function boqSync(key,B){ const o=S.orders.find(x=>x.key===key); if(o){ o.boq_st=B.status; } if(S.bqList){ const r=S.bqList.rows.find(x=>x.key===key), n={key,lines:B.lines,status:B.status,draw:!!B.draw_id,upd_by:B.upd_by,upd_at:B.upd_at,appr_by:B.appr_by,appr_at:B.appr_at}; if(r) Object.assign(r,n); else S.bqList.rows.push(n); } }
 async function vBoq(){
   $('#main').innerHTML='<div class="loading">جارٍ التحميل…</div>';
-  let I,R; try{ [I,R]=await Promise.all([boqItemsLoad(),api('boqList',S.tok)]); S.bqList=R; }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
+  let I,R; try{ [I,R]=await Promise.all([boqItemsLoad(),apiC(vBoq,'boqList',S.tok)]); S.bqList=R; }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
   const pr=R.price, P=c=>+((I.m[c]||[])[4]||0), by={}; R.rows.forEach(r=>by[r.key]=r);
   const canImp=S.B.admin||S.B.user.role==='قائد مكتب'||(S.B.user.modules||[]).includes('المطابقة');
   const base=S.orders.filter(o=>by[o.key]||needsQF(o));
