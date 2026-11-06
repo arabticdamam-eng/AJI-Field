@@ -87,6 +87,7 @@ body.mopen .scrim{opacity:1;pointer-events:auto}body.mopen .drw{transform:none}
 .pill{border-radius:8px;padding:2px 8px;font-size:12px}.p-ok{background:var(--okbg);color:var(--ok)}.p-w{background:var(--warnbg);color:var(--warn)}.p-d{background:var(--danbg);color:var(--dan)}
 .loading{padding:40px;text-align:center;color:var(--mut)}
 .sheet{max-height:calc(100vh - 170px);min-height:300px;outline:none;user-select:none}
+@media (pointer:coarse){.sheet td.ro{-webkit-user-select:text;user-select:text}.edbox .edin{-webkit-user-select:text;user-select:text}}
 table.gs td{scroll-margin-top:58px;scroll-margin-right:170px;border-left:1px solid var(--line);cursor:cell;position:relative;max-width:260px;overflow:hidden;text-overflow:ellipsis}
 table.gs td.ro{color:var(--mut)}table.gs td.ed{background:var(--card)}
 table.gs td.hl,table.gs th.hl{background:var(--accbg);color:var(--acc2)}
@@ -1031,6 +1032,15 @@ function sheet(base, defCols, opt={}){
   document.onmouseup=()=>{ if(dragging&&anchor){ act=anchor; paintSel(); } dragging=false; };
   box.ondblclick=e=>{ const t=e.target.closest('td[data-r]'); if(!t) return; const k=cols[+t.dataset.c];
     if(k===A.stk||!canEditCell(rows[+t.dataset.r],k)) return A.open&&A.open(rows[+t.dataset.r]); openEditor(false); };
+  // الجوال (المالك، 06/11): ضغطة مطوّلة على خلية قابلة للتعديل تفتحها كخانة كتابة والنص محدد ← قائمة الجوال (نسخ · لصق · قص · تحديد الكل)؛
+  // الخلايا غير القابلة للتعديل يُحدَّد نصها بالضغطة المطوّلة كأي نص فيظهر «نسخ» و«تحديد الكل». اللابتوب لا يتغير.
+  if(window.matchMedia&&matchMedia('(pointer:coarse)').matches){ let lp=null, x0=0, y0=0;
+    const edAt=t=>t&&t.closest('td[data-r]')&&canEditCell(rows[+t.closest('td[data-r]').dataset.r],cols[+t.closest('td[data-r]').dataset.c]);
+    box.addEventListener('touchstart',e=>{ const t=e.target.closest&&e.target.closest('td[data-r]'); if(!t||ed||e.touches.length>1||!edAt(t)) return; x0=e.touches[0].clientX; y0=e.touches[0].clientY; const r=+t.dataset.r, c=+t.dataset.c;
+      lp=setTimeout(()=>{ lp=null; act=[r,c]; anchor=act; sel=new Set([key(r,c)]); paintSel(); openEditor(false); if(navigator.vibrate) try{ navigator.vibrate(15); }catch(x){} },480); },{passive:true});
+    box.addEventListener('touchmove',e=>{ if(lp&&(Math.abs(e.touches[0].clientX-x0)>10||Math.abs(e.touches[0].clientY-y0)>10)){ clearTimeout(lp); lp=null; } },{passive:true});
+    ['touchend','touchcancel'].forEach(v=>box.addEventListener(v,()=>{ if(lp){ clearTimeout(lp); lp=null; } },{passive:true}));
+    box.addEventListener('contextmenu',e=>{ if(edAt(e.target)) e.preventDefault(); }); }
   let ed=null;
   function targets(){
     const c=act[1]; return [...sel].map(s=>s.split(',').map(Number)).filter(([r,cc])=>cc===c).map(([r])=>r); }
