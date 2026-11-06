@@ -452,7 +452,7 @@ const BC={ db:null,
   open(){ return this.db?Promise.resolve(this.db):new Promise((ok,no)=>{ const r=indexedDB.open('aji-main',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>{ this.db=r.result; ok(this.db); }; r.onerror=()=>no(r.error); }); },
   async tx(mode,f){ const d=await this.open(); return new Promise((ok,no)=>{ const t=d.transaction('kv',mode), q=f(t.objectStore('kv')); let v; if(q) q.onsuccess=()=>v=q.result; t.oncomplete=()=>ok(v); t.onerror=()=>no(t.error); }); },
   get(k){ return this.tx('readonly',s=>s.get(k)).catch(()=>null); }, set(k,v){ return this.tx('readwrite',s=>s.put(v,k)).catch(()=>{}); }, del(k){ return this.tx('readwrite',s=>s.delete(k)).catch(()=>{}); } };
-const READ_FN=/^(bootAll|boot|list|get|orderDetail|orderFiles|qdGet|qdMeta|qdMyMaint|boqGet|boqItems|boqList|formsMeta|formPhotoData|formSig|appInfo|stampInfo|fileStatus|reportMeta|exportForms|login)/;
+const READ_FN=/^(bootAll|boot|list|get|mig(Scan|ScanExt|Get|Stats)$|attMatch|orderDetail|orderFiles|qdGet|qdMeta|qdMyMaint|boqGet|boqItems|boqList|formsMeta|formPhotoData|formSig|appInfo|stampInfo|fileStatus|reportMeta|exportForms|login)/;
 function applyBoot(raw){
   S.B=Object.assign({},raw); S.pct = {}; S.B.lists.stage.forEach((s,i) => S.pct[s] = +S.B.lists.stage_pct[i]);
   const r = S.B.orders; delete S.B.orders;
@@ -2057,7 +2057,7 @@ async function attModal(key){
   modal('<div class="loading">جارٍ فتح مجلد الأمر…</div>');
   let R; try{ R=await api('orderFiles',S.tok,key); }catch(e){ modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); return; }
   const o=byRef(R.key||key); if(o) o.folder_id=R.folder_id; let busy=0;
-  const draw=()=>{ modal(`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">📁 ${/^D9:/.test(key)?'مرفقات إشعار الصيانة '+esc(key.slice(3)):'مرفقات أمر العمل '+esc(R.key||key)}</h3><span class="sp"></span><a class="qfopen" href="${esc(R.folder)}" target="_blank" rel="noopener">فتح المجلد في Drive</a><button onclick="closeModal()">إغلاق</button></div>
+  const draw=()=>{ modal(`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">📁 ${/^D9:/.test(key)?'مرفقات إشعار الصيانة '+esc(key.slice(3)):'مرفقات أمر العمل '+esc(R.key||key)}</h3><span class="sp"></span>${R.folder?`<a class="qfopen" href="${esc(R.folder)}" target="_blank" rel="noopener">فتح المجلد القديم في Drive</a>`:''}<button onclick="closeModal()">إغلاق</button></div>
      <div class="muted" style="margin:8px 0">${/^D9:/.test(key)?'كل ما يخص الإشعار في مجلد واحد: ملف الجودة وصوره، وأي ملف تضيفه هنا.':'كل ما يخص الأمر في مجلد واحد: ملف الجودة، صور المخالفات والمحاضر، وأي ملف تضيفه هنا.'}</div>
      <div class="bar"><label class="upl">📷 تصوير بالكاميرا<input type="file" id="atc" data-img="1" data-cam="1" style="display:none"></label><label class="upl">＋ إضافة ملفات<input type="file" id="atf" multiple style="display:none"></label><span id="atp" class="muted"></span></div>
      ${R.files.length?`<div class="tw" style="max-height:55vh"><table><thead><tr><th>الملف</th><th>الحجم</th><th>التاريخ</th><th></th></tr></thead><tbody>${R.files.map(x=>`<tr><td><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a></td><td>${fsize(+x.size||0)}</td><td>${esc(x.at)}</td><td>${R.canDelete?`<button data-atd="${esc(x.id)}" style="color:var(--dan);border-color:var(--dan)">حذف</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<div class="card muted">لا توجد مرفقات بعد.</div>'}
@@ -3009,8 +3009,47 @@ async function storageUI(refresh){ modal('<div class="loading">جارٍ حساب
     <div class="muted" style="margin:6px 0">حُسب ${esc(R.at||'')} في ${R.secs||0} ث${R.partial?' — <b class="late">جزئي: توقف الحساب عند حدّ الوقت</b>':''}. الرفع الجديد يُضغط تلقائياً: الصور ≤1600 بكسل بجودة 72٪، وملفات PDF الأكبر من 1 م.ب تُعاد كصور 150 نقطة/بوصة.</div>
     <h4 style="margin:10px 0 4px">أكبر المجلدات</h4><div class="tw" style="max-height:30vh"><table><thead><tr><th>المجلد</th><th>الملفات</th><th>الحجم</th></tr></thead><tbody>${(R.tops||[]).map(t=>`<tr><td>${esc(t.name)}</td><td>${t.n}</td><td>${fmtMB(t.bytes)}</td></tr>`).join('')||'<tr><td colspan="3" class="muted">—</td></tr>'}</tbody></table></div>
     <h4 style="margin:10px 0 4px">أكبر الملفات (أكثر من 2 م.ب)</h4><div class="tw" style="max-height:30vh"><table><thead><tr><th>الملف</th><th>الحجم</th></tr></thead><tbody>${(R.big||[]).map(f=>`<tr><td><a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.n)}</a></td><td>${fmtMB(f.sz)}</td></tr>`).join('')||'<tr><td colspan="2" class="muted">لا ملفات كبيرة</td></tr>'}</tbody></table></div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button id="stref">↻ إعادة الحساب الآن</button><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
-  $('#stref').onclick=()=>storageUI(true); }
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button id="stref">↻ إعادة الحساب الآن</button><button class="pri" id="stmig">⇪ نقل المرفقات إلى Supabase</button><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+  $('#stref').onclick=()=>storageUI(true); $('#stmig').onclick=()=>migUI(); }
+// ---- نقل المرفقات من Drive إلى Supabase مع الضغط (06/11) ----
+// يعمل في هذا المتصفح على دفعات: يجلب الملف، يضغطه (الصور ≤1600 بكسل، PDF الأكبر من 1 م.ب)، ثم يرفعه. يكمل من حيث توقف، ولا ينقل ملفاً مرتين.
+const MIG={run:false,stop:false};
+const b64Blob=(b64,mime)=>{ const bin=atob(b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return new Blob([u],{type:mime||'application/octet-stream'}); };
+async function migCompress(g,name){ const f=new File([b64Blob(g.b64,g.mime)],name||g.name||'file',{type:g.mime||''});
+  if(/^image\/(jpeg|png|webp|bmp|gif)$/i.test(f.type)&&f.size>200*1024){ try{ const r=await shrinkImg(f,CMP.IMG_MAX,CMP.IMG_Q); if(r&&r.b64&&r.b64.length*0.75<f.size) return {b64:r.b64,mime:'image/jpeg'}; }catch(e){} }
+  if(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)){ try{ const b=await pdfB64(f); if(b&&b.length*0.75<f.size) return {b64:b,mime:'application/pdf'}; }catch(e){} }
+  return {b64:g.b64,mime:g.mime}; }
+async function migUI(){ let st={}; try{ st=await api('migStats',S.tok)||{}; }catch(e){}
+  const last=(()=>{ try{ return JSON.parse(localStorage.getItem('wo_mig')||'{}'); }catch(e){ return {}; } })();
+  modal(`<h3 style="margin-top:0">⇪ نقل المرفقات إلى Supabase</h3>
+   <div class="muted">كل ملف يُنسخ من Drive ثم يُضغط في هذا المتصفح ثم يُحفظ في Supabase تحت أمره أو إشعاره. لا يُحذف شيء من Drive. الملف المنقول لا يُنقل مرة ثانية، فيمكن الإيقاف والمتابعة في أي وقت. اترك هذه النافذة مفتوحة أثناء النقل.</div>
+   <div class="kpis" style="margin:10px 0"><div class="kpi">في Supabase<b id="mgN">${st.files||0}</b></div><div class="kpi">منقولة من Drive<b id="mgM">${st.moved||0}</b></div><div class="kpi">الحجم قبل الضغط<b id="mgO">${fmtMB(st.orig||0)}</b></div><div class="kpi">بعد الضغط<b id="mgS">${fmtMB(st.size||0)}</b></div></div>
+   <div class="f" style="grid-template-columns:1fr"><label>المصدر<select id="mgsrc"><option value="">مرفقات البرنامج (مجلدات الأوامر وإشعارات الصيانة)</option><option value="ext" ${last.src==='ext'?'selected':''}>مجلد Drive خارجي (مجلد لكل أمر أو إشعار باسم رقمه)</option></select></label>
+   <label id="mglk" style="${last.src==='ext'?'':'display:none'}">رابط المجلد الخارجي<input id="mglink" dir="ltr" placeholder="https://drive.google.com/drive/folders/..." value="${esc(last.link||'')}"></label></div>
+   <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap"><button class="pri" id="mggo">${MIG.run?'جارٍ النقل…':'ابدأ / تابع النقل'}</button><button id="mgstop" ${MIG.run?'':'disabled'}>إيقاف</button><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>
+   <div id="mgp" class="muted" style="white-space:pre-line"></div><div id="mgun" class="muted"></div><div class="err" id="mgerr"></div>`);
+  $('#mgsrc').onchange=()=>{ $('#mglk').style.display=$('#mgsrc').value==='ext'?'':'none'; };
+  $('#mgstop').onclick=()=>{ MIG.stop=true; $('#mgstop').disabled=true; };
+  $('#mggo').onclick=()=>migRun(); }
+async function migRun(){ if(MIG.run) return; const src=$('#mgsrc').value, link=($('#mglink')||{}).value||''; if(src==='ext'&&!link.trim()) return $('#mgerr').textContent='ضع رابط المجلد';
+  const key='wo_mig_'+(src||'own')+(src==='ext'?'_'+link.trim():''); let cur=0; try{ cur=+(JSON.parse(localStorage.getItem(key)||'{}').next||0); }catch(e){}
+  try{ localStorage.setItem('wo_mig',JSON.stringify({src,link})); }catch(e){}
+  MIG.run=true; MIG.stop=false; $('#mggo').disabled=true; $('#mgstop').disabled=false; const say=t=>{ const e=$('#mgp'); if(e) e.textContent=t; };
+  let n=0, bad=0, big=0, before=0, after=0, un=new Set();
+  try{ for(;;){ if(MIG.stop) break; say('جارٍ البحث عن ملفات لم تُنقل… (المجلد '+cur+')');
+      const r=src==='ext'?await api('migScanExt',S.tok,link,cur,25):await api('migScan',S.tok,cur,25); (r.unmatched||[]).forEach(x=>un.add(x));
+      for(const f of r.files){ if(MIG.stop) break; say('ينقل: '+f.name+' ('+fmtMB(f.size)+') → '+f.ref+'\nتم '+n+' · قبل الضغط '+fmtMB(before)+' · بعده '+fmtMB(after)+(bad?' · تعذّر '+bad:'')+(big?' · أكبر من 25 م.ب: '+big:''));
+        try{ const g=await api('migGet',S.tok,f.drive_id); if(g.big){ big++; continue; } const c=await migCompress(g,f.name);
+          await api('migPut',S.tok,f.drive_id,f.ref,c.b64,c.mime,f.name,f.size,f.at); n++; before+=f.size; after+=Math.round(c.b64.length*0.75); }
+        catch(e){ bad++; console.warn('mig',f.name,e.message); } }
+      if(!MIG.stop){ cur=r.next; try{ localStorage.setItem(key,JSON.stringify({next:cur})); }catch(e){} }
+      if(r.done||MIG.stop) break; }
+    say((MIG.stop?'أُوقف النقل':'اكتمل النقل')+': '+n+' ملفاً · قبل الضغط '+fmtMB(before)+' · بعده '+fmtMB(after)+(bad?' · تعذّر '+bad+' (يُعاد عند المتابعة)':'')+(big?' · '+big+' ملفاً أكبر من 25 م.ب بقي في Drive':''));
+    if(!MIG.stop&&!bad){ try{ localStorage.removeItem(key); }catch(e){} } }
+  catch(e){ $('#mgerr').textContent='توقّف: '+e.message+' — اضغط «ابدأ / تابع» للمتابعة'; }
+  if(un.size&&$('#mgun')) $('#mgun').innerHTML='<b>مجلدات لم يُعرف أمرها ('+un.size+'):</b> '+[...un].slice(0,60).map(esc).join('، ')+(un.size>60?' …':'');
+  MIG.run=false; if($('#mggo')) $('#mggo').disabled=false; if($('#mgstop')) $('#mgstop').disabled=true;
+  try{ const st=await api('migStats',S.tok)||{}; if($('#mgN')){ $('#mgN').textContent=st.files||0; $('#mgM').textContent=st.moved||0; $('#mgO').textContent=fmtMB(st.orig||0); $('#mgS').textContent=fmtMB(st.size||0); } }catch(e){} }
 async function olapCostUI(){ modal('<div class="loading">جارٍ حصر الأوامر فارغة التكلفة…</div>'); let P; try{ P=await api('olapCostFill',S.tok,false); }catch(e){ modal('<div class="err">'+esc(e.message)+'</div><button onclick="closeModal()">إغلاق</button>'); return; }
   if(!P.costs){ modal(`<h3 style="margin-top:0">تعبئة التكلفة الفعلية من أولاب</h3><div class="muted">لا يوجد أمر فارغ التكلفة له «تكلفة العمالة» في آخر ملف أولاب (${esc(P.at||'')}).</div><button onclick="closeModal()">إغلاق</button>`); return; }
   modal(`<h3 style="margin-top:0">تعبئة التكلفة الفعلية من أولاب</h3><div class="muted">آخر ملف: ${esc(P.at||'')} بواسطة ${esc(P.by||'')}. ستُملأ <b>${P.costs}</b> خانة فارغة فقط من «تكلفة العمالة»؛ أي تكلفة مكتوبة لا تُمس. يمكن التراجع من «تراجع».</div>
