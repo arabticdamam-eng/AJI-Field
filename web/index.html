@@ -452,7 +452,7 @@ const BC={ db:null,
   open(){ return this.db?Promise.resolve(this.db):new Promise((ok,no)=>{ const r=indexedDB.open('aji-main',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>{ this.db=r.result; ok(this.db); }; r.onerror=()=>no(r.error); }); },
   async tx(mode,f){ const d=await this.open(); return new Promise((ok,no)=>{ const t=d.transaction('kv',mode), q=f(t.objectStore('kv')); let v; if(q) q.onsuccess=()=>v=q.result; t.oncomplete=()=>ok(v); t.onerror=()=>no(t.error); }); },
   get(k){ return this.tx('readonly',s=>s.get(k)).catch(()=>null); }, set(k,v){ return this.tx('readwrite',s=>s.put(v,k)).catch(()=>{}); }, del(k){ return this.tx('readwrite',s=>s.delete(k)).catch(()=>{}); } };
-const READ_FN=/^(bootAll|boot|list|get|mig(Scan|ScanExt|Get|Stats)$|attMatch|orderDetail|orderFiles|qdGet|qdMeta|qdMyMaint|boqGet|boqItems|boqList|formsMeta|formPhotoData|formSig|appInfo|stampInfo|fileStatus|reportMeta|exportForms|login)/;
+const READ_FN=/^(bootAll|boot|list|get|mig(Scan|ScanExt|Get|Stats|Batch)$|attMatch|orderDetail|orderFiles|qdGet|qdMeta|qdMyMaint|boqGet|boqItems|boqList|formsMeta|formPhotoData|formSig|appInfo|stampInfo|fileStatus|reportMeta|exportForms|login)/;
 function applyBoot(raw){
   S.B=Object.assign({},raw); S.pct = {}; S.B.lists.stage.forEach((s,i) => S.pct[s] = +S.B.lists.stage_pct[i]);
   const r = S.B.orders; delete S.B.orders;
@@ -3031,23 +3031,25 @@ async function migUI(){ let st={}; try{ st=await api('migStats',S.tok)||{}; }cat
   $('#mgsrc').onchange=()=>{ $('#mglk').style.display=$('#mgsrc').value==='ext'?'':'none'; };
   $('#mgstop').onclick=()=>{ MIG.stop=true; $('#mgstop').disabled=true; };
   $('#mggo').onclick=()=>migRun(); }
-async function migRun(){ if(MIG.run) return; const src=$('#mgsrc').value, link=($('#mglink')||{}).value||''; if(src==='ext'&&!link.trim()) return $('#mgerr').textContent='ضع رابط المجلد';
-  const key='wo_mig_'+(src||'own')+(src==='ext'?'_'+link.trim():''); let cur=0; try{ cur=+(JSON.parse(localStorage.getItem(key)||'{}').next||0); }catch(e){}
+async function migRun(){ if(MIG.run) return; const src=$('#mgsrc').value, link=src==='ext'?(($('#mglink')||{}).value||'').trim():''; if(src==='ext'&&!link) return $('#mgerr').textContent='ضع رابط المجلد';
+  const key='wo_mig2_'+(link||'own'); let saved={}; try{ saved=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){} let cur=+(saved.next||0); const queue=(saved.queue||[]).slice();
   try{ localStorage.setItem('wo_mig',JSON.stringify({src,link})); }catch(e){}
-  MIG.run=true; MIG.stop=false; $('#mggo').disabled=true; $('#mgstop').disabled=false; const say=t=>{ const e=$('#mgp'); if(e) e.textContent=t; };
-  let n=0, bad=0, big=0, before=0, after=0, un=new Set();
-  try{ for(;;){ if(MIG.stop) break; say('جارٍ البحث عن ملفات لم تُنقل… (المجلد '+cur+')');
-      const r=src==='ext'?await api('migScanExt',S.tok,link,cur,25):await api('migScan',S.tok,cur,25); (r.unmatched||[]).forEach(x=>un.add(x));
-      for(const f of r.files){ if(MIG.stop) break; say('ينقل: '+f.name+' ('+fmtMB(f.size)+') → '+f.ref+'\nتم '+n+' · قبل الضغط '+fmtMB(before)+' · بعده '+fmtMB(after)+(bad?' · تعذّر '+bad:'')+(big?' · أكبر من 25 م.ب: '+big:''));
-        try{ const g=await api('migGet',S.tok,f.drive_id); if(g.big){ big++; continue; } const c=await migCompress(g,f.name);
-          await api('migPut',S.tok,f.drive_id,f.ref,c.b64,c.mime,f.name,f.size,f.at); n++; before+=f.size; after+=Math.round(c.b64.length*0.75); }
-        catch(e){ bad++; console.warn('mig',f.name,e.message); } }
-      if(!MIG.stop){ cur=r.next; try{ localStorage.setItem(key,JSON.stringify({next:cur})); }catch(e){} }
-      if(r.done||MIG.stop) break; }
-    say((MIG.stop?'أُوقف النقل':'اكتمل النقل')+': '+n+' ملفاً · قبل الضغط '+fmtMB(before)+' · بعده '+fmtMB(after)+(bad?' · تعذّر '+bad+' (يُعاد عند المتابعة)':'')+(big?' · '+big+' ملفاً أكبر من 25 م.ب بقي في Drive':''));
-    if(!MIG.stop&&!bad){ try{ localStorage.removeItem(key); }catch(e){} } }
+  MIG.run=true; MIG.stop=false; $('#mggo').disabled=true; $('#mgstop').disabled=false; $('#mgerr').textContent='';
+  const say=t=>{ const e=$('#mgp'); if(e) e.textContent=t; }, save=()=>{ try{ localStorage.setItem(key,JSON.stringify({next:cur,queue})); }catch(e){} };
+  let srv=0, srvB=0, br=0, before=0, after=0, bad=0, total=0, scanning=true; const un=new Set(), t0=Date.now();
+  const show=()=>say((MIG.stop?'جارٍ الإيقاف…':'جارٍ النقل…')+' المجلد '+cur+(total?' من '+total:'')+'\nنسخها الخادم مباشرة: '+srv+' ('+fmtMB(srvB)+')\nضُغطت في المتصفح: '+br+' · قبل '+fmtMB(before)+' · بعد '+fmtMB(after)+(queue.length?'\nبانتظار الضغط: '+queue.length:'')+(bad?'\nتعذّر: '+bad+' (يُعاد عند المتابعة)':'')+'\nالمدة: '+Math.round((Date.now()-t0)/60000)+' دقيقة');
+  // ثلاثة عمّال يضغطون الكبيرة بالتوازي بينما الخادم يكمل النسخ
+  const worker=async()=>{ while(!MIG.stop){ const f=queue.shift(); if(!f){ if(!scanning) return; await new Promise(r=>setTimeout(r,1500)); continue; }
+    try{ const g=await api('migGet',S.tok,f.drive_id); if(g.big) continue; const c=await migCompress(g,f.name); await api('migPut',S.tok,f.drive_id,f.ref,c.b64,c.mime,f.name,f.size,f.at); br++; before+=f.size; after+=Math.round(c.b64.length*0.75); }
+    catch(e){ bad++; console.warn('mig',f.name,e.message); } save(); show(); } };
+  const W=[worker(),worker(),worker()];
+  try{ while(!MIG.stop){ show(); const r=await api('migBatch',S.tok,link,cur,150); total=r.total; (r.unmatched||[]).forEach(x=>un.add(x));
+      srv+=r.moved; srvB+=r.bytes; bad+=r.fail||0; r.big.forEach(f=>queue.push(f)); cur=r.next; save(); show(); if(r.done) break; } }
   catch(e){ $('#mgerr').textContent='توقّف: '+e.message+' — اضغط «ابدأ / تابع» للمتابعة'; }
-  if(un.size&&$('#mgun')) $('#mgun').innerHTML='<b>مجلدات لم يُعرف أمرها ('+un.size+'):</b> '+[...un].slice(0,60).map(esc).join('، ')+(un.size>60?' …':'');
+  scanning=false; await Promise.all(W); save();
+  const fin=!MIG.stop&&!queue.length&&cur>=total; say((fin?'✓ اكتمل النقل':'أُوقف النقل — يكمل من حيث توقف')+'\nنسخها الخادم مباشرة: '+srv+' ('+fmtMB(srvB)+') · ضُغطت في المتصفح: '+br+' (قبل '+fmtMB(before)+' · بعد '+fmtMB(after)+')'+(bad?' · تعذّر '+bad:''));
+  if(fin&&!bad){ try{ localStorage.removeItem(key); }catch(e){} }
+  if(un.size&&$('#mgun')) $('#mgun').innerHTML='<b>مجلدات لم يُعرف أمرها ('+un.size+'):</b> '+[...un].slice(0,80).map(esc).join('، ')+(un.size>80?' …':'');
   MIG.run=false; if($('#mggo')) $('#mggo').disabled=false; if($('#mgstop')) $('#mgstop').disabled=true;
   try{ const st=await api('migStats',S.tok)||{}; if($('#mgN')){ $('#mgN').textContent=st.files||0; $('#mgM').textContent=st.moved||0; $('#mgO').textContent=fmtMB(st.orig||0); $('#mgS').textContent=fmtMB(st.size||0); } }catch(e){} }
 async function olapCostUI(){ modal('<div class="loading">جارٍ حصر الأوامر فارغة التكلفة…</div>'); let P; try{ P=await api('olapCostFill',S.tok,false); }catch(e){ modal('<div class="err">'+esc(e.message)+'</div><button onclick="closeModal()">إغلاق</button>'); return; }
