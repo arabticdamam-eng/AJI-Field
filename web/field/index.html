@@ -56,7 +56,8 @@ body.mopen .scrim{opacity:1;pointer-events:auto}body.mopen .drw{transform:none}
 <body>
 <div id="app"></div><div id="toast"></div>
 <script>
-const API_DEFAULT = 'https://script.google.com/macros/s/AKfycbwuJEO8gZZJwsVIjl9aDNCstSWxm0_UrgC-NYXxpqWeDpa1PBjQGlFj-ybw_D7jkDxbBw/exec';   // رابط البرنامج الذي ينتهي بـ /exec (اختياري: يمكن كتابته عند أول فتح)
+const API_DEFAULT = 'https://script.google.com/macros/s/AKfycbwuJEO8gZZJwsVIjl9aDNCstSWxm0_UrgC-NYXxpqWeDpa1PBjQGlFj-ybw_D7jkDxbBw/exec';
+const ON_NEW = /(^|\.)aji-energy\.pages\.dev$/.test(location.hostname);   // الموقع الجديد: لا رابط لجوجل   // رابط البرنامج الذي ينتهي بـ /exec (اختياري: يمكن كتابته عند أول فتح)
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const S = { api: '', dev: '', user: null, B: null, Q: [], r: { v: 'home' }, tab: 'o', q: '', syncing: false, msg: '' };
@@ -214,7 +215,7 @@ const fileB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onl
 function go(r) { S.r = r; history.pushState(r, ''); render(); scrollTo(0, 0); }
 addEventListener('popstate', e => { menu(false); S.r = e.state || { v: 'home' }; render(); });
 function topBar(title, back) { const on = navigator.onLine, n = S.Q.length;
-  return `<div class="top"><button id="mb" class="mb" title="القائمة" aria-label="القائمة">☰</button>${back ? '<button id="bk">→</button>' : ''}<b>${esc(title)}</b><span class="sp"></span>${S.api ? `<a id="web" class="webb" href="${esc(S.api)}" target="_blank" rel="noopener" title="فتح البرنامج الرئيسي">🌐 البرنامج</a>` : ''}<span class="dot ${on ? 'on' : 'off'}" title="${on ? 'متصل' : 'بدون إنترنت'}"></span>
+  return `<div class="top"><button id="mb" class="mb" title="القائمة" aria-label="القائمة">☰</button>${back ? '<button id="bk">→</button>' : ''}<b>${esc(title)}</b><span class="sp"></span>${S.api ? `<a id="web" class="webb" href="./app.html" title="البرنامج الكامل">🖥 البرنامج</a>` : ''}<span class="dot ${on ? 'on' : 'off'}" title="${on ? 'متصل' : 'بدون إنترنت'}"></span>
     <button id="sy">${S.syncing ? '⏳ جارٍ الإرسال' : '⟳'}${n ? ' ' + n : ''}</button></div>`; }
 // ---------- side menu (☰ at the top right): my work, then the whole program by section, then the account ----------
 const SICO = { where: '📍', dash: '📊', orders: '📋', quality: '✅', maint: '🛠', permits: '📄', olap: '🔎', forms: '⚠️' };
@@ -230,11 +231,11 @@ function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div
     ${(S.PJ && S.PJ.sup && S.PJ.list && S.PJ.list.length > 1) ? `<div class="grp">المشروع</div>${S.PJ.list.map(p => `<a data-pj="${esc(p.id)}" class="${String(p.id) === String(S.pid || '') ? 'on' : ''}">🏗 ${esc(p.name)}${String(p.id) === String(S.pid || '') ? '<span class="n">الحالي</span>' : ''}</a>`).join('')}` : ''}
     <div class="grp">البرنامج</div><a href="./app.html" id="mapp" style="background:#FFF6CC;font-weight:700">🖥 البرنامج الكامل<span class="n">كل التبويبات</span></a>
     <div class="grp">أخرى</div>
-    ${S.api ? `<a href="${esc(S.api)}" target="_blank" rel="noopener" id="mweb">🌐 البرنامج الرئيسي</a>` : ''}<a data-go="sync">⟳ مزامنة الآن</a></div>
+    ${ON_NEW ? '' : `<a href="https://aji-energy.pages.dev/" target="_blank" rel="noopener" id="mweb">🌐 الموقع الجديد aji-energy</a>`}<a data-go="sync">⟳ مزامنة الآن</a></div>
     <div class="df"><span>${navigator.onLine ? 'متصل' : 'بدون إنترنت'}</span><button id="mlo" style="color:var(--dan)">تسجيل الخروج</button></div></aside>`;
   $('#mscr').onclick = $('#mcl').onclick = () => menu(false);
   if ($('#mapp')) $('#mapp').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الكامل يحتاج اتصالاً بالإنترنت أول مرة'); } };
-  if ($('#mweb')) $('#mweb').onclick = e => { menu(false); if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الرئيسي يحتاج اتصالاً بالإنترنت'); } };
+  if ($('#mweb')) $('#mweb').onclick = e => { menu(false); if (!navigator.onLine) { e.preventDefault(); toast('الموقع الجديد يحتاج اتصالاً بالإنترنت'); } };
   $('#mlo').onclick = () => { menu(false); logoutField(); };
   d.querySelectorAll('[data-pj]').forEach(a => a.onclick = () => { menu(false); const pid = a.dataset.pj;
     if (String(pid) === String(S.pid || '')) return; switchProj(pid, a.textContent.replace(/^🏗\s*/, '')); });
@@ -243,7 +244,7 @@ function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div
     if (v === 'queue') return go({ v: 'queue' }); if (v === 'full') return S.r.v === 'full' ? (S.r = { v: 'full', sec: x }, history.replaceState(S.r, ''), render(), scrollTo(0, 0)) : go({ v: 'full', sec: x }); });
 }
 async function logoutField() { if (S.Q.length && !confirm('لديك ' + S.Q.length + ' عملاً لم يُرسل وسيُحذف من الجوال. تسجيل الخروج؟')) return; try { if (navigator.onLine) await call('fieldLogout', S.dev); } catch (e) {} for (const op of S.Q) await DB.qdel(op.id); S.Q = []; S.dev = ''; S.B = null; S.F = null; S.noFull = false; ajiKeep(); try { localStorage.removeItem('wo_tok'); } catch (e) {} await DB.delk('dev'); await DB.delk('B'); await DB.delk('F'); await DB.delk('nofull'); render(); }
-function wire() { if ($('#mb')) { drawer(); $('#mb').onclick = () => { drawer(); menu(true); }; } else { const d = $('#drw'); if (d) d.innerHTML = ''; menu(false); } if ($('#web')) $('#web').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الرئيسي يحتاج اتصالاً بالإنترنت'); } }; if ($('#bk')) $('#bk').onclick = () => history.back(); if ($('#sy')) $('#sy').onclick = () => sync(true); }
+function wire() { if ($('#mb')) { drawer(); $('#mb').onclick = () => { drawer(); menu(true); }; } else { const d = $('#drw'); if (d) d.innerHTML = ''; menu(false); } if ($('#web')) $('#web').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الكامل يحتاج اتصالاً بالإنترنت أول مرة'); } }; if ($('#bk')) $('#bk').onclick = () => history.back(); if ($('#sy')) $('#sy').onclick = () => sync(true); }
 function render() {
   const A = $('#app');
   if (!S.api) return setupView(A);
@@ -364,7 +365,7 @@ function itemView(A) {
     ${it.d9 ? '' : `<h3>فاتورة المقاول</h3><div class="card"><div class="muted">صوّر فاتورة المقاول (صفحة أو أكثر). تُحفظ مع آخر فاتورة لهذا الأمر في «مراجعة فواتير المقاول»، وتُرسل عند الاتصال.${S.Q.filter(q => q.t === 'ci' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'ci' && q.ref === key).length : ''}</div>
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-ci="0" hidden></label><label class="cam btn">🖼 من الجهاز<input type="file" accept="image/*,application/pdf" multiple data-ci="0" hidden></label><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cinew" style="width:auto"> فاتورة جديدة</label></div></div>`}
     <h3>الصور المطلوبة</h3>${ph || '<div class="card muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
-    <div class="card muted">إنشاء ملف الجودة (PDF) من البرنامج الرئيسي بعد إرسال كل شيء. <a href="${esc(S.api)}" target="_blank" rel="noopener">فتح البرنامج</a></div></div>`;
+    <div class="card muted">إنشاء ملف الجودة (PDF) من البرنامج الكامل بعد إرسال كل شيء. <a href="./app.html">فتح البرنامج الكامل</a></div></div>`;
   wire();
   const save = op => enqueue({ t: 'qd', ref: key, op });
   if ($('#net')) $('#net').onchange = e => save({ net: e.target.value }); if ($('#mw')) $('#mw').onchange = e => save({ mw: e.target.value });
