@@ -293,15 +293,27 @@ const sbEmail=id=>String(id||'').trim().toLowerCase()+'@'+SB_DOM;
 async function sbLogin(id,pw){ if(!SB) return false; for(let i=0;i<2;i++){ try{ const r=await SB.auth.signInWithPassword({email:sbEmail(id),password:pw}); if(!r.error) return true; }catch(e){} await new Promise(r=>setTimeout(r,1500)); } return false; }
 async function sbSession(){ if(!SB) return null; try{ const r=await SB.auth.getSession(); return r.data&&r.data.session||null; }catch(e){ return null; } }
 async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_orders'); if(r.error) throw new Error(r.error.message||'direct read'); S.direct={at:Date.now(),ms:Date.now()-t0}; return r.data; }
+// ---- الخادم الجديد بجانب القاعدة (Supabase Edge Function «aji») — 06-11 ----
+// على الموقع الجديد فقط، وللمشروع الأول: القراءات + حفظ الخلايا (تكراره لا يضر) تذهب إليه أولاً؛ ردّه {google} أو أي عطل ← خادم Google كما كان.
+// الإيقاف لهذا المتصفح: localStorage aji_edge = 0
+const EDGE_URL=SB_URL+'/functions/v1/aji?forceFunctionRegion=eu-central-1', EDGE_W={saveCells:1,saveMaintCells:1,savePermitCells:1,saveDailyCells:1};
+const edgeOk=fn=>{ try{ return !!window.AJI_APP&&localStorage.getItem('aji_edge')!=='0'&&!pjCur()&&fn!=='login'&&(READ_FN.test(fn)||!!EDGE_W[fn]); }catch(e){ return false; } };
+async function callX(fn,...a){
+  if(edgeOk(fn)){ const t0=Date.now(); let j=null;
+    try{ const r=await fetch(EDGE_URL,{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY},body:JSON.stringify({fn,args:a})}); if(r.ok) j=await r.json(); }catch(e){ j=null; }
+    if(j&&!j.google){ S.edgeN=S.edgeN||{}; S.edgeN[fn]=Date.now()-t0; if(!READ_FN.test(fn)) S.wseq=(S.wseq||0)+1;
+      if(j.err){ if(/انتهت الجلسة/.test(j.err)) logout(); throw new Error(j.err); } return j.ok; }
+    if(j&&j.google){ S.edgeG=S.edgeG||{}; S.edgeG[fn]=j.google; } }
+  return api0(fn,...a); }
 // listOrders/bootAll: مباشرة من القاعدة حين تكون الجلسة موجودة والمشروع المعروض هو الأول؛ وإلا عبر الخادم كما كان
 async function api(fn, ...a){
   if(fn==='listOrders'&&!pjCur()&&await sbSession()){ try{ return await sbOrders(); }catch(e){ console.warn('direct listOrders',e.message); } }
-  if(fn==='bootAll'&&await sbSession()){ const d=sbOrders().catch(e=>{ console.warn('direct bootAll',e.message); return null; }); let b; try{ b=await api0('boot',...a); }catch(e){ if(/انتهت الجلسة|غير مفعّل/.test(e.message)) throw e; return api0('bootAll',...a); } const o=(b.projects&&b.projects.cur)?null:await d; if(o){ b.orders=o; return b; } b.orders=await api0('listOrders',...a); return b; }
+  if(fn==='bootAll'&&await sbSession()){ const d=sbOrders().catch(e=>{ console.warn('direct bootAll',e.message); return null; }); let b; try{ b=await callX('boot',...a); }catch(e){ if(/انتهت الجلسة|غير مفعّل/.test(e.message)) throw e; return api0('bootAll',...a); } const o=(b.projects&&b.projects.cur)?null:await d; if(o){ b.orders=o; return b; } b.orders=await api0('listOrders',...a); return b; }
   // التصاريح/اليومي/أولاب: من القاعدة مباشرة (06-11) — عند أي خطأ (صلاحيات لم تُحسب، صف يومي بلا رقم…) عبر الخادم كما كان
   if(SBD[fn]&&!pjCur()&&await sbSession()){ try{ const t0=Date.now(), d=SBD[fn](...a.slice(1)), r=await SB.rpc(d[0],d[1]); if(r.error) throw new Error(r.error.message);
       if(fn==='listDaily'){ const ii=r.data.headers.indexOf('id'); if(ii<0||r.data.rows.some(x=>!x[ii])) throw new Error('daily ids'); }
       S.directN=S.directN||{}; S.directN[fn]=Date.now()-t0; return r.data; }catch(e){ console.warn('direct '+fn,e.message); } }
-  return api0(fn,...a);
+  return callX(fn,...a);
 }
 const SBD={ listPermits:h=>['list_permits',{with_hidden:!!h}], listDaily:(f,t)=>['list_daily',{dfrom:String(f||''),dto:String(t||'')}], listOlap:()=>['list_olap',{}] };
 const toast = m => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 3500); };
