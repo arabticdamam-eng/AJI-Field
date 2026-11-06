@@ -64,7 +64,8 @@ const S = { api: '', dev: '', user: null, B: null, Q: [], r: { v: 'home' }, tab:
 const toast = (t, ms) => { const e = $('#toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => e.style.display = 'none', ms || 2600); };
 const now = () => { const d = new Date(), p = n => ('0' + n).slice(-2); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
 const today = () => now().slice(0, 10), hm = () => now().slice(11, 16);
-const phUrl = (id, w) => 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + (w || 200);
+// معرّف 'p:' = صورة في Supabase (حاوية pub)؛ غيره = Drive
+const phUrl = (id, w) => /^p:/.test(id) ? 'https://cnauqprdllsboiayfrgn.supabase.co/storage/v1/render/image/public/pub/' + String(id).slice(2).split('/').map(encodeURIComponent).join('/') + '?width=' + (w || 200) + '&resize=contain' : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + (w || 200);
 
 // ---------- storage (IndexedDB): kv = settings and the downloaded data, q = work waiting to be sent ----------
 const DB = { db: null,
