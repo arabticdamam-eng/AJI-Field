@@ -276,7 +276,7 @@ function homeView(A) {
   A.innerHTML = topBar('AJI الميداني') + `<div class="wrap">
     <div class="card row"><div style="flex:1"><b>${esc(me())}</b><div class="muted">${navigator.onLine ? 'متصل' : 'بدون إنترنت — يُحفظ عملك على الجوال'} · ${esc(S.msg || ('بيانات ' + (B.at || '')))}</div></div>
       ${S.Q.length ? `<button id="qv" class="${fails ? '' : 'pri'}">بانتظار الإرسال ${S.Q.length}${fails ? ' · ⚠ ' + fails : ''}</button>` : '<span class="pill p-ok">✓ لا شيء بانتظار الإرسال</span>'}</div>
-    ${S.noFull ? '' : '<button class="pri big" id="full" style="width:100%;margin-bottom:10px">🖥 البرنامج الكامل: كل التبويبات والأعمدة كالرابط الأساسي</button>'}<div class="tabs"><button data-t="o" class="${tab === 'o' ? 'on' : ''}">أوامر العمل (${B.orders.length})</button><button data-t="n" class="${tab === 'n' ? 'on' : ''}">إشعارات الصيانة (${B.notices.length})</button></div>
+    <div class="tabs"><button data-t="o" class="${tab === 'o' ? 'on' : ''}">أوامر العمل (${B.orders.length})</button><button data-t="n" class="${tab === 'n' ? 'on' : ''}">إشعارات الصيانة (${B.notices.length})</button></div>
     ${tab === 'n' ? '<button class="pri big" id="mtadd" style="width:100%;margin-bottom:10px">+ إشعار صيانة جديد</button>' : ''}
     <input id="q" placeholder="بحث برقم الأمر أو المقاول أو الحي" value="${esc(q)}" style="margin-bottom:10px">
     ${shown.map(it => { const d = docOf(it.key), P = planOf(it, d), st = stateOf(it, d, P), qs = QFS[it.qf_status || ''] || QFS[''], rj = (d.rej || []).length;
