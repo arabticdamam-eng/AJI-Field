@@ -298,7 +298,7 @@ async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_order
 // القراءة: عند أي عطل ← Google. الحفظ: يحمل رقماً فريداً (rid)؛ عند انقطاع يُعاد إلى الخادم الجديد بنفس الرقم (لا يتكرر الحفظ)، ولا يُرسل إلى Google.
 // الإيقاف لهذا المتصفح: localStorage aji_edge = 0
 const EDGE_URL=SB_URL+'/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_NO=/^(logout|webTok|upload|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|task|qdUpload|qdBuild|boqDraw|importPhotos|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|deleteAttachment|fieldCInvPhoto|fieldMaintPhoto|uploadSignature|saveSignature|exportForms)/;
+const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|task|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos)/;
 const edgeOk=fn=>{ try{ return !!window.AJI_APP&&localStorage.getItem('aji_edge')!=='0'&&!pjCur()&&!EDGE_NO.test(fn); }catch(e){ return false; } };
 async function callX(fn,...a){
   if(edgeOk(fn)){ const rd=READ_FN.test(fn), t0=Date.now(), rid=rd?'':(Date.now().toString(36)+Math.random().toString(36).slice(2,10)); let j=null;
@@ -2048,8 +2048,10 @@ const FK={safety:{t:'مخالفة سلامة',g:'vio',i:'🦺'},quality:{t:'مخ
 const FG={vio:{t:'المخالفات',kinds:['safety','quality']},mom:{t:'محاضر الاجتماع',kinds:['meeting']},site:{t:'بطاقات تسليم الموقع',kinds:['site']}};
 // معرّف 'p:' = ملف في Supabase (حاوية pub)؛ غيره = Drive
 const SBP=p=>String(p).split('/').map(encodeURIComponent).join('/');
-const phUrl=(id,w)=>/^p:/.test(id)?'https:\/\/cnauqprdllsboiayfrgn.supabase.co\/storage\/v1\/render\/image\/public\/pub\/'+SBP(id.slice(2))+'?width='+(w||400)+'&resize=contain':'https:\/\/drive.google.com\/thumbnail?id='+encodeURIComponent(id)+'&sz=w'+(w||400);
-const phView=id=>/^p:/.test(id)?'https:\/\/cnauqprdllsboiayfrgn.supabase.co\/storage\/v1\/object\/public\/pub\/'+SBP(id.slice(2)):'https:\/\/drive.google.com\/file\/d\/'+encodeURIComponent(id)+'\/view';
+// ملفات نُقلت من Drive: معرّف Drive ← مكانها في Supabase (الخريطة من boot)
+const mvId=id=>(S.B&&S.B.mv&&S.B.mv[id])||id;
+const phUrl=(id,w)=>(id=mvId(id),/^p:/.test(id))?'https:\/\/cnauqprdllsboiayfrgn.supabase.co\/storage\/v1\/render\/image\/public\/pub\/'+SBP(id.slice(2))+'?width='+(w||400)+'&resize=contain':'https:\/\/drive.google.com\/thumbnail?id='+encodeURIComponent(id)+'&sz=w'+(w||400);
+const phView=id=>(id=mvId(id),/^p:/.test(id))?'https:\/\/cnauqprdllsboiayfrgn.supabase.co\/storage\/v1\/object\/public\/pub\/'+SBP(id.slice(2)):'https:\/\/drive.google.com\/file\/d\/'+encodeURIComponent(id)+'\/view';
 const money=v=>(+v||0)?(+v).toLocaleString('en'):'';
 function fmCell(o,k){ const n=+(k==='vio'?o.vio_n:k==='mom'?o.mom_n:o.site_n)||0; return `<span class="fmb ${n?(k==='vio'?'fmv':k==='mom'?'fmm':'fms'):'fm0'}" data-fg="${k}" data-wo="${esc(o.key)}" title="${n?'فتح':'إضافة'} ${FG[k].t}">${n?(k==='vio'?'⚠️ ':k==='mom'?'📝 ':'📍 ')+n:'＋'}</span>`; }
 async function fmMeta(){ if(!S.meta) S.meta=await api('formsMeta',S.tok); return S.meta; }
@@ -3074,14 +3076,14 @@ async function migUI(){ let st={}; try{ st=await api('migStats',S.tok)||{}; }cat
   modal(`<h3 style="margin-top:0">⇪ نقل المرفقات إلى Supabase</h3>
    <div class="muted">كل ملف يُنسخ من Drive ثم يُضغط في هذا المتصفح ثم يُحفظ في Supabase تحت أمره أو إشعاره. لا يُحذف شيء من Drive. الملف المنقول لا يُنقل مرة ثانية، فيمكن الإيقاف والمتابعة في أي وقت. اترك هذه النافذة مفتوحة أثناء النقل.</div>
    <div class="kpis" style="margin:10px 0"><div class="kpi">في Supabase<b id="mgN">${st.files||0}</b></div><div class="kpi">منقولة من Drive<b id="mgM">${st.moved||0}</b></div><div class="kpi">الحجم قبل الضغط<b id="mgO">${fmtMB(st.orig||0)}</b></div><div class="kpi">بعد الضغط<b id="mgS">${fmtMB(st.size||0)}</b></div></div>
-   <div class="f" style="grid-template-columns:1fr"><label>المصدر<select id="mgsrc"><option value="">مرفقات البرنامج (مجلدات الأوامر وإشعارات الصيانة)</option><option value="ext" ${last.src==='ext'?'selected':''}>مجلد Drive خارجي (مجلد لكل أمر أو إشعار باسم رقمه)</option></select></label>
+   <div class="f" style="grid-template-columns:1fr"><label>المصدر<select id="mgsrc"><option value="">مرفقات البرنامج (مجلدات الأوامر وإشعارات الصيانة)</option><option value="ext" ${last.src==='ext'?'selected':''}>مجلد Drive خارجي (مجلد لكل أمر أو إشعار باسم رقمه)</option><option value="refs" ${last.src==='refs'?'selected':''}>ملفات النماذج والجودة والتصاريح والفواتير والمقايسة والتواقيع والإجازات</option></select></label>
    <label id="mglk" style="${last.src==='ext'?'':'display:none'}">رابط المجلد الخارجي<input id="mglink" dir="ltr" placeholder="https://drive.google.com/drive/folders/..." value="${esc(last.link||'')}"></label></div>
    <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap"><button class="pri" id="mggo">${MIG.run?'جارٍ النقل…':'ابدأ / تابع النقل'}</button><button id="mgstop" ${MIG.run?'':'disabled'}>إيقاف</button><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>
    <div id="mgp" class="muted" style="white-space:pre-line"></div><div id="mgun" class="muted"></div><div class="err" id="mgerr"></div>`);
   $('#mgsrc').onchange=()=>{ $('#mglk').style.display=$('#mgsrc').value==='ext'?'':'none'; };
   $('#mgstop').onclick=()=>{ MIG.stop=true; $('#mgstop').disabled=true; };
   $('#mggo').onclick=()=>migRun(); }
-async function migRun(){ if(MIG.run) return; const src=$('#mgsrc').value, link=src==='ext'?(($('#mglink')||{}).value||'').trim():''; if(src==='ext'&&!link) return $('#mgerr').textContent='ضع رابط المجلد';
+async function migRun(){ if(MIG.run) return; const src=$('#mgsrc').value, link=src==='ext'?(($('#mglink')||{}).value||'').trim():src==='refs'?'refs':''; if(src==='ext'&&!link) return $('#mgerr').textContent='ضع رابط المجلد';
   const key='wo_mig2_'+(link||'own'); let saved={}; try{ saved=JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){} let cur=+(saved.next||0); const queue=(saved.queue||[]).slice();
   try{ localStorage.setItem('wo_mig',JSON.stringify({src,link})); }catch(e){}
   MIG.run=true; MIG.stop=false; $('#mggo').disabled=true; $('#mgstop').disabled=false; $('#mgerr').textContent='';
