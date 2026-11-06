@@ -287,7 +287,7 @@ async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_order
 // listOrders/bootAll: مباشرة من القاعدة حين تكون الجلسة موجودة والمشروع المعروض هو الأول؛ وإلا عبر الخادم كما كان
 async function api(fn, ...a){
   if(fn==='listOrders'&&!pjCur()&&await sbSession()){ try{ return await sbOrders(); }catch(e){ console.warn('direct listOrders',e.message); } }
-  if(fn==='bootAll'&&await sbSession()){ const d=sbOrders().catch(e=>{ console.warn('direct bootAll',e.message); return null; }); const b=await api0('boot',...a); const o=(b.projects&&b.projects.cur)?null:await d; if(o){ b.orders=o; return b; } b.orders=await api0('listOrders',...a); return b; }
+  if(fn==='bootAll'&&await sbSession()){ const d=sbOrders().catch(e=>{ console.warn('direct bootAll',e.message); return null; }); let b; try{ b=await api0('boot',...a); }catch(e){ if(/انتهت الجلسة|غير مفعّل/.test(e.message)) throw e; return api0('bootAll',...a); } const o=(b.projects&&b.projects.cur)?null:await d; if(o){ b.orders=o; return b; } b.orders=await api0('listOrders',...a); return b; }
   return api0(fn,...a);
 }
 const toast = m => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 3500); };
