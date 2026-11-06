@@ -80,7 +80,12 @@ body.mopen .scrim{opacity:1;pointer-events:auto}body.mopen .drw{transform:none}
 @media (max-width:700px){.top{gap:8px;padding:8px 10px}.top .chip{display:none}.brand{display:none}}
 .f{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.f label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut)}
 .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 14px;font-size:13px;margin:10px 0}.kv span{color:var(--mut)}
-.tabs2 a{margin-left:12px;cursor:pointer;color:var(--mut)}.tabs2 a.on{color:var(--acc);font-weight:500}
+.tabs2 a{margin-left:12px;cursor:pointer;color:var(--mut)}
+/* الجوال (المالك، 06/11): الصفحة لا تنزاح جانباً فلا تنكشف القائمة المخفية؛ شريط التبويبات الفرعية يتمرر داخل نفسه؛ الجداول العريضة تتمرر داخل إطارها */
+@media (max-width:1024px){html,body{overflow-x:clip;max-width:100%}
+.tabs2{display:flex;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;gap:4px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.tabs2 a{flex:0 0 auto}.tabs2 input{flex:0 0 160px}
+#usub .card,#main .card{max-width:100%;overflow-x:auto}#usub input,#usub select,#usub textarea{max-width:100%;box-sizing:border-box}}.tabs2 a.on{color:var(--acc);font-weight:500}
 .login{max-width:360px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
 .login h2{margin:0 0 14px;font-weight:500}.login input{width:100%;margin-bottom:10px}
 .err{color:var(--dan);font-size:13px;min-height:18px}.toast{position:fixed;bottom:16px;left:16px;background:var(--txt);color:var(--bg);padding:10px 14px;border-radius:10px;z-index:30}
@@ -2565,6 +2570,7 @@ async function sigAdmin(){
 function vUsers(){ const sub=S.usub||'users';
   $('#main').innerHTML=`<div class="tabs2" style="margin-bottom:12px;font-size:15px"><a data-us="users" class="${sub==='users'?'on':''}">المستخدمون</a><a data-us="journey" class="${sub==='journey'?'on':''}">رحلة أمر العمل</a><a data-us="ctr" class="${sub==='ctr'?'on':''}">المقاولون</a><a data-us="project" class="${sub==='project'?'on':''}">إعدادات المشروع</a><a data-us="qdcat" class="${sub==='qdcat'?'on':''}">قوائم ملف الجودة</a>${sub==='ctr'||sub==='project'?'':`<input id="usq" placeholder="🔍 بحث في هذه الصفحة" value="${esc(S.usq||'')}" style="max-width:260px;margin-inline-start:auto">`}</div><div id="usub"></div>`;
   document.querySelectorAll('[data-us]').forEach(a=>a.onclick=()=>{ S.usub=a.dataset.us; S.usq=''; vUsers(); });
+  { const on=document.querySelector('.tabs2 a.on'); if(on&&on.scrollIntoView) try{ on.scrollIntoView({inline:'nearest',block:'nearest'}); }catch(e){} }
   // search in users, journey and quality lists: rows whose text (or typed values) hold the words stay; it follows the page when it redraws
   if($('#usq')){ const nq=t=>String(t||'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').toLowerCase();
     const usF=()=>{ const q=nq(S.usq||'').trim().split(/\s+/).filter(Boolean); document.querySelectorAll('#usub tbody tr').forEach(tr=>{ const t=nq(tr.textContent+' '+[...tr.querySelectorAll('input,select,textarea')].map(x=>x.value).join(' ')); const on=!q.length||q.every(w=>t.includes(w)); if((tr.style.display==='none')===on) tr.style.display=on?'':'none'; }); };
