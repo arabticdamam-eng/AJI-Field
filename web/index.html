@@ -298,7 +298,7 @@ async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_order
 // القراءة: عند أي عطل ← Google. الحفظ: يحمل رقماً فريداً (rid)؛ عند انقطاع يُعاد إلى الخادم الجديد بنفس الرقم (لا يتكرر الحفظ)، ولا يُرسل إلى Google.
 // الإيقاف لهذا المتصفح: localStorage aji_edge = 0
 const EDGE_URL=SB_URL+'/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|task|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature|mirrorNow|emergencyOn|emergencyOff)/;
+const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature|mirrorNow|emergencyOn|emergencyOff)/;
 const edgeOk=fn=>{ try{ return !!window.AJI_APP&&localStorage.getItem('aji_edge')!=='0'&&!pjCur()&&!EDGE_NO.test(fn); }catch(e){ return false; } };
 async function callX(fn,...a){ if(!READ_FN.test(fn)) acClear();
   if(edgeOk(fn)){ const rd=READ_FN.test(fn), t0=Date.now(), rid=rd?'':(Date.now().toString(36)+Math.random().toString(36).slice(2,10)); let j=null;
@@ -3927,24 +3927,20 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
 // ---------- المقايسة: planned vs executed quantities per order, the price list and the site drawing ----------
 const BQS={'':['بلا مقايسة','fm0'],'مخطط':['مخطط','bq1'],'فرق':['فيها فرق','bq2'],'مطابق':['مطابق','bq3'],'معتمد':['معتمد','bq4']};
 const bqUom=u=>({M:'م',M2:'م²',M3:'م³',EA:'عدد',ASM:'مجموعة',KIT:'طقم',ST:'طقم','%':'%'})[String(u||'').trim().toUpperCase()]||u||'';
-// «تاسك أمر العمل» (05-11): the signed tasks of an order — files in Drive, numbers in the cell, opened for the contractor by link
+// «تاسك أمر العمل»: ورقة المقاول الموقّعة المختومة — للأرشفة فقط: صورتها ورقمها (بلا فتح للمقاول — قرار المالك 07-11). لأمر العمل أكثر من تاسك.
 const tasksOf=o=>{ try{ const L=JSON.parse(o.tasks||'null'); return Array.isArray(L)?L:[]; }catch(e){ return []; } };
 const taskTxt=o=>{ const L=tasksOf(o); return L.length?L.length+' — '+L.map(t=>t.no||'؟').join('، '):''; };
-function taskCell(o){ const L=tasksOf(o), op=L.filter(t=>t.open).length; return `<span class="fmb tkb ${L.length?'tk1':'tk0'}" data-tk="${esc(o.key)}" title="${L.length?esc(L.length+' تاسك'+(op?' · مفتوح للمقاول: '+op:'')):'لا تاسك — اضغط للرفع'}">📎 ${L.length?esc(L.map(t=>t.no||'؟').join('، ')):''}</span>`; }
+function taskCell(o){ const L=tasksOf(o); return `<span class="fmb tkb ${L.length?'tk1':'tk0'}" data-tk="${esc(o.key)}" title="${L.length?esc(L.length+' تاسك'):'لا تاسك — اضغط للرفع'}">📎 ${L.length?esc(L.map(t=>t.no||'؟').join('، ')):''}</span>`; }
 async function taskModal(key){ let R; try{ R=await api('taskList',S.tok,key); }catch(e){ return toast(e.message); }
   const T=R.tasks.slice().reverse();
   modal(`<h3 style="margin-top:0">تاسكات أمر العمل ${esc(R.wo)}${R.type?' ('+esc(R.type)+')':''} <small class="muted">${esc(CSHOW(R.contractor,'cn'))}</small></h3>
-    <div class="tw" style="max-height:50vh"><table><thead><tr><th>رقم التاسك</th><th>الملف</th><th>رُفع</th><th>بواسطة</th><th>للمقاول</th><th></th></tr></thead><tbody>${T.map(t=>`<tr><td><b>${esc(t.no||'—')}</b></td><td><a href="${esc(t.url)}" target="_blank" rel="noopener">📄 ${esc(t.n||'ملف')}</a></td><td>${esc((t.at||'').slice(0,16))}</td><td>${esc(t.by||'')}</td>
-      <td>${t.open?`<span class="pill p-ok" title="فُتح ${esc((t.open_at||'').slice(0,16))} بواسطة ${esc(t.open_by||'')}">مفتوح ✓</span> ${R.can?`<button data-tkm="${esc(t.id)}" title="رسالة جاهزة بالرقم والرابط">💬 رسالة</button> <button data-tkc="${esc(t.id)}" title="إغلاق الرابط عن المقاول">إغلاق</button>`:''}`:(R.can?`<button data-tko="${esc(t.id)}" title="يجعل الملف يُفتح بالرابط بلا حساب ويجهّز رسالة للمقاول">فتح للمقاول</button>`:'<span class="muted">—</span>')}</td>
-      <td>${R.can?`<button data-tkd="${esc(t.id)}" style="color:var(--dan);border-color:var(--dan)">حذف</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">لا تاسكات بعد</td></tr>'}</tbody></table></div>
+    <div class="tw" style="max-height:50vh"><table><thead><tr><th>رقم التاسك</th><th>الصورة</th><th>رُفع</th><th>بواسطة</th><th></th></tr></thead><tbody>${T.map(t=>`<tr><td><b>${esc(t.no||'—')}</b></td><td><a href="${esc(t.url)}" target="_blank" rel="noopener">📄 ${esc(t.n||'ملف')}</a></td><td>${esc((t.at||'').slice(0,16))}</td><td>${esc(t.by||'')}</td>
+      <td>${R.can?`<button data-tkd="${esc(t.id)}" style="color:var(--dan);border-color:var(--dan)">حذف</button>`:''}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">لا تاسكات بعد</td></tr>'}</tbody></table></div>
     ${R.can?`<div class="f" style="margin-top:10px;grid-template-columns:1fr 2fr"><label>رقم التاسك<input id="tkno" inputmode="numeric" placeholder="مثال: 4512"></label><label>الملف (PDF أو صورة — أو صوّره بالجوال)<input id="tkf" type="file" accept="image/*,application/pdf"></label></div><div class="err" id="tkerr"></div>`:''}
     <div style="display:flex;gap:8px;margin-top:10px">${R.can?'<button class="pri" id="tkadd">⬆ رفع التاسك</button>':''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
   const after=r=>{ const o=S.orders.find(x=>x.key===key); if(o){ o.tasks=JSON.stringify(r.tasks.map(t=>{ const c=Object.assign({},t); delete c.url; return c; })); } taskModal(key); if(S.view==='orders') shell(); };
   const run=async(fn,msg)=>{ try{ const r=await fn(); toast(msg); after(r); return r; }catch(e){ toast(e.message); } };
   document.querySelectorAll('[data-tkd]').forEach(b=>b.onclick=()=>{ if(confirm('حذف هذا التاسك؟')) run(()=>api('taskDel',S.tok,key,b.dataset.tkd),'حُذف التاسك'); });
-  document.querySelectorAll('[data-tko]').forEach(b=>b.onclick=async()=>{ let r; try{ r=await api('taskOpen',S.tok,key,b.dataset.tko,true); }catch(e){ return toast(e.message); } toast('فُتح للمقاول'); const o=S.orders.find(x=>x.key===key); if(o) o.tasks=JSON.stringify(r.tasks.map(t=>{ const c=Object.assign({},t); delete c.url; return c; })); if(S.view==='orders') shell(); taskMsg(r.msg,()=>taskModal(key)); });
-  document.querySelectorAll('[data-tkc]').forEach(b=>b.onclick=()=>run(()=>api('taskOpen',S.tok,key,b.dataset.tkc,false),'أُغلق عن المقاول'));
-  document.querySelectorAll('[data-tkm]').forEach(b=>b.onclick=()=>{ const t=R.tasks.find(x=>x.id===b.dataset.tkm); taskMsg('تاسك رقم '+(t.no||'—')+' لأمر العمل '+R.wo+(R.type?' ('+R.type+')':'')+(R.contractor?' — '+CSHOW(R.contractor,'cn'):'')+'\n'+t.url,()=>taskModal(key)); });
   if($('#tkadd')) $('#tkadd').onclick=async()=>{ const f=$('#tkf').files[0], no=$('#tkno').value.trim(); $('#tkerr').textContent=''; if(!f) return $('#tkerr').textContent='اختر الملف'; if(!no) return $('#tkerr').textContent='اكتب رقم التاسك';
     let b64, mime=f.type||''; try{ if(/^image\//.test(mime)){ const im=await shrinkImg(f,1800,0.85); b64=im.b64; mime=im.mime; } else if(/pdf/.test(mime)||/\.pdf$/i.test(f.name)){ b64=await pdfB64(f); mime='application/pdf'; } else return $('#tkerr').textContent='ارفع صورة أو ملف PDF'; }catch(e){ return $('#tkerr').textContent=e.message; }
     $('#tkadd').disabled=true; toast('جارٍ رفع التاسك…'); run(()=>api('taskUpload',S.tok,key,b64,mime,f.name,no),'رُفع التاسك '+no); }; }
