@@ -65,6 +65,9 @@ td.last,th.last{background:var(--accbg);color:var(--acc2);position:sticky;left:0
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;opacity:0;pointer-events:none;transition:opacity .2s}
 .drw{position:fixed;top:0;right:0;bottom:0;width:min(300px,86vw);background:var(--card);z-index:41;transform:translateX(105%);transition:transform .22s ease;display:flex;flex-direction:column;box-shadow:-8px 0 30px var(--shadow)}
 body.mopen .scrim{opacity:1;pointer-events:auto}body.mopen .drw{transform:none}
+/* مسطرة القائمة الجانبية مخفية حتى تمرّ الفأرة عليها (المالك، 06/11): تبقى على الشاشة مسطرة واحدة للصفحة */
+.drw,.drw nav{scrollbar-width:thin;scrollbar-color:transparent transparent}
+.drw:hover,.drw:hover nav,.drw:focus-within nav{scrollbar-color:var(--mut) transparent}
 .drw .dh{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:8px}.drw .dh b{display:block;font-size:15px}.drw .dh small{color:var(--mut);font-size:12px}
 .drw .dh button{border:0;background:transparent;font-size:20px;padding:2px 6px;margin-right:auto;color:var(--mut)}
 .drw nav{display:block;padding:6px 8px;overflow:auto;flex:1}
