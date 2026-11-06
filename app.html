@@ -298,7 +298,7 @@ async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_order
 // القراءة: عند أي عطل ← Google. الحفظ: يحمل رقماً فريداً (rid)؛ عند انقطاع يُعاد إلى الخادم الجديد بنفس الرقم (لا يتكرر الحفظ)، ولا يُرسل إلى Google.
 // الإيقاف لهذا المتصفح: localStorage aji_edge = 0
 const EDGE_URL=SB_URL+'/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|task|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature)/;
+const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|task|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature|mirrorNow|emergencyOn|emergencyOff)/;
 const edgeOk=fn=>{ try{ return !!window.AJI_APP&&localStorage.getItem('aji_edge')!=='0'&&!pjCur()&&!EDGE_NO.test(fn); }catch(e){ return false; } };
 async function callX(fn,...a){ if(!READ_FN.test(fn)) acClear();
   if(edgeOk(fn)){ const rd=READ_FN.test(fn), t0=Date.now(), rid=rd?'':(Date.now().toString(36)+Math.random().toString(36).slice(2,10)); let j=null;
@@ -325,9 +325,12 @@ function acWarm(){ if(S.acW) return; S.acW=1; setTimeout(()=>{ const t=S.B&&S.B.
   try{ if(tabOn('daily')) W.push(['listDaily',S.tok,t,t]); if(tabOn('boq')) W.push(['boqList',S.tok]); if(tabOn('report')) W.push(['reportMeta',S.tok,t.slice(0,7)]); if(S.B.admin) W.push(['listUsers',S.tok]); }catch(e){}
   W.forEach(x=>{ const k=acKey(x[0],x.slice(1)); if(!AC[k]) api(...x).then(d=>{ if(!AC[k]) AC[k]={d,j:JSON.stringify(d)}; }).catch(()=>{}); }); },2500); }
 // listOrders/bootAll: مباشرة من القاعدة حين تكون الجلسة موجودة والمشروع المعروض هو الأول؛ وإلا عبر الخادم كما كان
+// وضع الطوارئ (البرنامج كله على Google، boot.emg): لا قراءة مباشرة ولا خادم جديد
+const emgOn=()=>!!(S.B&&S.B.emg);
 async function api(fn, ...a){
+  if(emgOn()) return api0(fn,...a);
   if(fn==='listOrders'&&!pjCur()&&await sbSession()){ try{ return await sbOrders(); }catch(e){ console.warn('direct listOrders',e.message); } }
-  if(fn==='bootAll'&&await sbSession()){ const d=sbOrders().catch(e=>{ console.warn('direct bootAll',e.message); return null; }); let b; try{ b=await callX('boot',...a); }catch(e){ if(/انتهت الجلسة|غير مفعّل/.test(e.message)) throw e; return api0('bootAll',...a); } const o=(b.projects&&b.projects.cur)?null:await d; if(o){ b.orders=o; return b; } b.orders=await api0('listOrders',...a); return b; }
+  if(fn==='bootAll'&&await sbSession()){ const d=sbOrders().catch(e=>{ console.warn('direct bootAll',e.message); return null; }); let b; try{ b=await callX('boot',...a); }catch(e){ if(/انتهت الجلسة|غير مفعّل/.test(e.message)) throw e; return api0('bootAll',...a); } if(b&&b.emg){ b.orders=await api0('listOrders',...a); return b; } const o=(b.projects&&b.projects.cur)?null:await d; if(o){ b.orders=o; return b; } b.orders=await api0('listOrders',...a); return b; }
   // التصاريح/اليومي/أولاب: من القاعدة مباشرة (06-11) — عند أي خطأ (صلاحيات لم تُحسب، صف يومي بلا رقم…) عبر الخادم كما كان
   if(SBD[fn]&&!pjCur()&&await sbSession()){ try{ const t0=Date.now(), d=SBD[fn](...a.slice(1)), r=await SB.rpc(d[0],d[1]); if(r.error) throw new Error(r.error.message);
       if(fn==='listDaily'){ const ii=r.data.headers.indexOf('id'); if(ii<0||r.data.rows.some(x=>!x[ii])) throw new Error('daily ids'); }
@@ -2066,7 +2069,7 @@ const FG={vio:{t:'المخالفات',kinds:['safety','quality']},mom:{t:'محا
 // معرّف 'p:' = ملف في Supabase (حاوية pub)؛ غيره = Drive
 const SBP=p=>String(p).split('/').map(encodeURIComponent).join('/');
 // ملفات نُقلت من Drive: معرّف Drive ← مكانها في Supabase (الخريطة من boot)
-const mvId=id=>(S.B&&S.B.mv&&S.B.mv[id])||id;
+const mvId=id=>(S.B&&S.B.mv&&S.B.mv[id])||(S.B&&S.B.fc&&S.B.fc[id])||id;
 const phUrl=(id,w)=>(id=mvId(id),/^p:/.test(id))?'https:\/\/cnauqprdllsboiayfrgn.supabase.co\/storage\/v1\/render\/image\/public\/pub\/'+SBP(id.slice(2))+'?width='+(w||400)+'&resize=contain':'https:\/\/drive.google.com\/thumbnail?id='+encodeURIComponent(id)+'&sz=w'+(w||400);
 const phView=id=>(id=mvId(id),/^p:/.test(id))?'https:\/\/cnauqprdllsboiayfrgn.supabase.co\/storage\/v1\/object\/public\/pub\/'+SBP(id.slice(2)):'https:\/\/drive.google.com\/file\/d\/'+encodeURIComponent(id)+'\/view';
 const money=v=>(+v||0)?(+v).toLocaleString('en'):'';
@@ -2664,6 +2667,18 @@ function vProject(){
     catch(e){ if($('#pje')){ $('#pje').textContent=e.message; $('#pjs').disabled=false; } else toast(e.message); } };
   const fh=document.createElement('div'); fh.id='fhc'; fh.className='card'; fh.style.marginTop='12px'; fh.innerHTML='<div class="loading">جارٍ قراءة حالة الملف…</div>'; $('#usub').appendChild(fh); fileHealth();
 }
+// مرآة Google ووضع الطوارئ (07-11)
+function mirHtml(M){ if(!M) return ''; const o=M.out||{}, ag=M.at?Math.round((Date.now()-new Date(String(M.at).replace(' ','T')+'+03:00').getTime())/60000):null;
+  return `<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--line)"><h3 style="margin:0 0 6px">🛟 النسخة الاحتياطية في Google</h3>
+   ${M.emg?`<div class="err" style="margin:6px 0">⚠ وضع الطوارئ مفعّل منذ ${esc(M.emg)}: البرنامج كله يعمل من Google الآن.</div>`:`<div class="muted" style="line-height:1.9">كل 10 دقائق تُنسخ التغييرات من Supabase إلى ملف Google، وكل ملف مرفوع يُنسخ إلى Drive — فيبقى Google نسخة كاملة يعمل منها البرنامج عند أي مشكلة في Supabase.</div>`}
+   ${!M.on&&!M.emg?'<div class="err" style="margin:6px 0">المزامنة الدورية غير مفعّلة بعد (mirrorInstall).</div>':''}
+   ${M.err?`<div class="err" style="margin:6px 0;font-size:12px">آخر خطأ: ${esc(M.err)}</div>`:''}
+   <div class="kpis" style="margin:8px 0"><div class="kpi">آخر مزامنة<b style="font-size:13px">${M.at?esc(String(M.at).slice(0,16))+(ag!=null?' <small>(قبل '+ag+' د)</small>':''):'—'}</b></div><div class="kpi">آخرها<b style="font-size:13px">${o.sheets||0} ورقة · ${o.appended||0} صف جديد · ${o.files||0} ملف${o.more?' · <span class="late">يكمل</span>':''}</b></div></div>
+   <div class="bar">${M.emg?'<button class="pri" id="mr_off">↩ العودة إلى Supabase</button>':'<button id="mr_now">زامن الآن</button><button id="mr_on" style="color:var(--bad,#b3261e)">⚠ تحويل إلى Google (طوارئ)</button>'}</div></div>`; }
+function mirWire(box,M){ const b=id=>box.querySelector(id);
+  if(b('#mr_now')) b('#mr_now').onclick=async()=>{ b('#mr_now').disabled=true; toast('جارٍ المزامنة…'); try{ const r=await api0('mirrorNow',S.tok); toast('تمت: '+(r.sheets||0)+' ورقة · '+(r.appended||0)+' صف · '+(r.files||0)+' ملف'); fileHealth(); }catch(e){ toast(e.message); b('#mr_now').disabled=false; } };
+  if(b('#mr_on')) b('#mr_on').onclick=async()=>{ if(!confirm('تحويل البرنامج كله إلى Google؟\n\nاستعمله فقط إن كان Supabase متعطلاً. ما يُكتب بعده يُحفظ في Google، ويُعاد إلى Supabase بزر «العودة».')) return; try{ const r=await api0('emergencyOn',S.tok); alert('تم التحويل إلى Google'+(r.synced?'':' (تعذّرت المزامنة الأخيرة — ملف Google بحالة آخر مزامنة)')+'. أعد فتح البرنامج.'); location.reload(); }catch(e){ toast(e.message); } };
+  if(b('#mr_off')) b('#mr_off').onclick=async()=>{ if(!confirm('العودة إلى Supabase؟\n\nتُنسخ كل بيانات ملف Google (ومنها ما كُتب أثناء الطوارئ) إلى Supabase ثم يعود البرنامج إليه. قد يأخذ دقائق.')) return; b('#mr_off').disabled=true; toast('جارٍ النسخ إلى Supabase…'); try{ await api0('emergencyOff',S.tok); alert('عاد البرنامج إلى Supabase. أعد فتح البرنامج.'); location.reload(); }catch(e){ toast(e.message); b('#mr_off').disabled=false; } }; }
 async function fileHealth(){ const box=$('#fhc'); if(!box) return; let st; try{ st=await api('fileStatus',S.tok); }catch(e){ box.innerHTML=`<div class="err">${esc(e.message)}</div>`; return; } if(!document.body.contains(box)) return;
   const Q=st.sql&&!st.sql.err?st.sql:null; const pct=Math.round(st.cells/st.limit*1000)/10, big=st.sheets.slice().sort((a,b)=>b.rows-a.rows), n=x=>(+x||0).toLocaleString('en'), d=x=>x?esc(String(x).slice(0,16)):'—';
   box.innerHTML=`<h3 style="margin:0 0 6px">حالة ${Q?'القاعدة':'الملف'}</h3>${Q?`<div class="muted" style="line-height:1.9">البيانات في قاعدة Supabase: لا حدّ للصفوف ولا تبطؤ بكبر السجل، فسجل الحركات يبقى كاملاً بلا تقليم، والأوامر المنتهية (300 أو ملغاة) الأقدم من <b>${st.settings.arch_months}</b> أشهر تنتقل إلى أرشيف داخل القاعدة نفسها (تبقى في التقرير التراكمي وتُعاد من زر «الأرشيف» في الإسنادات). Supabase يأخذ نسخة يومية تلقائياً، ونسخة أسبوعية مستقلة تُحفظ في Google Drive كل جمعة ويُحتفظ بآخر <b>${st.settings.bk_keep}</b> نسخ.</div><div class="muted" style="display:none">`:'<div class="muted" style="line-height:1.9">'}حتى لا يثقل الملف: سجل الحركات الأقدم من <b>${st.settings.arch_days}</b> يوماً يُنقل كل ليلة إلى ملف «سجل الحركات – أرشيف»، والأوامر المنتهية (300 أو ملغاة) الأقدم من <b>${st.settings.arch_months}</b> أشهر تُنقل إلى ملف «الأوامر – أرشيف» (تبقى في التقرير التراكمي وتُعاد من زر «الأرشيف» في الإسنادات)، ونسخة احتياطية كاملة كل جمعة ويُحتفظ بآخر <b>${st.settings.bk_keep}</b> نسخ.</div>
@@ -2673,7 +2688,8 @@ async function fileHealth(){ const box=$('#fhc'); if(!box) return; let st; try{ 
    <div style="flex:1;min-width:260px"><div class="f"><label ${Q?'style="display:none"':''}>تقليم السجل بعد (يوماً)<input id="fh_d" value="${st.settings.arch_days}" inputmode="numeric"></label><label>أرشفة الأوامر المنتهية بعد (شهراً)<input id="fh_m" value="${st.settings.arch_months}" inputmode="numeric"></label><label>عدد النسخ الاحتياطية المحفوظة<input id="fh_k" value="${st.settings.bk_keep}" inputmode="numeric"></label></div>
    <div class="bar" style="margin-top:8px"><button class="pri" id="fh_s">حفظ الحدود</button><button id="fh_a">أرشف الآن</button><button id="fh_b">انسخ الآن</button></div>
    ${st.links.log||st.links.orders?`<div class="muted" style="margin-top:8px">${st.links.log?`<a href="${esc(st.links.log)}" target="_blank">ملف سجل الحركات – أرشيف</a>`:''} ${st.links.orders?`· <a href="${esc(st.links.orders)}" target="_blank">ملف الأوامر – أرشيف</a>`:''}</div>`:''}
-   ${st.backups.length?`<div class="muted" style="margin-top:6px">النسخ: ${st.backups.map(b=>`<a href="${esc(b.url)}" target="_blank">${esc(b.at)}</a>`).join(' · ')}</div>`:''}</div></div>`;
+   ${st.backups.length?`<div class="muted" style="margin-top:6px">النسخ: ${st.backups.map(b=>`<a href="${esc(b.url)}" target="_blank">${esc(b.at)}</a>`).join(' · ')}</div>`:''}</div></div>`+mirHtml(st.mirror);
+  mirWire(box,st.mirror);
   box.querySelector('#fh_s').onclick=async()=>{ try{ await api('saveArchiveSettings',S.tok,{arch_days:$('#fh_d').value,arch_months:$('#fh_m').value,bk_keep:$('#fh_k').value}); toast('تم الحفظ'); fileHealth(); }catch(e){ toast(e.message); } };
   box.querySelector('#fh_a').onclick=async()=>{ if(!confirm(Q?'نقل الأوامر المنتهية إلى الأرشيف الآن؟':'نقل سجل الحركات القديم والأوامر المنتهية إلى ملفات الأرشيف الآن؟')) return; $('#fh_a').disabled=true; try{ const r=await api('archiveNow',S.tok); toast('نُقل: '+(r.updates||0)+' حركة، '+(r.stages||0)+' مرحلة، '+(r.orders||0)+' أمراً'); S.archO=null; await start(); S.view='users'; S.usub='project'; shell(); }catch(e){ toast(e.message); $('#fh_a').disabled=false; } };
   box.querySelector('#fh_b').onclick=async()=>{ $('#fh_b').disabled=true; try{ const r=await api('backupNow',S.tok); toast('أُنشئت النسخة: '+r.name); fileHealth(); }catch(e){ toast(e.message); $('#fh_b').disabled=false; } }; }

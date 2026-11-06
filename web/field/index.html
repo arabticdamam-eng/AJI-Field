@@ -65,7 +65,7 @@ const toast = (t, ms) => { const e = $('#toast'); e.textContent = t; e.style.dis
 const now = () => { const d = new Date(), p = n => ('0' + n).slice(-2); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
 const today = () => now().slice(0, 10), hm = () => now().slice(11, 16);
 // معرّف 'p:' = صورة في Supabase (حاوية pub)؛ غيره = Drive
-const phUrl = (id, w) => (id = (S.B && S.B.mv && S.B.mv[id]) || id, /^p:/.test(id)) ? 'https://cnauqprdllsboiayfrgn.supabase.co/storage/v1/render/image/public/pub/' + String(id).slice(2).split('/').map(encodeURIComponent).join('/') + '?width=' + (w || 200) + '&resize=contain' : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + (w || 200);
+const phUrl = (id, w) => (id = (S.B && S.B.mv && S.B.mv[id]) || (S.B && S.B.fc && S.B.fc[id]) || id, /^p:/.test(id)) ? 'https://cnauqprdllsboiayfrgn.supabase.co/storage/v1/render/image/public/pub/' + String(id).slice(2).split('/').map(encodeURIComponent).join('/') + '?width=' + (w || 200) + '&resize=contain' : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + (w || 200);
 
 // ---------- storage (IndexedDB): kv = settings and the downloaded data, q = work waiting to be sent ----------
 const DB = { db: null,
@@ -88,7 +88,8 @@ const EDGE_RD = /^(fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMe
 const EDGE_NO = /^(qdBuild|uploadSignature|deleteSignature)$/;   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
 let RID = null;
 async function edgeTry(fn, args) {
-  try { if (!ON_NEW || localStorage.getItem('aji_edge') === '0' || EDGE_NO.test(fn) || (fn !== 'fieldLogin' && !S.dev)) return null; } catch (e) { return null; }
+  // وضع الطوارئ (fieldPull.fc موجود): كل شيء على Google
+  try { if (!ON_NEW || localStorage.getItem('aji_edge') === '0' || EDGE_NO.test(fn) || (fn !== 'fieldLogin' && !S.dev) || (S.B && S.B.fc)) return null; } catch (e) { return null; }
   const rd = EDGE_RD.test(fn), rid = rd ? '' : (RID ? RID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
   const body = JSON.stringify(fn === 'fieldLogin' ? { fn, args, rid } : { fn, args, dev: S.dev, rid });
   for (let i = 0; i < (rd ? 1 : 3); i++) {
