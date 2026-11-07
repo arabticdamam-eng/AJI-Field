@@ -227,7 +227,7 @@ table.fit td{vertical-align:top}table.fit select{width:100%}
 .pf .more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pf .more img{width:calc(50% - 3px);max-height:85mm;object-fit:contain;border:1px solid #999;break-inside:avoid}
 .pf .sig{max-height:60px;max-width:190px;object-fit:contain;vertical-align:middle}
 .pf .line{border-bottom:1px solid #000;height:22px}
-.pf.saf .hbar td{background:#F8CBAD;color:#833C0B;text-align:center}.pf.saf td.v{color:#1F4E9A;text-align:center}.pf.saf .page{border:1.5px solid #000}
+.pf.saf .hbar td{background:#F2F2F2;color:#0080FF;text-align:center;font-weight:700}.pf.saf td.v{color:#1F4E9A;text-align:center}.pf.saf .page{border:1.5px solid #000}
 .pf.qua .page{border:1.5px solid #000;padding:10px 16px 16px}.pf.qua .hbar{background:#D8E4BC;border:1px solid #000;text-align:center;font-weight:700;width:46%;margin:8px auto;padding:2px}.pf.qua td.g{background:#D8E4BC}
 .pf.qua .mgr{background:#DCE6F1;border:1px solid #000;padding:6px 8px;font-weight:700}
 .pf.f26 .page{border:1.5px solid #000;padding:0;font-family:Arial,Tahoma,sans-serif;color:#000}.pf.f26 table{width:100%;border-collapse:collapse}.pf.f26 td{border:1px solid #000;padding:3px 6px;font-size:10.5px;color:#000;text-align:center;vertical-align:middle}.pf.f26 td.k{background:#F2F2F2;font-weight:700}.pf.f26 td.b{font-weight:700}.pf.f26 td.tt{background:#fff;font-size:13px;border-bottom:1px solid #000}.pf.f26 td.a{background:#fff;font-size:9.5px;font-weight:700}.pf.f26 .en{font-size:10px;font-weight:700;direction:ltr}.pf.f26 td.pic img{max-width:96%;max-height:95mm;display:block;margin:0 auto}.pf.f26 .muted2{color:#000;font-size:11px}.pf.f26 .blu{color:#1F3864}.pf.f26 table+table{margin-top:-1px}.pf.f26+.pf.f26{break-before:page;page-break-before:always}
@@ -236,7 +236,7 @@ table.fit td{vertical-align:top}table.fit select{width:100%}
 .pf.mee .sec{background:#D0CECE;font-weight:700;font-size:15px;padding:1px 8px;border:1px solid #000;border-bottom:none}.pf.mee .pbox{border:1px solid #000;padding:6px 10px;white-space:pre-wrap;line-height:1.6}
 .pf.mee td.k{font-weight:700;font-size:14px}.pf.mee td.sg{height:90px;text-align:center}.pf.mee .sig{max-height:78px;max-width:230px}
 .pf .stmp{width:50%;margin:10px auto 0 0;text-align:center;break-inside:avoid}.pf .stamp{height:80px;max-width:100%;object-fit:contain;mix-blend-mode:multiply}.pf.saf .stamp{height:80px}.pf.qua td{height:22px}.pf .stamp.s{height:70px;vertical-align:middle;margin-right:8px}
-@media print{@page{size:A4;margin:9mm}body{background:#fff}body>*:not(#prt){display:none !important}#prt{display:block}.pf *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{@page{size:A4;margin:9mm}body{background:#fff}body>*:not(#prt){display:none !important}#prt{display:block}.pf,.pf *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pf.cvr{padding:14mm 12mm;font-family:Tahoma,Arial,sans-serif}.pf.cvr h2{text-align:center;color:#24406E;margin:6mm 0 2mm}
 .pf.cvr .no{text-align:center;font:700 26px Tahoma;color:#1D2433;border:2px solid #24406E;border-radius:6px;padding:4mm;margin:0 auto 6mm;max-width:70mm}
 .pf.cvr table.ct{width:100%;border-collapse:collapse;font-size:13px}.pf.cvr table.ct td{border:1px solid #9AA3B0;padding:3mm}
@@ -2420,8 +2420,7 @@ function fmPrintHtml(f,o,M,sg){
      <tr class="hbar"><td colspan="6">تفاصيل المخالفات</td></tr></table>
      <table><colgroup><col style="width:4%"><col style="width:17%"><col style="width:37%"><col style="width:14%"><col style="width:14%"><col style="width:14%"></colgroup>
      <tr><td class="c">م</td><td class="c">رقم بند المخالفة بالعقد</td><td class="c">رقم ونص المخالفة حسب تصنيف المخالفات</td><td class="c">التكرار</td><td class="c">قيمة المخالفة</td><td class="c">الاجمالي</td></tr>
-     ${items.map((it,i)=>`<tr style="height:30px"><td class="c">${i+1}</td><td class="v">${e(it.code)}</td><td class="v">${e(it.text)}</td><td class="v">${e(it.rep)}</td><td class="v">${money(it.price)}</td><td class="v">${money(+it.price||0)}</td></tr>`).join('')}
-     ${items.length>4||tot?`<tr><td colspan="5" style="text-align:left">الاجمالي</td><td class="v b">${money(tot)}</td></tr>`:''}
+     ${items.map((it,i)=>`<tr style="height:30px"><td class="c">${i+1}</td><td class="v">${e(it.code)}</td><td class="v">${e(it.text)}</td><td class="v"></td><td class="v"></td><td class="v"></td></tr>`).join('')}
      <tr style="height:230px"><td colspan="3" style="vertical-align:top"><div>وصف المخالفات</div><div class="v" style="color:#1F4E9A;text-align:center;margin-top:60px;white-space:pre-wrap">${e(d.desc)}</div>${d.action?`<div style="margin-top:14px">الإجراء المطلوب: <span style="color:#1F4E9A">${e(d.action)}</span></div>`:''}</td><td colspan="3" style="vertical-align:top;padding:0">${ph[0]?`<img class="pimg" src="${ph[0]}" style="max-height:78mm;height:78mm">`:''}</td></tr></table>
      <table>${C}<tr class="hbar"><td colspan="6">المصادقة</td></tr>
      <tr style="height:44px"><td>اسم محرر المحضر</td><td class="v">${e(d.author)}</td><td>الرقم الوظيفي</td><td class="v">${e(sg.emp_no)}</td><td>التوقيع</td><td class="c">${sig}</td></tr>
@@ -3520,7 +3519,7 @@ function xuModel(D,opt){
     const FV=[]; if(FL.office) FV.push({sqref:vrange(FL.office,rows.length),ref:lref('office')}); if(FL.contractor) FV.push({sqref:vrange(FL.contractor,rows.length),ref:lref('contractor'),free:1}); if(FL.author) FV.push({sqref:vrange(FL.author,rows.length),ref:lref('people'),free:1}); sh.valid=FV;
     SH[sec].L=Object.assign({kind:FL.kind},FL); SH[sec].row=id=>FXROW[id];
     const FQ=xuQ(sec), FN=rows.length+2, FC=k=>FQ+'!$'+FL[k]+'$3:$'+FL[k]+'$'+FN, FID=FQ+'!$'+FL.id+'$3:$'+FL.id+'$'+FN;
-    const T3={ttl:{b:1,sz:15,al:'center',va:'center',bd:1,fill:'D0CECE'},hb:{b:1,fc:'833C0B',fill:'F8CBAD',al:'center',bd:1},hg:{b:1,fill:'D8E4BC',al:'center',bd:1},hq:{b:1,fill:'DCE6F1',al:'center',bd:1},lab:{b:1,bd:1,va:'center',wrap:1,sz:10},val:{bd:1,fc:'1F4E9A',va:'center',wrap:1},valc:{bd:1,fc:'1F4E9A',al:'center',va:'center',wrap:1},inp:{bd:1,b:1,sz:13,fill:'FFF4CC',al:'center',ul:1},note:{fc:'5F5E5A',sz:9},money:{bd:1,fc:'1F4E9A',al:'center',nf:'#,##0.00'},img:{al:'center',va:'center'},plain:{sz:10},k:{b:1,sz:10,va:'center'},cb:{b:1,al:'center',va:'center'},red:{b:1,fc:'C00000',sz:9}};
+    const T3={ttl:{b:1,sz:15,al:'center',va:'center',bd:1,fill:'D0CECE'},hb:{b:1,fc:'0080FF',fill:'F2F2F2',al:'center',bd:1},hg:{b:1,fill:'D8E4BC',al:'center',bd:1},hq:{b:1,fill:'DCE6F1',al:'center',bd:1},lab:{b:1,bd:1,va:'center',wrap:1,sz:10},val:{bd:1,fc:'1F4E9A',va:'center',wrap:1},valc:{bd:1,fc:'1F4E9A',al:'center',va:'center',wrap:1},inp:{bd:1,b:1,sz:13,fill:'FFF4CC',al:'center',ul:1},note:{fc:'5F5E5A',sz:9},money:{bd:1,fc:'1F4E9A',al:'center',nf:'#,##0.00'},img:{al:'center',va:'center'},plain:{sz:10},k:{b:1,sz:10,va:'center'},cb:{b:1,al:'center',va:'center'},red:{b:1,fc:'C00000',sz:9}};
     const IMGU=(u,st)=>u?{f:'_xlfn.IMAGE("'+String(u).replace(/"/g,'""')+'")',v:'',dyn:1,st:st||T3.img}:{st:st||T3.img};
     const mkPrint=(pname,kind,idc,build)=>{ const IS4=()=>'LEFT(IFERROR(_xlfn.XLOOKUP("'+FORM_PFX_X[kind]+'"&'+idc+'&"",'+FID+','+FC('wo')+',""),"")&"",1)="4"', d4=String(FXV(FR.find(x=>x.kind===kind)||{},'wo')||'').charAt(0)==='4'; const def=FR.find(x=>x.kind===kind); if(!def) return; const G3=[], merges=[], hts={}; const put3=(r,c,x)=>{ (G3[r]=G3[r]||[])[c]=x; };
       const pfx=FORM_PFX_X[kind], ID='"'+pfx+'"&'+idc+'&""';
@@ -3543,8 +3542,8 @@ function xuModel(D,opt){
       put3(7,0,{v:'اسم ممثل السلامة للمقاول',st:T3.lab}); put3(7,1,L2('safety_rep')); merges.push('B8:C8'); put3(7,3,{f:'IF('+IS4()+',"رقم الإشعار D9","رقم امر العمل")',v:d4?'رقم الإشعار D9':'رقم امر العمل',st:T3.lab}); put3(7,4,{f:'IFERROR(IF(_xlfn.XLOOKUP('+ID+','+FID+','+FC('wo_type')+',"")&""="",_xlfn.XLOOKUP('+ID+','+FID+','+FC('wo')+',"")&"",_xlfn.XLOOKUP('+ID+','+FID+','+FC('wo_type')+',"")&" - "&_xlfn.XLOOKUP('+ID+','+FID+','+FC('wo')+',"")),"")',v:(FXV(def,'wo_type')?FXV(def,'wo_type')+' - ':'')+FXV(def,'wo'),dyn:1,st:T3.valc}); merges.push('E8:F8');
       put3(8,0,{v:'تفاصيل المخالفات',st:T3.hb}); merges.push('A9:F9');
       ['م','رقم بند المخالفة بالعقد','رقم ونص المخالفة حسب تصنيف المخالفات','التكرار','قيمة المخالفة','الاجمالي'].forEach((h,i)=>put3(9,i,{v:h,st:T3.lab}));
-      [1,2,3].forEach(n=>{ const r=9+n; put3(r,0,{v:n,st:T3.valc}); put3(r,1,L2('i'+n+'c',T3.valc)); put3(r,2,L2('i'+n+'t')); put3(r,3,L2('i'+n+'r',T3.valc)); put3(r,4,L2('i'+n+'p',T3.money)); put3(r,5,L2('i'+n+'s',T3.money)); hts[r]=26; });
-      put3(13,0,{v:'الاجمالي',st:T3.lab}); merges.push('A14:E14'); put3(13,5,L2('total',T3.money));
+      [1,2,3].forEach(n=>{ const r=9+n; put3(r,0,{v:n,st:T3.valc}); put3(r,1,L2('i'+n+'c',T3.valc)); put3(r,2,L2('i'+n+'t')); put3(r,3,{v:'',st:T3.valc}); put3(r,4,{v:'',st:T3.money}); put3(r,5,{v:'',st:T3.money}); hts[r]=26; });   // التكرار والقيمة والإجمالي فارغة (المالك 07-11)
+      put3(13,0,{v:'الاجمالي',st:T3.lab}); merges.push('A14:E14'); put3(13,5,{v:'',st:T3.money});
       put3(14,0,{v:'وصف المخالفات',st:T3.hb}); merges.push('A15:F15');
       put3(15,0,L2('desc',T3.valc)); merges.push('A16:C27'); put3(15,3,IMG('g1')); merges.push('D16:F27'); for(let r=15;r<27;r++) hts[r]=18;
       put3(27,0,{v:'الإجراء المطلوب',st:T3.lab}); put3(27,1,L2('action')); merges.push('B28:F28');
@@ -4005,8 +4004,8 @@ async function boqModal(key){
     if($('#bqun')) $('#bqun').onclick=async e=>{ e.target.disabled=true; try{ B=await api('boqApprove',S.tok,key,false); boqSync(key,B); draw(); }catch(er){ e.target.disabled=false; $('#bqerr').textContent=er.message; } };
     if($('#bqudsb')) $('#bqudsb').onclick=()=>$('#bquds').click();
     if($('#bquds')) $('#bquds').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; if(dirty&&!confirm('لديك تعديلات غير محفوظة ستُستبدل بالملف. متابعة؟')) return;
-      try{ await loadXlsx(); const u=udsParse(XLSX.read(await f.arrayBuffer(),{type:'array'})); if(!u) throw new Error('هذا الملف ليس بشكل مقايسة اليو دي إس');
-        const mine=o.wo+(o.type?'-'+o.type:''), mk=[o.wo+'-'+(S.orders.find(x=>x.key===key)||{}).ccode, mine, key];
+      try{ await loadXlsx(); const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}), u=udsParse(wb,f.name)||udsParse(wb,String(o.wo||'')); if(!u) throw new Error('هذا الملف ليس بشكل مقايسة اليو دي إس');
+        const mine=o.wo+(o.type?'-'+o.type:''), mk=[o.wo+'-'+(S.orders.find(x=>x.key===key)||{}).ccode, mine, key, String(o.wo)];
         if(!mk.includes(u.wo)&&!confirm('الملف للأمر '+u.wo+' وليس '+mine+'. تسجيله في مقايسة هذا الأمر؟')) return; u.wo=key;
         const r=await api('boqImportUds',S.tok,[u]); if(!r.orders.length) throw new Error(r.skipped.length?'المقايسة معتمدة: ألغِ الاعتماد أولاً':'لم يُسجَّل شيء');
         udsAfter(r); toast('سُجّل ملف اليو دي إس'+(r.noItem.length?' — بنود غير موجودة في جدول الأسعار: '+r.noItem.join('، '):'')); boqModal(key); }
@@ -4050,7 +4049,7 @@ async function vBoq(){
 // and quantities: certificates (one row per item with the order number), or a sheet with a column per order
 // UDS BOQ file: title «263018895 - 801», header «رمز البند | الأعمال/المواد | كمية تقديرية | كمية فعلية | سعر فعلى».
 // Works: 9-digit codes; materials: shorter codes. Repeated rows are summed column by column.
-function udsParse(wb){ const N=x=>String(x==null?'':x).replace(/ـ/g,'').replace(/\s+/g,' ').trim();
+function udsParse(wb,fname){ const N=x=>String(x==null?'':x).replace(/ـ/g,'').replace(/\s+/g,' ').trim();
   for(const sn of wb.SheetNames){ const A=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''}); let wo='', sec='', ci=-1, pi=-1, di=-1, ni=-1; const W={}, M={};
     for(let i=0;i<A.length;i++){ const r=A[i].map(N), ne=r.filter(Boolean);
       if(!wo){ const t=ne.map(x=>x.match(/^(\d{9})\s*-\s*(\d{3})$/)).find(Boolean); if(t){ wo=t[1]+'-'+t[2]; continue; } }
@@ -4060,11 +4059,13 @@ function udsParse(wb){ const N=x=>String(x==null?'':x).replace(/ـ/g,'').replace
       if(ci<0) continue; const c=r[ci].replace(/\.0+$/,''); if(!/^\d{5,12}$/.test(c)) continue;
       const kind=c.length===9?'w':c.length<9?'m':sec, T=kind==='m'?M:W, x=T[c]||(T[c]={c,n:r[ni]||'',p:0,d:0}), num=v=>{ const n=+String(v).replace(/,/g,''); return isFinite(n)?n:0; };
       x.p+=num(A[i][pi]); x.d+=di>=0?num(A[i][di]):0; }
-    if(wo&&ci>=0&&(Object.keys(W).length||Object.keys(M).length)) return {wo,works:Object.values(W).map(({c,p,d})=>({c,p,d})),mats:Object.values(M)}; }
+    // رقم الأمر والرمز غير موجودين داخل الملف: من اسم الملف (مثل 254632152-801.xlsx) — المالك 07-11
+    let byName=false; if(!wo&&fname){ const t=String(fname).replace(/\.[^.]+$/,'').match(/(?:^|\D)(\d{9})(?:\s*[-_ ]\s*(\d{3}))?(?!\d)/); if(t){ wo=t[2]?t[1]+'-'+t[2]:t[1]; byName=true; } }
+    if(wo&&ci>=0&&(Object.keys(W).length||Object.keys(M).length)) return {wo,byName,works:Object.values(W).map(({c,p,d})=>({c,p,d})),mats:Object.values(M)}; }
   return null; }
-async function udsRead(fs){ const U=[]; let other=0; for(const f of fs){ const u=udsParse(XLSX.read(await f.arrayBuffer(),{type:'array'})); if(u){ u.file=f.name; U.push(u); } else other++; }
+async function udsRead(fs){ const U=[]; let other=0; for(const f of fs){ const u=udsParse(XLSX.read(await f.arrayBuffer(),{type:'array'}),f.name); if(u){ u.file=f.name; U.push(u); } else other++; }
   if(!U.length) return null; if(other) throw new Error(other+' من الملفات المختارة ليست بشكل اليو دي إس. اختر ملفات اليو دي إس وحدها، أو ملفاً واحداً بالشكل الآخر.'); return U; }
-function udsReport(r,U){ return `<div class="card">✓ مقايسة اليو دي إس: سُجّلت في <b>${r.orders.length}</b> أمراً (بنود الأعمال والمواد كُتبت فوق الكميات السابقة).${r.skipped.length?`<div class="muted">${r.skipped.length} أمراً معتمدة مقايستها لم تتغير: ${esc(r.skipped.join('، '))}</div>`:''}${r.missing.length?`<div class="err">أوامر غير موجودة في الإسنادات: ${esc(r.missing.join('، '))}</div>`:''}${r.denied.length?`<div class="err">خارج صلاحيتك: ${esc(r.denied.join('، '))}</div>`:''}${r.noItem.length?`<div class="err">بنود أعمال غير موجودة في جدول الأسعار فلم تُسجّل (${r.noItem.length}): ${esc(r.noItem.join('، '))}</div>`:''}</div>`; }
+function udsReport(r,U){ const BN=(U||[]).filter(u=>u.byName); return `<div class="card">✓ مقايسة اليو دي إس: سُجّلت في <b>${r.orders.length}</b> أمراً (بنود الأعمال والمواد كُتبت فوق الكميات السابقة).${BN.length?`<div class="muted">رقم الأمر أُخذ من اسم الملف (${BN.length}): ${BN.map(u=>esc(u.file)+' ← '+esc(u.wo)).join('، ')}</div>`:''}${r.skipped.length?`<div class="muted">${r.skipped.length} أمراً معتمدة مقايستها لم تتغير: ${esc(r.skipped.join('، '))}</div>`:''}${r.missing.length?`<div class="err">أوامر غير موجودة في الإسنادات: ${esc(r.missing.join('، '))}</div>`:''}${r.denied.length?`<div class="err">خارج صلاحيتك: ${esc(r.denied.join('، '))}</div>`:''}${r.noItem.length?`<div class="err">بنود أعمال غير موجودة في جدول الأسعار فلم تُسجّل (${r.noItem.length}): ${esc(r.noItem.join('، '))}</div>`:''}</div>`; }
 function udsAfter(r){ S.bqList=null; r.orders.forEach(k=>{ const o=S.orders.find(x=>x.key===k); if(o&&!o.boq_st) o.boq_st='مخطط'; }); if(S.orders.length) api('listOrders',S.tok).then(x=>{ const hi=x.headers.indexOf('boq_st'), wi=x.headers.indexOf('wo'), ci=x.headers.indexOf('ccode'); if(hi<0) return; const m={}; x.rows.forEach(rr=>m[(rr[ci]?rr[wi]+'-'+rr[ci]:rr[wi])]=rr[hi]); S.orders.forEach(o=>{ if(o.key in m) o.boq_st=m[o.key]; }); }).catch(()=>{}); }
 function boqImport(kind){
   modal(`<h3 style="margin-top:0">${kind==='items'?'استيراد جدول أسعار العقد':'استيراد المقايسة / شهادات الإنجاز'}</h3><div class="muted" style="margin-bottom:8px">${kind==='items'?'ملف Excel فيه أعمدة: Item، Short Description، UOM، وسعر المقاول للمنطقة («سعر المقاول الدمام» أو عمود «إدارة كهرباء '+esc((S.B.project||{}).dept||'الدمام')+'»)، ويمكن أن يحتوي «سعر PDC» و«سعر ارابتك». إن لم يوجد سعر PDC يُحسب 12% من سعر المقاول. الجدول الجديد يحل محل القديم.':'ملف Excel فيه لكل بند: الرمز، الكمية التقديرية، الكمية المنفذة (اختياري)، ورقم أمر العمل. أو جدول فيه عمود لكل أمر عمل. الكمية التقديرية تُحدَّث، والمنفذ لا يكتب فوق ما أدخله المهندس، والأوامر المعتمدة لا تتغير.'}</div>
@@ -4303,7 +4304,8 @@ table.cvm td.k{width:42%}table.cvm td.v{width:26%;font-weight:700}table.cvm td.e
 tr.cvtot td{background:#24406E;color:#fff !important;font-size:13px;font-weight:700}tr.cvtot td.k{background:#24406E;color:#fff}
 .cvblue{color:#0000FF}.cvsig{font-weight:700;text-align:center}.cvsigbox{height:52px}
 table.cvrec th{background:#24406E;color:#fff;text-align:center}td.cvrh{background:#EEF1F6;font-weight:700;text-align:center}
-@media print{.cvp{max-width:none;padding:0}}`;
+@media print{.cvp{max-width:none;padding:0}}
+.cvp,.cvp *{-webkit-print-color-adjust:exact;print-color-adjust:exact}`;
 const CV_VAT=0.15;
 const cvNum=x=>{ const n=parseFloat(String(x==null?'':x).replace(/,/g,'')); return isFinite(n)?n:0; };
 const cvF=n=>(Math.round((+n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -4538,8 +4540,8 @@ function vMatchRec(inv,top,wireTop){
       $('#mrk').innerHTML=inv?`<div class="kpi">الفواتير<b>${l.length}</b></div><div class="kpi">صافي الفواتير<b>${money(sm('inv_net'))||0}</b></div><div class="kpi">بالضريبة<b>${money(Math.round(sm('inv_net')*115)/100)||0}</b></div><div class="kpi">معتمدة من المالية<b style="color:var(--ok)">${l.filter(o=>/^\d{4}-/.test(o.appr_fin)).length}</b></div><div class="kpi">بلا إشعار في البرنامج<b class="late">${l.filter(o=>!o.n_found).length}</b></div>`
         :`<div class="kpi">أوامر الإنشاءات<b>${l.length}</b></div><div class="kpi">منها من GIS<b>${l.filter(o=>o.gis_date).length}</b></div><div class="kpi">قيمة المطابقة<b>${money(sm('value'))||0}</b></div><div class="kpi">موقف المطابقة: متبقي<b class="late">${l.filter(o=>o.status==='متبقي').length}</b></div><div class="kpi">صدر لها PO<b>${l.filter(o=>/^\d+$/.test(o.po)).length}</b></div>${na?`<div class="kpi" title="وصلت رحلتها إلى المطابقة ولم تُدرَج في الملف بعد — اكتب في أي خانة مطابقة فتصير سجلاً"><span style="color:#A15C00">مقترحة من الرحلة</span><b style="color:#A15C00">${na}</b></div>`:''}`; },
     wire:()=>{ if($('#mradd')) $('#mradd').onclick=()=>mrAdd(inv); $('#mrx').onclick=()=>mrExport(inv?'maint':'cons'); $('#mrxa').onclick=()=>mrExport('all'); if($('#mri')){ $('#mri').onclick=()=>$('#mrf').click(); $('#mrf').onchange=e=>mrImport(e.target.files[0]); } } };
-  const RD=can?{ need:inv?'تسلسل الفاتورة ورقم الإشعار D9 أو أمر العمل D2':'رقم أمر العمل', fields:cols.filter(k=>!['key','pct','prev','n_office','n_contractor','n_station','n_work_type'].includes(k)),
-    ready:o=>inv?!!(String(o.inv_seq||'').trim()&&(String(o.wo||'').trim()||String(o.d9||'').trim())):/^\d{6,12}$/.test(String(o.wo||'').trim()),
+  const RD=can?{ need:inv?'رقم الإشعار D9 أو أمر العمل D2 (التسلسل يُعطى تلقائياً)':'رقم أمر العمل', fields:cols.filter(k=>!['key','pct','prev','n_office','n_contractor','n_station','n_work_type'].includes(k)),
+    ready:o=>inv?!!(String(o.wo||'').trim()||String(o.d9||'').trim()):/^\d{6,12}$/.test(String(o.wo||'').trim()),
     fill:(o,k)=>{ if(inv||k!=='wo') return; const x=byRef(o.wo); if(!x) return; o.wo=x.wo; if(!o.ccode) o.ccode=x.ccode||''; if(!o.type) o.type=x.type||''; if(!o.office) o.office=x.office||''; if(!o.contractor) o.contractor=x.contractor||''; },
     commit:async x=>{ x.kind=inv?'صيانة وطوارئ':'إنشاءات'; const r=await api('addMatchRec',S.tok,x); const M=await mrLoad(true); const n=M.rows.find(y=>y.key===r.key); if(!n) throw new Error('لم يُحفظ السجل (قد يكون محذوفاً سابقاً)'); return n; },
     noPush:true, after:()=>{ if(S.view==='matching') shell(); }, done:o=>'أُضيف سجل المطابقة '+(o.wo||'') }:null;
@@ -4562,13 +4564,13 @@ async function mrImportBook(wb,quiet,uni){
 // a new record typed in: the same path as an import of one row, so keys, kinds and the order sync stay the same
 function mrAdd(inv){ const nx=inv?Math.max(0,...(S.mr.rows||[]).filter(mrInv).map(o=>mrNum(o.inv_seq)||0))+1:'';
   modal(`<h3 style="margin-top:0">${inv?'فاتورة صيانة وطوارئ جديدة':'أمر إنشاءات جديد في المطابقة'}</h3>
-   ${inv?`<label style="display:flex;flex-direction:column;gap:4px">التسلسل<input id="ma1" value="${nx}"></label><label style="display:flex;flex-direction:column;gap:4px;margin-top:8px">رقم الإشعار D9 أو أمر العمل D2<input id="ma2"></label>`
+   ${inv?`<div class="muted">التسلسل يُعطى تلقائياً عند الحفظ: <b>${nx}</b></div><input id="ma1" type="hidden" value="${nx}"><label style="display:flex;flex-direction:column;gap:4px;margin-top:8px">رقم الإشعار D9 أو أمر العمل D2<input id="ma2"></label>`
         :`<label style="display:flex;flex-direction:column;gap:4px">رقم أمر العمل<input id="ma1"></label><label style="display:flex;flex-direction:column;gap:4px;margin-top:8px">رمز استشاري<input id="ma2" list="mal"><datalist id="mal">${['911','912','913','914','915','916','917'].map(x=>`<option value="${x}">`).join('')}</datalist></label>`}
    <div class="err" id="maerr"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="pri" id="mago">إضافة</button><button onclick="closeModal()">إلغاء</button></div>`);
-  $('#mago').onclick=async()=>{ const a=$('#ma1').value.trim(), b=$('#ma2').value.trim(); if(!a) return $('#maerr').textContent=inv?'اكتب التسلسل':'اكتب رقم أمر العمل';
-    const rows=inv?[['التسلسل (المفتاح)','رقم الإشعار D9'],[a,b]]:[['رقم أمر العمل','رمز استشاري'],[a,b]];
+  $('#mago').onclick=async()=>{ const a=$('#ma1').value.trim(), b=$('#ma2').value.trim(); if(inv&&!b) return $('#maerr').textContent='اكتب رقم الإشعار D9 أو أمر العمل D2'; if(!a) return $('#maerr').textContent='اكتب رقم أمر العمل';
+    const rows=inv?[['رقم الإشعار D9'],[b]]:[['رقم أمر العمل','رمز استشاري'],[a,b]];
     $('#mago').disabled=true; try{ const r=await api('importMatchRec',S.tok,rows,inv?'الصيانة والطوارئ':'الإنشاءات'); closeModal();
-      const key=inv?'INV-'+a:(b?a+'-'+b:a); await mrLoad(true); (S.gst[inv?'mrinv':'mrcon']||{}).pos={a:[key,inv?'wo':'type'],n:null,s:[],top:1e7,left:0};
+      const key=inv?'INV-'+b:(b?a+'-'+b:a); await mrLoad(true); (S.gst[inv?'mrinv':'mrcon']||{}).pos={a:[key,inv?'wo':'type'],n:null,s:[],top:1e7,left:0};
       toast(r.added?'أُضيف':r.deleted?'هذا السجل محذوف، استرجعه من الأرشيف ← المحذوفات':'موجود مسبقاً'); vMatching(); }
     catch(e){ $('#maerr').textContent=e.message; $('#mago').disabled=false; } }; }
 async function mrImport(f){ if(!f) return; toast('جارٍ قراءة الملف…');
