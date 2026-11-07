@@ -1797,7 +1797,7 @@ async function vDaily(){
   const AD={ st:ST, unit:'صفاً', stk:'wo', file:'الجدول_اليومي', orders:false, ordOf:x=>x.wo?byRef(x.wo):null, all:Object.keys(DL), lbl:k=>DL[k]||k, val:(o,k)=>o[k]==null?'':o[k],
     can:(o,k)=>can&&DL_EDIT.includes(k)&&!!o.id, opts:(o,k)=>k==='office'?S.B.lists.office:k==='engineer'?names:k==='safety_eng'?sfn:k==='contractor'?CONTR_CN():k==='type'?[...new Set(S.orders.filter(x=>x.wo===woNum(o.wo)).map(x=>x.type).filter(Boolean))]:undefined, dates:['date'], wrap:['work','desc','note'], free:['engineer','safety_eng','contractor','type'],
     src:()=>'الجدول اليومي', clr:()=>tc, chip:()=>'', cls:(o,k)=>k==='wo'?'wo':'',
-    cell:(o,k,v)=>k==='wo'?esc(woNum(v)):k==='location'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener">الخريطة</a>`:k==='station_url'?stLink(v,o.station):(k==='engineer'||k==='safety_eng')?'<b>'+esc(v)+'</b>':(k==='work'||k==='note')?richHtml(v):esc(v),
+    cell:(o,k,v)=>k==='wo'?esc(woNum(v)):k==='location'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener">الخريطة</a>`:k==='location'&&o.station_url?`<a href="${esc(o.station_url)}" target="_blank" rel="noopener" class="muted" title="لا يوجد رابط من المقاول — موقع المحطة ${esc(o.station||'')} من جدول المحطات">📍 من جدول المحطات</a>`:k==='station_url'?stLink(v,o.station):(k==='engineer'||k==='safety_eng')?'<b>'+esc(v)+'</b>':(k==='work'||k==='note')?richHtml(v):esc(v),
     search:o=>[o.wo,o.work,o.engineer,o.safety_eng,o.receiver,o.station,o.contractor,o.note].join(' '), open:o=>{ if(o.wo) openOrder(o.wo); }, undo:can?(()=>undoLast('dl')):null,
     norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('saveDailyCells',S.tok,recs).then(x=>{ x.rows.forEach(y=>{ const n={}; x.headers.forEach((k,i)=>n[k]=y[i]); const o=L.find(z=>z.id===n.id); if(o) Object.assign(o,n); }); }),
@@ -1834,7 +1834,7 @@ function addDaily(d){
    <label>المكتب<select id="x_office">${offs.map(o=>`<option>${o}</option>`).join('')}</select></label><label>العمل<input id="x_work" placeholder="اضافة عداد"></label><label style="grid-column:1/-1">الوصف (وصف زيارة هذا اليوم)<textarea id="x_desc" rows="2"></textarea></label>
    <label>الوقت<input id="x_time" placeholder="6:00AM"></label><label>مهندس الموقع<input id="x_engineer" placeholder="اكتب جزءاً من الاسم"></label><label>مهندس السلامة<input id="x_safety_eng" placeholder="اكتب جزءاً من الاسم"></label>
    <label>جوال المهندس<input id="x_phone"></label><label>المستلم<input id="x_receiver"></label><label>جوال المستلم<input id="x_receiver_phone"></label>
-   <label>رقم المحطة<input id="x_station"></label><label>رابط الموقع<input id="x_location"></label><label>ملاحظة<input id="x_note"></label></div>
+   <label>رقم المحطة<input id="x_station"><span id="xsth" style="font-size:12px"></span></label><label>رابط الموقع من المقاول<input id="x_location" placeholder="إن وُجد"></label><label>ملاحظة<input id="x_note"></label></div>
    <div class="muted" id="xhint"></div>
    <datalist id="wol">${woOpts()}</datalist><div class="err" id="xerr"></div>
    <button class="pri" id="xsave">حفظ</button> <button onclick="closeModal()">إلغاء</button>`);
@@ -1854,6 +1854,10 @@ function addDaily(d){
     const pre=p[1]?cands.find(x=>x.ccode===p[1]||x.type===p[1]):null, cur=sel.value;
     sel.innerHTML=cands.map(x=>`<option value="${esc(x.key)}">${esc((x.type||x.ccode||'—')+(cands.length>1?' — '+(x.contractor||'')+' ('+x.key+')':''))}</option>`).join('');
     const want=pre?pre.key:(cands.some(x=>x.key===cur)?cur:cands[0].key); sel.value=want; if(want!==cur) fill(want); };
+  const stHint=async()=>{ const st=$('#x_station').value.trim(), of=$('#x_office').value; const el=$('#xsth'); if(!el) return; el.innerHTML=''; if(!st) return;
+    try{ const r=await api('stFind',S.tok,of,st); const k=x=>String(x||'').toUpperCase().replace(/\s/g,'').replace(/^O\/?S[#\-_.]?/,'OS').replace(/^(OS)?0*(\d{1,6})$/,(m,a,b)=>(a||'')+('000000'+b).slice(-6)); const x=r.rows.find(y=>k(y.station)===k(st));
+      el.innerHTML=x&&x.url?`<a href="${esc(x.url)}" target="_blank" rel="noopener">📍 موقع المحطة ${esc(x.station)}</a>${$('#x_location').value.trim()?'':' — يُستخدم ما دام لا يوجد رابط من المقاول'}`:'<span class="muted">المحطة غير موجودة في جدول محطات '+esc(of)+'</span>'; }catch(e){} };
+  $('#x_station').addEventListener('change',stHint); $('#x_office').addEventListener('change',stHint);
   $('#x_wo').addEventListener('input',onWo); $('#x_wo').addEventListener('change',onWo); $('#x_type').onchange=()=>fill($('#x_type').value);
   $('#xsave').onclick=()=>{ const row={}; ['date','wo','office','work','desc','time','engineer','safety_eng','phone','receiver','receiver_phone','station','location','note'].forEach(k=>row[k]=$('#x_'+k).value.trim());
     const key=$('#x_type').value, o=S.orders.find(x=>x.key===key); if(!o) return $('#xerr').textContent='اكتب رقم أمر عمل موجود في الإسنادات واختر نوعه'; row.wo=o.key; row.type=o.type; row.contractor=o.contractor;
