@@ -298,7 +298,7 @@ async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_order
 // القراءة: عند أي عطل ← Google. الحفظ: يحمل رقماً فريداً (rid)؛ عند انقطاع يُعاد إلى الخادم الجديد بنفس الرقم (لا يتكرر الحفظ)، ولا يُرسل إلى Google.
 // الإيقاف لهذا المتصفح: localStorage aji_edge = 0
 const EDGE_URL=SB_URL+'/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_NO=/^(stImport|logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature|mirrorNow|emergencyOn|emergencyOff)/;
+const EDGE_NO=/^(logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|qdBuild|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature|mirrorNow|emergencyOn|emergencyOff)/;
 const edgeOk=fn=>{ try{ return !!window.AJI_APP&&localStorage.getItem('aji_edge')!=='0'&&!pjCur()&&!EDGE_NO.test(fn); }catch(e){ return false; } };
 async function callX(fn,...a){ if(!READ_FN.test(fn)) acClear();
   if(edgeOk(fn)){ const rd=READ_FN.test(fn), t0=Date.now(), rid=rd?'':(Date.now().toString(36)+Math.random().toString(36).slice(2,10)); let j=null;
@@ -2200,7 +2200,11 @@ async function stModal(){
     document.querySelectorAll('[data-stf]').forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0], of=inp.dataset.stf; inp.value=''; if(!f) return;
       try{ $('#stres').textContent='جارٍ قراءة الملف…'; await loadXlsx(); const X=XLSX; const wb=X.read(await f.arrayBuffer(),{type:'array'}); let rows=[];
         for(const n of wb.SheetNames){ const r=X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''}); rows=rows.concat(r); }
-        $('#stres').textContent='جارٍ الحفظ ('+rows.length+' صفاً)…'; const r=await api('stImport',S.tok,of,rows,!!($('#stow')&&$('#stow').checked));
+        // يُرسل المطلوب فقط (الرقم والإحداثيات، والرابط حين لا إحداثيات) — ملف الدمام كاملاً كان أكبر من حد الطلب (07-11)
+        const HK=x=>String(x==null?'':x).replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/\s+/g,'').toLowerCase(); const hi=rows.slice(0,15).findIndex(r=>(r||[]).some(c=>/رقمالمحطه|^المحطه$|station/.test(HK(c))));
+        if(hi>=0){ const H=rows[hi].map(HK), cS=H.findIndex(c=>/رقمالمحطه|^المحطه$|station/.test(c)), cLa=H.findIndex(c=>/خطالعرض|^lat/.test(c)), cLo=H.findIndex(c=>/خطالطول|^lng|^lon/.test(c)), cU=H.findIndex(c=>/رابط|url|link|map/.test(c));
+          const v=(r,i)=>i>=0?String(r[i]==null?'':r[i]).trim():''; rows=[['رقم المحطة','خط العرض','خط الطول','رابط الموقع']].concat(rows.slice(hi+1).filter(r=>r&&v(r,cS)&&!/رقمالمحطه/.test(HK(r[cS]))).map(r=>{ const la=v(r,cLa), lo=v(r,cLo); return la&&lo?[v(r,cS),la,lo]:[v(r,cS),la,lo,v(r,cU)]; })); }
+        $('#stres').textContent='جارٍ الحفظ ('+(rows.length-1)+' محطة)…'; const r=await api('stImport',S.tok,of,rows,!!($('#stow')&&$('#stow').checked));
         I=await api('stInfo',S.tok); offs.splice(0,offs.length,...I.offices);
         draw(`✓ ${esc(of)}: ${r.total} محطة — أُضيف ${r.added}، تحدّث ${r.updated}${r.kept?'، بقي على تعديلك اليدوي '+r.kept:''}${r.noCoord?'، بلا إحداثيات '+r.noCoord:''}، ورابط المحطة تحدّث في ${r.backfill} صفاً.`); S.mt=null;
       }catch(e){ $('#sterr').textContent=e.message; $('#stres').textContent=''; } });
