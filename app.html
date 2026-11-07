@@ -1797,7 +1797,7 @@ async function vDaily(){
   const AD={ st:ST, unit:'صفاً', stk:'wo', file:'الجدول_اليومي', orders:false, ordOf:x=>x.wo?byRef(x.wo):null, all:Object.keys(DL), lbl:k=>DL[k]||k, val:(o,k)=>o[k]==null?'':o[k],
     can:(o,k)=>can&&DL_EDIT.includes(k)&&!!o.id, opts:(o,k)=>k==='office'?S.B.lists.office:k==='engineer'?names:k==='safety_eng'?sfn:k==='contractor'?CONTR_CN():k==='type'?[...new Set(S.orders.filter(x=>x.wo===woNum(o.wo)).map(x=>x.type).filter(Boolean))]:undefined, dates:['date'], wrap:['work','desc','note'], free:['engineer','safety_eng','contractor','type'],
     src:()=>'الجدول اليومي', clr:()=>tc, chip:()=>'', cls:(o,k)=>k==='wo'?'wo':'',
-    cell:(o,k,v)=>k==='wo'?esc(woNum(v)):k==='location'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener">الخريطة</a>`:k==='location'&&o.station_url?`<a href="${esc(o.station_url)}" target="_blank" rel="noopener" class="muted" title="لا يوجد رابط من المقاول — موقع المحطة ${esc(o.station||'')} من جدول المحطات">📍 من جدول المحطات</a>`:k==='station_url'?stLink(v,o.station):(k==='engineer'||k==='safety_eng')?'<b>'+esc(v)+'</b>':(k==='work'||k==='note')?richHtml(v):esc(v),
+    cell:(o,k,v)=>k==='wo'?esc(woNum(v)):k==='location'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener">الخريطة</a>`:k==='location'&&o.station_url?`<a href="${esc(String(o.station_url).replace(/#os$/,''))}" target="_blank" rel="noopener" class="muted" title="لا يوجد رابط من المقاول — موقع المحطة ${esc(o.station||'')} من جدول المحطات">📍 من جدول المحطات</a>`:k==='station_url'?stLink(v,o.station):(k==='engineer'||k==='safety_eng')?'<b>'+esc(v)+'</b>':(k==='work'||k==='note')?richHtml(v):esc(v),
     search:o=>[o.wo,o.work,o.engineer,o.safety_eng,o.receiver,o.station,o.contractor,o.note].join(' '), open:o=>{ if(o.wo) openOrder(o.wo); }, undo:can?(()=>undoLast('dl')):null,
     norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('saveDailyCells',S.tok,recs).then(x=>{ x.rows.forEach(y=>{ const n={}; x.headers.forEach((k,i)=>n[k]=y[i]); const o=L.find(z=>z.id===n.id); if(o) Object.assign(o,n); }); }),
@@ -2186,7 +2186,7 @@ async function pdfB64(f,prog){ const isPdf=/pdf/i.test(f.type||'')||/\.pdf$/i.te
 const fileB64=f=>new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=()=>no(new Error('تعذّر قراءة الملف: '+f.name)); r.readAsDataURL(f); });
 const fsize=n=>n>1048576?(n/1048576).toFixed(1)+' م.ب':n>1024?Math.round(n/1024)+' ك.ب':n+' بايت';
 // جداول مواقع المحطات لكل مكتب (المالك 07-11): رقم المحطة يجلب رابطها في الجدول اليومي والصيانة
-function stLink(v,st){ return v?`<a href="${esc(v)}" target="_blank" rel="noopener" title="موقع المحطة ${esc(st||'')}">📍 الخريطة</a>`:(st?'<span class="muted" title="المحطة غير موجودة في جدول محطات هذا المكتب">—</span>':''); }
+function stLink(v,st){ const os=/#os$/.test(v||''); v=String(v||'').replace(/#os$/,''); return v?`<a href="${esc(v)}" target="_blank" rel="noopener" title="موقع المحطة ${esc(st||'')}">📍 الخريطة</a>${os?' <span class="pill p-w" title="اكتب O/S قبل الرقم إن كانت المقصودة محطة O/S">يوجد أيضاً O/S بنفس الرقم</span>':''}`:(st?'<span class="muted" title="المحطة غير موجودة في جدول محطات هذا المكتب">—</span>':''); }
 async function stModal(){
   modal('<div class="loading">جارٍ فتح جداول المحطات…</div>'); let I; try{ I=await api('stInfo',S.tok); }catch(e){ return modal(`<div class="err">${esc(e.message)}</div>`); }
   const offs=I.offices, canAny=offs.some(o=>o.can);
