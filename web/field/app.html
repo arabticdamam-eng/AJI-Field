@@ -1366,11 +1366,11 @@ async function qdCat(){ if(!S.qdm) S.qdm=await api('qdMeta',S.tok); return S.qdm
 function qdProgTxt(p){ if(!p) return ''; const a=String(p).split(' · '); return '📝 '+a[0]+(a[1]?' · 📷 '+a[1]:''); }
 function qdApply(V){ const k=V.ctx.key, rj=[...new Set((V.d.rej||[]).map(x=>x.by).filter(Boolean))].join(', ');
   if(!V.ctx.d9){ const o=byRef(k); if(o){ o.qd_prog=V.prog; o.qd_rej=rj; if(V.qf){ ['id','url','name','status','note','by','at'].forEach(f=>o['qf_'+f]=V.qf[f]||''); } if(V.ctx.o.cur_owner) o.cur_owner=V.ctx.o.cur_owner; document.querySelectorAll('.qfb[data-qf="'+k+'"]').forEach(el=>{ el.outerHTML=qfCell(o); }); } }
-  else { const d9=k.slice(3), R=S.mt; if(R){ const H=R.headers, j=H.indexOf('d9'); const set=x=>{ x.qd_prog=V.prog; x.qf_status=(V.qf&&V.qf.status)||''; x.qd_rej=rj; }; (R.L||[]).forEach(x=>{ if(String(x.d9).trim()===d9) set(x); });
-      R.rows.forEach(r=>{ if(String(r[j]).trim()===d9){ const o={}; H.forEach((h,i)=>o[h]=r[i]); set(o); H.forEach((h,i)=>r[i]=o[h]); } }); }
+  else { const d9=k.slice(3), R=S.mt; if(R){ const H=R.headers, j=H.indexOf('d9'); const set=x=>{ x.qd_prog=V.prog; x.qf_status=(V.qf&&V.qf.status)||''; x.qd_rej=rj; }; const jm=H.indexOf('mref'); (R.L||[]).forEach(x=>{ if(String(x.mref||x.d9).trim()===d9) set(x); });
+      R.rows.forEach(r=>{ if(String(jm>=0?r[jm]:r[j]).trim()===d9){ const o={}; H.forEach((h,i)=>o[h]=r[i]); set(o); H.forEach((h,i)=>r[i]=o[h]); } }); }
     document.querySelectorAll('.qfb[data-mq="'+d9+'"]').forEach(el=>{ el.outerHTML=mqCell({d9,qd_prog:V.prog,qf_status:(V.qf&&V.qf.status)||''}); }); }
   S.fxList=null; }
-function mqCell(o){ const d9=String(o.d9||'').trim(); if(!d9) return ''; const s=QF_ST[o.qf_status||'']||QF_ST['']; return `<span class="qfb ${s.c}" data-mq="${esc(d9)}" title="ملف الجودة">${s.i} ${o.qd_prog?esc(qdProgTxt(o.qd_prog)):esc(s.t)}</span>`; }
+function mqCell(o){ const d9=String(o.mref||o.d9||'').trim(); if(!d9) return ''; const s=QF_ST[o.qf_status||'']||QF_ST['']; return `<span class="qfb ${s.c}" data-mq="${esc(d9)}" title="ملف الجودة">${s.i} ${o.qd_prog?esc(qdProgTxt(o.qd_prog)):esc(s.t)}</span>`; }
 async function qdModal(ref){ modal('<div class="loading">جارٍ فتح ملف الجودة…</div>');
   let C,V; try{ C=await qdCat(); V=await api('qdGet',S.tok,ref); }catch(e){ return modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); }
   qdApply(V); qdDraw(C,V); }
@@ -2096,9 +2096,9 @@ const phView=id=>(id=mvId(id),/^p:/.test(id))?'https:\/\/cnauqprdllsboiayfrgn.su
 const money=v=>(+v||0)?(+v).toLocaleString('en'):'';
 function fmCell(o,k){ const n=+(k==='vio'?o.vio_n:k==='mom'?o.mom_n:o.site_n)||0; return `<span class="fmb ${n?(k==='vio'?'fmv':k==='mom'?'fmm':'fms'):'fm0'}" data-fg="${k}" data-wo="${esc(o.key)}" title="${n?'فتح':'إضافة'} ${FG[k].t}">${n?(k==='vio'?'⚠️ ':k==='mom'?'📝 ':'📍 ')+n:'＋'}</span>`; }
 async function fmMeta(){ if(!S.meta) S.meta=await api('formsMeta',S.tok); return S.meta; }
-function mtSetCount(d9,n){ d9=String(d9||'').replace(/^D9:/,''); const R=S.mt; if(R){ const i=R.headers.indexOf('vio_n'), j=R.headers.indexOf('d9'); (R.L||[]).forEach(x=>{ if(String(x.d9).trim()===d9) x.vio_n=n; }); if(i>=0&&j>=0) R.rows.forEach(x=>{ if(String(x[j]).trim()===d9) x[i]=n; }); }
+function mtSetCount(d9,n){ d9=String(d9||'').replace(/^D9:/,''); const R=S.mt; if(R){ const i=R.headers.indexOf('vio_n'), j=R.headers.indexOf('mref')>=0?R.headers.indexOf('mref'):R.headers.indexOf('d9'); (R.L||[]).forEach(x=>{ if(String(x.mref||x.d9).trim()===d9) x.vio_n=n; }); if(i>=0&&j>=0) R.rows.forEach(x=>{ if(String(x[j]).trim()===d9) x[i]=n; }); }
   document.querySelectorAll('.fmb[data-wo="D9:'+d9+'"]').forEach(el=>{ el.outerHTML=mtCell({d9,vio_n:n}); }); S.fmList=null; S.fxList=null; }
-function mtCell(o){ const d9=String(o.d9||'').trim(); if(!d9) return ''; const n=+o.vio_n||0; return `<span class="fmb ${n?'fmv':'fm0'}" data-fg="vio" data-wo="D9:${esc(d9)}" title="${n?'فتح':'إضافة'} المخالفات">${n?'⚠️ '+n:'＋'}</span>`; }
+function mtCell(o){ const d9=String(o.mref||o.d9||'').trim(); if(!d9) return ''; const n=+o.vio_n||0; return `<span class="fmb ${n?'fmv':'fm0'}" data-fg="vio" data-wo="D9:${esc(d9)}" title="${n?'فتح':'إضافة'} المخالفات">${n?'⚠️ '+n:'＋'}</span>`; }
 function fmSetCounts(wo,c){ if(/^D9:/.test(String(wo||''))){ if(c) mtSetCount(wo,c.vio_n); return; } const o=byRef(wo); if(!o||!c) return; o.vio_n=c.vio_n; o.mom_n=c.mom_n; o.site_n=c.site_n||'';
   document.querySelectorAll('.fmb[data-wo="'+o.key+'"]').forEach(el=>{ el.outerHTML=fmCell(o,el.dataset.fg); }); S.fmList=null; S.fxList=null; }
 const fmSum=f=>f.kind==='meeting'?(f.data.topics||''):f.kind==='site'?(f.data.notes||''):(f.data.items||[]).map(i=>i.text).filter(Boolean).join(' / ');
@@ -2109,7 +2109,7 @@ async function formsModal(wo,g){
   const G=FG[g]; modal('<div class="loading">جارٍ التحميل…</div>');
   let r; try{ r=await api('listForms',S.tok,wo); }catch(e){ return modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); }
   const o=Object.assign({},fmOrder(wo),r.order); if(!o.maint) o.key=keyOf(o); wo=o.key; const list=r.forms.filter(f=>G.kinds.includes(f.kind)), tot=list.reduce((s,f)=>s+(+f.total||0),0);
-  if(o.maint) mtSetCount(o.wo,String(list.length||'')); else fmSetCounts(wo,{vio_n:String(r.forms.filter(f=>f.kind!=='meeting'&&f.kind!=='site').length||''),mom_n:String(r.forms.filter(f=>f.kind==='meeting').length||''),site_n:String(r.forms.filter(f=>f.kind==='site').length||'')});
+  if(o.maint) mtSetCount(o.key||o.wo,String(list.length||'')); else fmSetCounts(wo,{vio_n:String(r.forms.filter(f=>f.kind!=='meeting'&&f.kind!=='site').length||''),mom_n:String(r.forms.filter(f=>f.kind==='meeting').length||''),site_n:String(r.forms.filter(f=>f.kind==='site').length||'')});
   modal(`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">${G.t} — ${o.maint?'إشعار الصيانة D9 '+esc(o.wo):'أمر العمل '+esc(o.wo)+(o.type?'-'+esc(o.type):'')}</h3><span class="sp"></span>${G.kinds.map(k=>`<button class="pri" data-new="${k}">+ ${FK[k].t}</button>`).join('')}<button onclick="closeModal()">إغلاق</button></div>
    <div class="kv"><div><span>المكتب:</span> ${esc(o.office)}</div><div><span>المقاول:</span> ${esc(CSHOW(o.contractor,o.maint?'mt':'cn'))}</div>${o.maint?`<div><span>المحطة:</span> ${esc(o.station||'')}</div>`:`<div><span>الحي:</span> ${esc(o.district||'')}</div><div><span>مهندس الموقع:</span> ${esc(o.site_engineer||'—')}</div>`}</div>
    ${list.length?`<div class="tw" style="max-height:60vh"><table><thead><tr><th>النموذج</th><th>التاريخ</th><th>${g==='vio'?'المخالفة':g==='site'?'الملاحظات':'المحاور'}</th>${g==='vio'?'<th>الغرامة</th>':''}<th>الكاتب</th><th>صور</th><th></th></tr></thead><tbody>${list.map(f=>`<tr><td>${FK[f.kind].i} ${esc(FK[f.kind].t)} <b>${esc(f.seq)}</b></td><td>${esc(f.date)}</td><td class="wrap"><span>${esc(fmSum(f))}</span></td>${g==='vio'?`<td>${money(f.total)}</td>`:''}<td>${esc(f.author)}</td><td>${f.photos.length||''}</td><td style="white-space:nowrap"><button data-open="${esc(f.id)}">${f.can?'فتح / تعديل':'عرض'}</button> <button data-prt="${esc(f.id)}">🖨 طباعة</button></td></tr>`).join('')}</tbody></table></div>${g==='vio'&&tot?`<div style="margin-top:6px">إجمالي الغرامات: <b>${money(tot)}</b> ريال</div>`:''}`:`<div class="card muted" style="margin:8px 0">لا توجد ${G.t} لهذا الأمر بعد.</div>`}`);
@@ -2134,6 +2134,30 @@ async function pdfB64(f,prog){ const isPdf=/pdf/i.test(f.type||'')||/\.pdf$/i.te
   catch(e){ console.warn('pdf compress',e); return fileB64(f); } }
 const fileB64=f=>new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=()=>no(new Error('تعذّر قراءة الملف: '+f.name)); r.readAsDataURL(f); });
 const fsize=n=>n>1048576?(n/1048576).toFixed(1)+' م.ب':n>1024?Math.round(n/1024)+' ك.ب':n+' بايت';
+// فاتورة المقاول على إشعار الصيانة (المالك 07-11): صورة أو PDF، وقيمتها في «فواتير المقاول»
+function ciCell(o){ let n=0; try{ n=(JSON.parse(o.c_inv_files||'[]')||[]).length; }catch(e){} return `<span class="fmb ${n?'fm1':'fm0'} cinb" data-ci="${esc(o.id)}" title="${n?'فتح فاتورة المقاول':'إرفاق فاتورة المقاول (صورة أو PDF)'}">${n?'📄 '+n:'📎 إرفاق'}</span>`; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('.cinb'); if(b){ e.preventDefault(); e.stopPropagation(); ciModal(b.dataset.ci); } },true);
+async function ciModal(id){
+  modal('<div class="loading">جارٍ فتح فاتورة المقاول…</div>');
+  let X; try{ X=await api('mtInvList',S.tok,id); }catch(e){ modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); return; }
+  const o=(S.mt&&S.mt.L||[]).find(y=>y.id===id)||{}; let busy=0;
+  const draw=()=>{ modal(`<h3 style="margin:0 0 6px">🧾 فاتورة المقاول — إشعار ${esc(o.d9||'')} · ${esc(o.contractor||'')}</h3>
+     <div class="bar"><label>قيمة الفاتورة (ريال) <input id="civ" inputmode="decimal" value="${esc(X.value||'')}" style="width:130px"></label><button class="pri" id="civs">حفظ القيمة</button></div>
+     <div class="bar"><label class="upl">📷 تصوير الفاتورة<input type="file" id="cicam" accept="image/*" capture="environment" style="display:none"></label><label class="upl">＋ صورة أو PDF<input type="file" id="cif" accept="image/*,application/pdf" multiple style="display:none"></label><span id="cip" class="muted"></span></div>
+     ${X.files.length?`<div class="tw"><table><thead><tr><th>الملف</th><th>التاريخ</th><th>بواسطة</th><th></th></tr></thead><tbody>${X.files.map(f=>`<tr><td><a href="${esc(f.url||phView(f.id))}" target="_blank" rel="noopener">${/pdf/i.test(f.mt||f.name)?'📄':'🖼'} ${esc(f.name)}</a></td><td>${esc(f.at||'')}</td><td>${esc(f.by||'')}</td><td><button class="mini" data-cid="${esc(f.id)}" style="color:var(--dan)">حذف</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="muted">لا توجد فاتورة مرفقة بعد.</div>'}
+     <div class="err" id="cierr"></div><div style="display:flex;margin-top:8px"><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+    const up=async fs=>{ if(busy||!fs.length) return; busy=1; let k=0;
+      for(const f of fs){ try{ if(f.size>30*1048576) throw new Error(f.name+': أكبر من 30 ميغابايت'); $('#cip').textContent='جارٍ الرفع… '+(++k)+'/'+fs.length; const img=/^image\//.test(f.type);
+          X=await api('mtInvUpload',S.tok,id,img?(await shrinkImg(f,1800,0.78)).b64:await pdfB64(f,t=>{ if($('#cip')) $('#cip').textContent=t; }),img?'image/jpeg':(f.type||'application/pdf'),f.name); }catch(e){ toast(e.message); } }
+      busy=0; S.ciAgain(id,X); if($('#mdl')) draw(); };
+    $('#cif').onchange=()=>{ const fs=[...$('#cif').files]; $('#cif').value=''; up(fs); };
+    $('#cicam').onchange=()=>{ const fs=[...$('#cicam').files]; $('#cicam').value=''; up(fs); };
+    $('#civs').onclick=async()=>{ const v=$('#civ').value.trim().replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/,/g,''); if(v&&!(+v>=0)) return $('#cierr').textContent='اكتب رقماً';
+      try{ await api('saveMaintCells',S.tok,[{id,k:'inv_con',v}]); X.value=v; S.ciAgain(id,X); toast('حُفظت قيمة فاتورة المقاول'); draw(); }catch(e){ $('#cierr').textContent=e.message; } };
+    document.querySelectorAll('[data-cid]').forEach(b=>b.onclick=async()=>{ if(!confirm('حذف ملف الفاتورة؟')) return; b.disabled=true;
+      try{ X=await api('mtInvDel',S.tok,id,b.dataset.cid); S.ciAgain(id,X); draw(); }catch(e){ $('#cierr').textContent=e.message; b.disabled=false; } }); };
+  draw();
+}
 async function attModal(key){
   modal('<div class="loading">جارٍ فتح مجلد الأمر…</div>');
   let R; try{ R=await api('orderFiles',S.tok,key); }catch(e){ modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); return; }
@@ -2344,7 +2368,7 @@ async function formEditor(f,o,back){
       if(kind==='site'&&!d.notes&&!d.start_date) return $('#ferr').textContent='اكتب الملاحظات أو تاريخ البدء';
     }
     ['fsave','fsavep'].forEach(id=>$('#'+id).disabled=true);
-    try{ const r=await api('saveForm',S.tok,{id:f.id||'',kind,wo:$('#fkey')?$('#fkey').value:(o.key||o.wo),data:d,photos}); fresh=[]; fmSetCounts(r.key,r.counts); if(r.moved) fmSetCounts(r.moved.key,r.moved.counts); toast('تم حفظ '+K.t+' رقم '+r.form.seq);
+    try{ const r=await api('saveForm',S.tok,{id:f.id||'',kind,wo:$('#fkey')?$('#fkey').value:(o.key||o.wo),data:d,photos}); fresh=[]; fmSetCounts(r.key,r.counts); if(r.moved) fmSetCounts(r.moved.key,r.moved.counts); toast('تم حفظ '+K.t+' رقم '+r.form.seq+(r.copies?' — ونُسخ إلى '+r.copies+' إشعاراً آخر بنفس رقم D9 بمقاوله':'')); if(r.copies){ S.mt=null; S.fmList=null; }
       if(pr) await printForm(r.form,o); if(back) back(); else closeModal(); }
     catch(e){ $('#ferr').textContent=e.message; ['fsave','fsavep'].forEach(id=>{ if($('#'+id)) $('#'+id).disabled=false; }); } };
   if($('#fsave')) $('#fsave').onclick=()=>save(false); if($('#fsavep')) $('#fsavep').onclick=()=>save(true);
@@ -2366,7 +2390,7 @@ function fmCoverHtml(f,o,M){
     <h2>${e(K.t)}</h2>
     <div class="no">رقم ${e(f.seq||'')}</div>
     <table class="ct"><tbody>
-      ${row(isMt?'رقم الإشعار D9':'رقم أمر العمل', String(f.wo||o.wo||'').replace(/^D9:/,'')+(o.type&&!isMt?' - '+o.type:''))}
+      ${row(isMt?'رقم الإشعار D9':'رقم أمر العمل', String(f.wo||o.wo||'').replace(/^D9:/,'').replace(/~.*$/,'')+(o.type&&!isMt?' - '+o.type:''))}
       ${row('المكتب', f.office||o.office||'')}
       ${row('المقاول', FULLC(d.contractor||o.contractor||''))}
       ${row('التاريخ', d.date||'')}
@@ -2405,7 +2429,7 @@ function stPhRow(st, stamp, ph, avail){ const n=ph.length; if(!st&&!n) return ''
   const grid=n?`<table class="nb" style="width:100%;table-layout:fixed">${Array.from({length:rows},(_,r)=>`<tr>${ph.slice(r*cols,r*cols+cols).map(u=>`<td class="c" style="padding:1mm;border:none"><img src="${u}" style="max-width:100%;max-height:${h}mm;width:auto;height:auto;border:1px solid #999"></td>`).join('')}</tr>`).join('')}</table>`:'';
   return `<table class="nb" style="margin-top:6px;width:100%;table-layout:fixed;break-inside:avoid;page-break-inside:avoid"><tr>${n?`<td style="vertical-align:top;border:none">${grid}</td>`:'<td style="border:none"></td>'}${st?`<td class="c" style="width:44mm;vertical-align:bottom;border:none"><img class="stamp" src="${stamp}"></td>`:''}</tr></table>`; }
 function fmPrintHtml(f,o,M,sg){
-  const d=f.data||{}, e=x=>esc(x==null?'':x), L=M.logos||{}, isMt=(f.data||{}).src==='maint'||!!o.maint, WOL=isMt?'رقم الإشعار D9':'رقم امر العمل', woT=isMt?e(String(f.wo||o.wo||'').replace(/^D9:/,'')):e(o.type?o.type+' - ':'')+e(o.wo||woNum(f.wo)), okD=x=>{ x=String(x==null?'':x).slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(x)&&x>='2000'?x:''; }, dpt=String(d.dept||'').trim()||'الدمام', cir=f.office||o.office||'', ph=(f.photos||[]).filter(p=>p.sc!=='1').map(p=>phUrl(p.id,1400));
+  const d=f.data||{}, e=x=>esc(x==null?'':x), L=M.logos||{}, isMt=(f.data||{}).src==='maint'||!!o.maint, WOL=isMt?'رقم الإشعار D9':'رقم امر العمل', woT=isMt?e(String(f.wo||o.wo||'').replace(/^D9:/,'').replace(/~.*$/,'')):e(o.type?o.type+' - ':'')+e(o.wo||woNum(f.wo)), okD=x=>{ x=String(x==null?'':x).slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(x)&&x>='2000'?x:''; }, dpt=String(d.dept||'').trim()||'الدمام', cir=f.office||o.office||'', ph=(f.photos||[]).filter(p=>p.sc!=='1').map(p=>phUrl(p.id,1400));
   const sig=sg.sig?`<img class="sig" src="${sg.sig}">`:'', st=d.stamp!=='0'&&L.stamp;
   const more=ph.length>1?`<div class="more">${ph.slice(1).map(u=>`<img src="${u}">`).join('')}</div>`:'';
   const items=(d.items||[]).slice(); const tot=items.reduce((s,it)=>s+(f.kind==='safety'?1:(+it.qty||0))*(+it.price||0),0);
@@ -2881,32 +2905,33 @@ async function vMaint(){
   const H=R.headers, obj=x=>{ const o={}; H.forEach((k,i)=>o[k]=x[i]); return o; }; let L=R.L||(R.L=R.rows.map(obj));
   const u=k=>[...new Set(L.map(x=>x[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'ar'));
   S.gst=S.gst||{}; const ST=S.gst.maint||(S.gst.maint={cf:{},sort:['date',-1],xf:null,f:{q:''}}); const tc=TABC.maint, RO=['id','month','updated_at','updated_by'];
-  const XL={month:'الشهر',updated_at:'آخر تحديث',updated_by:'بواسطة',reason:ML.reason,mvio:'المخالفات',mqf:'ملف الجودة',matt:'المرفقات',inv_link:'فاتورة المطابقة',inv_state:'حالة الفاتورة'};
-  const AD={ del:{kind:'maint',name:'إشعار صيانة',key:o=>o.id,ref:o=>'D9 '+(o.d9||'—')+' · '+(o.station||'')+' · '+(o.date||''),done:()=>{ S.mt=null; }}, st:ST, unit:'إشعاراً', stk:'id', file:'الصيانة_والطوارئ', orders:false, lx:['mi'], all:Object.keys(ML).concat(['inv_link','inv_state','mr_wo','mr_po','mvio','mqf','matt','month','updated_at','updated_by','qf_status','qd_prog','qd_rej']),
+  const XL={month:'الشهر',updated_at:'آخر تحديث',updated_by:'بواسطة',reason:ML.reason,mvio:'المخالفات',mqf:'ملف الجودة',matt:'المرفقات',mcinv:'فاتورة المقاول (مرفق)',inv_link:'فاتورة المطابقة',inv_state:'حالة الفاتورة'};
+  const AD={ del:R.admin===false?null:{kind:'maint',name:'إشعار صيانة',key:o=>o.id,ref:o=>'D9 '+(o.d9||'—')+' · '+(o.station||'')+' · '+(o.date||''),done:()=>{ S.mt=null; }}, st:ST, unit:'إشعاراً', stk:'id', file:'الصيانة_والطوارئ', orders:false, lx:['mi'], all:Object.keys(ML).filter(k=>k!=='c_inv_files').concat(['inv_link','inv_state','mr_wo','mr_po','mvio','mqf','matt','mcinv','month','updated_at','updated_by','qf_status','qd_prog','qd_rej']),
     lbl:k=>ML[k]||XL[k]||({qf_status:'حالة ملف الجودة',qd_prog:'تقدم مستندات الجودة',qd_rej:'مستندات جودة مرفوضة',mr_wo:'رقم أمر العمل',mr_po:'رقم أمر الشراء (PO)'}[k])||k, val:(o,k)=>k==='month'?(o.date||'').slice(0,7):k==='mvio'?(o.vio_n||''):k==='mqf'?(o.qf_status||o.qd_prog||''):k==='matt'?'':(o[k]==null?'':o[k]), can:()=>false,   // جدول الصيانة للقراءة فقط: كل إدخال وتعديل عبر نموذج الإشعار وحده (قرار المالك 03-11)
     opts:(o,k)=>k==='office'?S.B.lists.office:k==='work_type'?['مجدول','طوارئ']:k==='status'?MSTAT:MCHK.includes(k)?['تم']:k==='contractor'?CONTR_MT():k==='engineer'?PEOPLE():undefined,
-    dates:['date'], wrap:['work_desc','notes','reason'], free:['contractor','engineer'], src:k=>k==='inv_link'||k==='inv_state'||k==='mr_wo'||k==='mr_po'?'المطابقة والصرف':k==='mvio'?'المخالفات والمحاضر':k==='mqf'||/^q[fd]_/.test(k)?'ملفات الجودة':k==='matt'?'البرنامج':'الصيانة والطوارئ', clr:k=>k==='inv_link'||k==='inv_state'?TABC.matching:k==='mvio'?TABC.forms:k==='mqf'||/^q[fd]_/.test(k)?TABC.quality:k==='matt'?TABC.mine:tc, chip:()=>'',
-    cell:(o,k,v)=>k==='inv_aji'&&o.inv_link?`<span title="من فواتير المطابقة والصرف">${esc(money(v)||v)} 🔗</span>`:k==='inv_state'&&v?`<span class="pill ${/المالية/.test(v)&&!/بانتظار/.test(v)?'p-ok':'p-w'}">${esc(v)}</span>`:k==='mvio'?mtCell(o):k==='mqf'?mqCell(o):k==='matt'?(String(o.d9||'').trim()?`<span class="fmb fm0 atb" data-att="D9:${esc(String(o.d9).trim())}" title="مرفقات الإشعار">📁</span>`:''):['work_desc','notes','reason'].includes(k)?richHtml(v):esc(['inv_aji','inv_con'].includes(k)?(money(v)||v):v), cls:(o,k)=>k==='status'&&o.status&&o.status!=='تم التنفيذ'&&o.status!=='ملغي'?'late':'',
+    dates:['date'], wrap:['work_desc','notes','reason'], free:['contractor','engineer'], src:k=>k==='mcinv'?'الصيانة والطوارئ':k==='inv_link'||k==='inv_state'||k==='mr_wo'||k==='mr_po'?'المطابقة والصرف':k==='mvio'?'المخالفات والمحاضر':k==='mqf'||/^q[fd]_/.test(k)?'ملفات الجودة':k==='matt'?'البرنامج':'الصيانة والطوارئ', clr:k=>k==='inv_link'||k==='inv_state'?TABC.matching:k==='mvio'?TABC.forms:k==='mqf'||/^q[fd]_/.test(k)?TABC.quality:k==='matt'?TABC.mine:tc, chip:()=>'',
+    cell:(o,k,v)=>k==='inv_aji'&&o.inv_link?`<span title="من فواتير المطابقة والصرف">${esc(money(v)||v)} 🔗</span>`:k==='inv_state'&&v?`<span class="pill ${/المالية/.test(v)&&!/بانتظار/.test(v)?'p-ok':'p-w'}">${esc(v)}</span>`:k==='mvio'?mtCell(o):k==='mqf'?mqCell(o):k==='mcinv'?ciCell(o):k==='matt'?(String(o.d9||'').trim()?`<span class="fmb fm0 atb" data-att="D9:${esc(String(o.mref||o.d9).trim())}" title="مرفقات الإشعار">📁</span>`:''):['work_desc','notes','reason'].includes(k)?richHtml(v):esc(['inv_aji','inv_con'].includes(k)?(money(v)||v):v), cls:(o,k)=>k==='status'&&o.status&&o.status!=='تم التنفيذ'&&o.status!=='ملغي'?'late':'',
     search:o=>[o.d9,o.d1,o.d2,o.mr_wo,o.mr_po,o.station,o.work_desc,o.reason,o.engineer,o.notes,o.contractor].join(' '),
     open:o=>maintForm(o), undo:R.can?(()=>undoLast('mt')):null, norm:(o,k,v)=>MCHK.includes(k)&&v?'تم':v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('saveMaintCells',S.tok,recs).then(r=>{ r.rows.forEach(x=>{ const n={}; r.headers.forEach((k,i)=>n[k]=x[i]); const o=L.find(y=>y.id===n.id); if(o) Object.assign(o,n); const i=R.rows.findIndex(y=>y[0]===n.id); if(i>=0) R.rows[i]=H.map(k=>n[k]); }); }),
-    bar:R.can?'<button class="pri" id="mnew">+ إشعار جديد</button><button id="mundo">↶ تراجع</button>':'', hint:'، نقرتان على رقم الإشعار «م» لفتح نموذجه',
+    bar:R.can?'<button class="pri" id="mnew">+ إشعار جديد</button><button id="mundo">↶ تراجع</button>':'', hint:(R.mine?'، إشعاراتك أنت فقط (مهندس التنفيذ: '+esc(R.mine)+')':'')+'، نقرتان على رقم الإشعار «م» لفتح نموذجه',
     onDraw:l=>{ const inv=l.filter(x=>numOf(x.inv_aji)>0), n=k=>l.filter(x=>x.status===k).length; if(!$('#mk')) return;
       $('#mk').innerHTML=`<div class="kpi" data-kf="all">الإشعارات<b>${l.length}</b></div><div class="kpi" data-kf="done">تم التنفيذ<b>${n('تم التنفيذ')}</b></div><div class="kpi" data-kf="open">لم يُنفّذ / جارٍ<b class="${n('لم يتم التنفيذ')+n('جار التنفيذ')?'late':''}">${n('لم يتم التنفيذ')+n('جار التنفيذ')}</b></div><div class="kpi" data-kf="cancel">ملغي<b>${n('ملغي')}</b></div>
       <div class="kpi" data-kf="inv">لها فاتورة أرابتك<b>${inv.length}</b></div><div class="kpi">فواتير أرابتك (ريال)<b>${money(Math.round(inv.reduce((s,x)=>s+numOf(x.inv_aji),0)*100)/100)||0}</b></div><div class="kpi">فواتير المقاول (ريال)<b>${money(Math.round(l.reduce((s,x)=>s+numOf(x.inv_con),0)))||0}</b></div>`; },
     wire:g=>{ if($('#mnew')) $('#mnew').onclick=()=>maintForm(null); if($('#mundo')) $('#mundo').onclick=()=>undoForm('mt',AD.lbl); } };
   const again=()=>{ R.L=null; vMaint(); };
+  S.ciAgain=(id,x)=>{ const o=L.find(y=>y.id===id); if(o){ o.c_inv_files=JSON.stringify(x.files.map(f=>({id:f.id,name:f.name,mt:f.mt,at:f.at,by:f.by}))); o.inv_con=x.value; const i=R.rows.findIndex(y=>y[0]===id); if(i>=0) R.rows[i]=H.map(k=>o[k]==null?'':o[k]); } if(S.view==='maint') vMaint(); };
   const MD=R.can&&!roView()?{ need:'رقم الإشعار (D9 أو D-1) والمكتب', fields:Object.keys(ML).filter(k=>k!=='id'), ready:o=>!!((String(o.d9||'').trim()||String(o.d1||'').trim())&&String(o.office||'').trim()),
     init:()=>({date:S.B.today,office:S.B.user.offices.length===1?S.B.user.offices[0]:'',work_type:'مجدول',status:'جار التنفيذ'}),
     commit:async x=>{ const row=await api('saveMaint',S.tok,x); R.rows.push(row); return obj(row); }, done:o=>'أُضيف الإشعار '+(o.d9||o.d1) }:null;
-  sheet(L, ['id','date','d9','mvio','mqf','matt','d1','office','contractor','station','work_type','work_desc','engineer','status'].concat(MCHK,['inv_aji','inv_con','notes']), {ad:AD, draft:null /* الإنشاء من «+ إشعار جديد» وحده */,
+  sheet(L, ['id','date','d9','mvio','mqf','matt','d1','office','contractor','station','work_type','work_desc','engineer','status'].concat(MCHK,['inv_aji','inv_con','mcinv','notes']), {ad:AD, draft:null /* الإنشاء من «+ إشعار جديد» وحده */,
     kf:{done:{label:'تم التنفيذ',fn:o=>o.status==='تم التنفيذ'}, open:{label:'لم يُنفّذ / جارٍ',fn:o=>o.status==='لم يتم التنفيذ'||o.status==='جار التنفيذ'}, cancel:{label:'ملغي',fn:o=>o.status==='ملغي'}, inv:{label:'لها فاتورة أرابتك',fn:o=>numOf(o.inv_aji)>0}},
-    kpis:`<div id="mk" class="kpis"></div>`+(R.can?`<div class="bar"><label>نسبة إنجاز الصيانة والطوارئ في التقرير الشهري % <input id="mpct" value="${esc(R.pct||'')}" style="width:70px" inputmode="decimal"></label><button id="mpsave">حفظ النسبة</button></div>`:(R.pct!==''&&R.pct!=null?`<div class="muted" style="margin-bottom:8px">نسبة إنجاز الصيانة في التقرير الشهري: ${esc(R.pct)}%</div>`:''))});
+    kpis:`<div id="mk" class="kpis"></div>`+(R.can&&R.admin!==false?`<div class="bar"><label>نسبة إنجاز الصيانة والطوارئ في التقرير الشهري % <input id="mpct" value="${esc(R.pct||'')}" style="width:70px" inputmode="decimal"></label><button id="mpsave">حفظ النسبة</button></div>`:(R.pct!==''&&R.pct!=null?`<div class="muted" style="margin-bottom:8px">نسبة إنجاز الصيانة في التقرير الشهري: ${esc(R.pct)}%</div>`:''))});
   if($('#mpsave')) $('#mpsave').onclick=()=>api('setMaintPct',S.tok,$('#mpct').value).then(p=>{ R.pct=p; S.rpMeta=null; toast('تم حفظ نسبة إنجاز الصيانة'); }).catch(e=>toast(e.message));
   // حقول النموذج تُبنى من أعمدة الصيانة نفسها لا بتعداد يدوي: أي عمود يُضاف
   // لاحقاً يظهر هنا تلقائياً. (D2 كان موجوداً في الورقة وغائباً عن النموذج،
   // فلما صار الجدول للقراءة فقط لم يبقَ له مدخل أصلاً — قرار المالك 04-11.)
-  const MF_SYS=['id','updated_at','updated_by','month','c_wo','c_po','c_inv_no','c_inv_state','c_qf_state'];
+  const MF_SYS=['id','updated_at','updated_by','month','c_wo','c_po','c_inv_no','c_inv_state','c_qf_state','c_inv_files'];
   const MF_OPT={ date:{type:'date'}, office:{sel:S.B.lists.office}, contractor:{list:'mdc'},
     work_type:{sel:['مجدول','طوارئ']}, status:{sel:MSTAT}, engineer:{list:'mde'},
     work_desc:{area:1,full:1}, reason:{full:1}, notes:{area:1,full:1} };
@@ -2924,7 +2949,7 @@ async function vMaint(){
   const mfLbl=k=>ML[k]||(MF_HAND[k]&&MF_HAND[k][0])||MF_RO_LBL[k]||XL[k]||k;
   const mfRoVal=(o,k)=>k==='mvio'?(o.vio_n||''):k==='mqf'?(o.qf_status||o.qd_prog||''):k==='matt'?(o.attach||''):(o[k]==null?'':o[k]);
   const mfCols=()=>{ const H=(R&&R.headers)?R.headers.slice():[]; ['mvio','mqf','matt'].forEach(k=>{ if(H.indexOf(k)<0) H.push(k); }); return H; };
-  function maintForm(o){ const isNew=!o, ro=!R.can; o=o||{date:S.B.today,office:(S.B.user.offices.length===1?S.B.user.offices[0]:''),work_type:'مجدول',status:'جار التنفيذ'};
+  function maintForm(o){ const isNew=!o, ro=!R.can; o=o||{engineer:R.mine||undefined,date:S.B.today,office:(S.B.user.offices.length===1?S.B.user.offices[0]:''),work_type:'مجدول',status:'جار التنفيذ'};
     // يُعرض اسم المقاول كما يُكتب في الصيانة؛ المحفوظ يبقى الاسم الرئيسي لأن الخادم يوحّده
     o=Object.assign({},o,{contractor:CSHOW(o.contractor,'mt')}); const D=ro?'disabled':'';
     o._calc={ m_wo:o.c_wo||'', m_po:o.c_po||'', m_inv_no:o.c_inv_no||'', m_inv_state:o.c_inv_state||'', m_qf_state:o.c_qf_state||'' };
@@ -2943,7 +2968,7 @@ async function vMaint(){
       ${MF_RO.length?`<div class="card" style="margin:10px 0"><div class="muted" style="margin-bottom:6px">من أقسام أخرى — للعرض فقط</div><div class="f">${MF_RO.map(([k,src])=>`<label>${esc(mfLbl(k))}<input value="${esc(mfRoVal(o,k))}" readonly title="${esc(src)}" style="background:#F4F3EE"></label>`).join('')}</div></div>`:''}
       <datalist id="mdc">${CONTR_MT().map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="mde">${PEOPLE().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
       ${o.updated_by?`<div class="muted" style="margin-top:6px">آخر تعديل: ${esc(o.updated_by)} ${esc((o.updated_at||'').slice(0,16))}</div>`:''}<div class="err" id="merr"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">${ro?'':'<button class="pri" id="msave">حفظ</button>'}${!ro&&!isNew?'<button id="mdel" style="color:var(--dan);border-color:var(--dan)">حذف</button>':''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+      <div style="display:flex;gap:8px;margin-top:8px">${ro?'':'<button class="pri" id="msave">حفظ</button>'}${!ro&&!isNew&&R.admin!==false?'<button id="mdel" style="color:var(--dan);border-color:var(--dan)">حذف</button>':''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
     if($('#msave')) $('#msave').onclick=async()=>{ const x={id:o.id||''}; document.querySelectorAll('[data-m]').forEach(el=>x[el.dataset.m]=el.value.trim()); document.querySelectorAll('[data-mc]').forEach(el=>x[el.dataset.mc]=el.checked?'تم':'');
       $('#msave').disabled=true; try{ const row=await api('saveMaint',S.tok,x); const n=obj(row); const i=R.rows.findIndex(r=>r[0]===n.id); if(i>=0) R.rows[i]=row; else R.rows.push(row); closeModal(); toast('تم الحفظ'); again(); }
       catch(e){ $('#merr').textContent=e.message; $('#msave').disabled=false; } };

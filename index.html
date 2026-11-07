@@ -167,7 +167,7 @@ setInterval(() => { if (S.Q.length && navigator.onLine) sync(); }, 60000);
 // ---------- the local copy of an order's quality documents = downloaded data + work not sent yet ----------
 const me = () => (S.user || {}).name || '';
 function itemOf(key) {
-  if (/^D9:/.test(key)) { const n = (S.B.notices || []).find(x => 'D9:' + x.d9 === key); if (!n) return null; return { key, d9: 1, type: 'D9', wo: n.d9, office: n.office, contractor: n.contractor, district: n.station, station: n.station, site_engineer: me(), work_desc: n.work_desc, status: n.status, qf_status: n.qf_status }; }
+  if (/^D9:/.test(key)) { const n = (S.B.notices || []).find(x => 'D9:' + (x.mref || x.d9) === key); if (!n) return null; return { key, d9: 1, type: 'D9', wo: n.d9, office: n.office, contractor: n.contractor, district: n.station, station: n.station, site_engineer: me(), work_desc: n.work_desc, status: n.status, qf_status: n.qf_status }; }
   const o = (S.B.orders || []).find(x => x.key === key); return o ? Object.assign({ d9: 0 }, o) : null;
 }
 function applyOp(d, op) {
@@ -291,7 +291,7 @@ function loginView(A) {
 const QFS = { '': ['بلا ملف', ''], 'بانتظار الجودة': ['بانتظار الجودة', 'p-w'], 'معتمد': ['معتمد', 'p-ok'], 'مرفوض': ['مرفوض', 'p-d'] };
 function homeView(A) {
   const B = S.B, q = S.q.trim(), tab = S.tab, fails = S.Q.filter(x => x.err).length;
-  const L = tab === 'o' ? B.orders.map(o => itemOf(o.key)) : B.notices.map(n => itemOf('D9:' + n.d9));
+  const L = tab === 'o' ? B.orders.map(o => itemOf(o.key)) : B.notices.map(n => itemOf('D9:' + (n.mref || n.d9)));
   const shown = L.filter(it => !q || [it.wo, it.contractor, it.district, it.office].join(' ').includes(q));
   A.innerHTML = topBar('AJI الميداني') + `<div class="wrap">
     <div class="card row"><div style="flex:1"><b>${esc(me())}</b><div class="muted">${navigator.onLine ? 'متصل' : 'بدون إنترنت — يُحفظ عملك على الجوال'} · ${esc(S.msg || ('بيانات ' + (B.at || '')))}</div></div>
