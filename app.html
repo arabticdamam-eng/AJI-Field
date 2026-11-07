@@ -119,7 +119,7 @@ table.gs th .fbtn.on{background:var(--acc);color:var(--onacc);border-color:var(-
 #colsw{max-height:62vh;overflow:auto;margin-bottom:10px;padding-inline-end:4px}#colsw .colsl{max-height:none;overflow:visible;margin-bottom:4px}.colg{margin-top:10px}.colgh{display:flex;align-items:center;gap:6px;padding:5px 2px;border-bottom:2px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1}.colgh button{padding:2px 10px;font-size:12px}.colgl label{cursor:pointer}
 header .pjsel{font-size:12px;padding:2px 6px;border-radius:7px;max-width:240px}header .nback{padding:4px 10px;border-radius:8px;font-size:13px;margin-inline-end:6px}
 table.gs th .rsz{position:absolute;top:0;left:-3px;width:8px;height:100%;cursor:col-resize;z-index:6}table.gs th .rsz:hover{background:var(--accbg)}
-table.gs td.dupc{background:var(--danbg) !important;color:var(--dan) !important;font-weight:700}table.gs tr.drf td{background:var(--drf)}table.gs tr.gstale td{opacity:.5}
+table.gs td.dupc{background:var(--danbg) !important;color:var(--dan) !important;font-weight:700}table.gs tr.drf td{background:var(--drf)}table.gs tr.gstale td{opacity:.5}.nsug{z-index:10050;background:var(--card,#fff);border:1px solid var(--line,#ccd);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.15);max-height:260px;overflow:auto}.nsug div{padding:7px 10px;cursor:pointer}.nsug div:hover,.nsug div.on{background:var(--accbg)}
 </style><style id="rwd">
 /* ===== التخطيط المتجاوب — من الجوال أولاً (قرار المالك 04-11) =====
    القاعدة هنا للجوال، ثم تتوسّع عند 601 (لوحي) و1025 (شاشة). كل ما سبقها يبقى كما هو. */
@@ -1766,7 +1766,7 @@ function vMatchingOrders(){
    <div class="kpi" data-kf="miss">غير مدرجة في ملف المطابقة<b class="late">${miss}</b></div><div class="kpi">إجمالي القيمة (من الإسنادات)<b>${Math.round(cst).toLocaleString('ar')}</b></div><div class="kpi">إجمالي قيمة المطابقة<b>${Math.round(val).toLocaleString('ar')}</b></div></div>`});
 }
 const DL={time:'الوقت',wo:'أمر العمل',type:'النوع',office:'المكتب',contractor:'المقاول',work:'العمل',desc:'الوصف',engineer:'مهندس الموقع',safety_eng:'مهندس السلامة',phone:'الجوال',receiver:'المستلم',receiver_phone:'جوال المستلم',station:'المحطة',location:'رابط الموقع',note:'ملاحظة',date:'التاريخ',added_by:'أضافه'};
-const DL_EDIT=['date','wo','office','work','desc','time','engineer','safety_eng','phone','receiver','receiver_phone','location','station','note'];
+const DL_EDIT=['date','wo','type','office','work','desc','time','engineer','safety_eng','phone','receiver','receiver_phone','location','station','note'];
 async function vDaily(){
   const d=S.f.dday||S.B.today, d2=S.f.dday2||S.f.dday||S.B.today, can=S.B.admin||S.B.user.role==='قائد مكتب'; S.f.dday=d; S.f.dday2=d2;
   $('#main').innerHTML='<div class="loading">جارٍ التحميل…</div>';
@@ -1777,7 +1777,7 @@ async function vDaily(){
   { const have=new Set(L.map(o=>o.id)); (S.dblank||[]).forEach(o=>{ if(!have.has(o.id)&&o.date>=d&&o.date<=d2) L.push(o); }); }
   S.gst=S.gst||{}; const ST=S.gst.daily||(S.gst.daily={cf:{},sort:null,xf:null,f:{q:''}});
   const AD={ st:ST, unit:'صفاً', stk:'wo', file:'الجدول_اليومي', orders:false, ordOf:x=>x.wo?byRef(x.wo):null, all:Object.keys(DL), lbl:k=>DL[k]||k, val:(o,k)=>o[k]==null?'':o[k],
-    can:(o,k)=>can&&DL_EDIT.includes(k)&&!!o.id, opts:(o,k)=>k==='office'?S.B.lists.office:k==='engineer'?names:k==='safety_eng'?sfn:k==='contractor'?CONTR_CN():undefined, dates:['date'], wrap:['work','desc','note'], free:['engineer','safety_eng','contractor'],
+    can:(o,k)=>can&&DL_EDIT.includes(k)&&!!o.id, opts:(o,k)=>k==='office'?S.B.lists.office:k==='engineer'?names:k==='safety_eng'?sfn:k==='contractor'?CONTR_CN():k==='type'?[...new Set(S.orders.filter(x=>x.wo===woNum(o.wo)).map(x=>x.type).filter(Boolean))]:undefined, dates:['date'], wrap:['work','desc','note'], free:['engineer','safety_eng','contractor','type'],
     src:()=>'الجدول اليومي', clr:()=>tc, chip:()=>'', cls:(o,k)=>k==='wo'?'wo':'',
     cell:(o,k,v)=>k==='wo'?esc(woNum(v)):k==='location'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener">الخريطة</a>`:(k==='engineer'||k==='safety_eng')?'<b>'+esc(v)+'</b>':(k==='work'||k==='note')?richHtml(v):esc(v),
     search:o=>[o.wo,o.work,o.engineer,o.safety_eng,o.receiver,o.station,o.contractor,o.note].join(' '), open:o=>{ if(o.wo) openOrder(o.wo); }, undo:can?(()=>undoLast('dl')):null,
@@ -1798,19 +1798,48 @@ async function vDaily(){
         api('deleteDaily',S.tok,rs.map(o=>o.id)).then(x=>{ toast('حُذف '+x.deleted+' صفاً'); vDaily(); }).catch(e=>toast(e.message)); }; } };
   sheet(L, ['time','wo','type','office','contractor','work','desc','engineer','safety_eng','phone','receiver','receiver_phone','station','location','note'].concat(d2>d?['date']:[]), {ad:AD, kpis:d>d2?'<div class="err" style="margin-bottom:8px">تاريخ البداية بعد تاريخ النهاية — صحّح أحد التاريخين.</div>':''});
 }
+// قائمة أسماء تظهر تحت الخانة: «سف» تُظهر كل اسم فيه هذه الحروف في أي جزء منه (المالك 07-11)
+function nameSuggest(inp, names, onPick){ const nk=x=>String(x||'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/\s+/g,' ').trim();
+  let box=null, at=-1; const close=()=>{ if(box){ box.remove(); box=null; } at=-1; };
+  const show=()=>{ const q=nk(inp.value); const L=(q?names.filter(n=>nk(n).includes(q)):names).slice(0,40); close(); if(!L.length||(L.length===1&&L[0]===inp.value)) return;
+    box=document.createElement('div'); box.className='nsug'; const r=inp.getBoundingClientRect(); Object.assign(box.style,{position:'fixed',top:(r.bottom+2)+'px',left:r.left+'px',width:r.width+'px'});
+    box.innerHTML=L.map((n,k)=>`<div data-k="${k}">${esc(n)}</div>`).join(''); (inp.closest('dialog')||document.body).appendChild(box);
+    box.onmousedown=e=>{ const d=e.target.closest('[data-k]'); if(!d) return; e.preventDefault(); inp.value=L[+d.dataset.k]; close(); if(onPick) onPick(inp.value); }; box._L=L; };
+  inp.setAttribute('autocomplete','off'); inp.addEventListener('input',show); inp.addEventListener('focus',show); inp.addEventListener('blur',()=>setTimeout(close,150));
+  inp.addEventListener('keydown',e=>{ if(!box) return; const it=[...box.children]; if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); at=(at+(e.key==='ArrowDown'?1:-1)+it.length)%it.length; it.forEach((x,k)=>x.classList.toggle('on',k===at)); }
+    else if(e.key==='Enter'&&at>=0){ e.preventDefault(); inp.value=box._L[at]; close(); if(onPick) onPick(inp.value); } else if(e.key==='Escape') close(); }); }
 function addDaily(d){
-  const offs=S.B.user.offices;
+  const offs=S.B.user.offices, names=S.B.people.map(p=>p.name), F=['work','desc','engineer','phone','safety_eng','receiver','receiver_phone','station','location'];
   modal(`<h3 style="margin-top:0">إضافة للجدول اليومي</h3><div class="f">
-   <label>التاريخ<input id="x_date" type="date" value="${d}"></label><label>رقم أمر العمل<input id="x_wo" list="wol"></label>
+   <label>التاريخ<input id="x_date" type="date" value="${d}"></label><label>رقم أمر العمل<input id="x_wo" list="wol" inputmode="numeric"></label>
+   <label>نوع أمر العمل<select id="x_type"><option value="">— اكتب رقم الأمر —</option></select></label>
    <label>المكتب<select id="x_office">${offs.map(o=>`<option>${o}</option>`).join('')}</select></label><label>العمل<input id="x_work" placeholder="اضافة عداد"></label><label style="grid-column:1/-1">الوصف (وصف زيارة هذا اليوم)<textarea id="x_desc" rows="2"></textarea></label>
-   <label>الوقت<input id="x_time" placeholder="6:00AM"></label><label>مهندس الموقع<select id="x_engineer">${S.B.people.map(p=>`<option>${esc(p.name)}</option>`).join('')}</select></label><label>مهندس السلامة<select id="x_safety_eng"><option value=""></option>${safetyNames().map(n=>`<option>${esc(n)}</option>`).join('')}</select></label>
+   <label>الوقت<input id="x_time" placeholder="6:00AM"></label><label>مهندس الموقع<input id="x_engineer" placeholder="اكتب جزءاً من الاسم"></label><label>مهندس السلامة<input id="x_safety_eng" placeholder="اكتب جزءاً من الاسم"></label>
    <label>جوال المهندس<input id="x_phone"></label><label>المستلم<input id="x_receiver"></label><label>جوال المستلم<input id="x_receiver_phone"></label>
    <label>رقم المحطة<input id="x_station"></label><label>رابط الموقع<input id="x_location"></label><label>ملاحظة<input id="x_note"></label></div>
+   <div class="muted" id="xhint"></div>
    <datalist id="wol">${woOpts()}</datalist><div class="err" id="xerr"></div>
    <button class="pri" id="xsave">حفظ</button> <button onclick="closeModal()">إلغاء</button>`);
+  let PH={}, auto={}, cands=[];
+  const setF=(k,v)=>{ const el=$('#x_'+k); if(!el) return; if(!el.value.trim()||auto[k]){ el.value=v||''; auto[k]=!!v; } };
+  ['engineer','safety_eng','phone','work','desc','receiver','receiver_phone','station','location'].forEach(k=>{ const el=$('#x_'+k); if(el) el.addEventListener('input',()=>{ auto[k]=false; }); });
+  const phoneFor=n=>PH[String(n||'').replace(/\s+/g,' ').trim()]||'';
+  nameSuggest($('#x_engineer'),names,n=>{ auto.engineer=false; const ph=phoneFor(n); if(ph&&(!$('#x_phone').value.trim()||auto.phone)){ $('#x_phone').value=ph; auto.phone=true; } });
+  nameSuggest($('#x_safety_eng'),safetyNames(),()=>{ auto.safety_eng=false; });
+  const fill=async key=>{ const o=S.orders.find(x=>x.key===key); if(!o) return; if(offs.includes(o.office)) $('#x_office').value=o.office;
+    $('#xhint').textContent='جارٍ جلب آخر زيارة لهذا الأمر…'; let h; try{ h=await api('dailyHints',S.tok,key); }catch(e){ $('#xhint').textContent=''; return; } if($('#x_type').value!==key) return;
+    PH=h.phones||{}; const lv=h.last;
+    if(lv){ F.forEach(k=>setF(k,lv[k])); $('#xhint').textContent='مُلئت من آخر زيارة ('+(lv.date||'')+') — عدّل ما تريد'; }
+    else { F.forEach(k=>setF(k,'')); setF('engineer',h.site_engineer); setF('phone',phoneFor(h.site_engineer)); $('#xhint').textContent=h.site_engineer?'لا زيارة سابقة لهذا الأمر — مهندس الموقع من الإسنادات':'لا زيارة سابقة لهذا الأمر'; } };
+  const onWo=()=>{ const t=String($('#x_wo').value).trim().replace(/\s+/g,''), p=t.split('-'), wo=p[0].replace(/\D/g,''); cands=wo?S.orders.filter(x=>x.wo===wo):[];
+    const sel=$('#x_type'); if(!cands.length){ sel.innerHTML='<option value="">'+(wo.length>=6?'— الرقم غير موجود في الإسنادات —':'— اكتب رقم الأمر —')+'</option>'; return; }
+    const pre=p[1]?cands.find(x=>x.ccode===p[1]||x.type===p[1]):null, cur=sel.value;
+    sel.innerHTML=cands.map(x=>`<option value="${esc(x.key)}">${esc((x.type||x.ccode||'—')+(cands.length>1?' — '+(x.contractor||'')+' ('+x.key+')':''))}</option>`).join('');
+    const want=pre?pre.key:(cands.some(x=>x.key===cur)?cur:cands[0].key); sel.value=want; if(want!==cur) fill(want); };
+  $('#x_wo').addEventListener('input',onWo); $('#x_wo').addEventListener('change',onWo); $('#x_type').onchange=()=>fill($('#x_type').value);
   $('#xsave').onclick=()=>{ const row={}; ['date','wo','office','work','desc','time','engineer','safety_eng','phone','receiver','receiver_phone','station','location','note'].forEach(k=>row[k]=$('#x_'+k).value.trim());
-    const pk=pickOrder(row.wo); if(pk.err) return $('#xerr').textContent=pk.err; const o=pk.o; row.wo=o.key; row.type=o.type; row.contractor=o.contractor;
-    api('saveDaily',S.tok,row).then(()=>{ closeModal(); toast('أُضيف للجدول'); o.site_engineer=row.engineer; vDaily(); }).catch(e=>$('#xerr').textContent=e.message); };
+    const key=$('#x_type').value, o=S.orders.find(x=>x.key===key); if(!o) return $('#xerr').textContent='اكتب رقم أمر عمل موجود في الإسنادات واختر نوعه'; row.wo=o.key; row.type=o.type; row.contractor=o.contractor;
+    api('saveDaily',S.tok,row).then(()=>{ closeModal(); toast('أُضيف للجدول'); o.site_engineer=row.engineer||o.site_engineer; vDaily(); }).catch(e=>$('#xerr').textContent=e.message); };
 }
 
 async function openOrder(wo){
