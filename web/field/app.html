@@ -692,9 +692,12 @@ const STAGE_OLAP='↺ حسب أولاب';
 // OLAP action code with its name: «154 - تسليم أمر عمل للمقاول»
 const actLbl=c=>{ c=String(c==null?'':c).trim(); if(!c||/[—\-]\s*\D/.test(c)) return c; const j=(S.B.journey||[]).find(x=>x.kind==='إجراء'&&String(x.code)===c); return j?c+' - '+jNm(j):c; };
 // حالة الإرفاق (المالك 07-11): «تم الإرفاق» ✅ أو غيره ❌، بصلاحية «حالة الإرفاق»
-const ATT_V=['تم الإرفاق','لم يتم الإرفاق'], attOk=v=>/^تم الإرفاق/.test(String(v||'')), attCell=v=>attOk(v)?'<span style="color:var(--ok);font-weight:700">تم الإرفاق ✅</span>':'<span style="color:var(--dan)">لم يتم الإرفاق ❌</span>';
+// المالك 08-11: لم يتم الإرفاق ← مرفق جزئي ← مرفق كامل (المخزَّن للكامل «تم الإرفاق» كما كان)
+const ATT_V=['لم يتم الإرفاق','مرفق جزئي','مرفق كامل'], attOk=v=>/^(تم الإرفاق|مرفق كامل)/.test(String(v||'')), attPart=v=>/جزئ/.test(String(v||'')),
+  attCell=v=>attOk(v)?'<span style="color:var(--ok);font-weight:700">مرفق كامل ✅</span>':attPart(v)?'<span style="color:#A15C00;font-weight:700">مرفق جزئي ◐</span>':'<span style="color:var(--dan)">لم يتم الإرفاق ❌</span>';
 const attCan=()=>S.B.admin||(S.B.editable||[]).includes('att_state');
-function attKpi(L,id){ const n=L.length, a=L.filter(o=>attOk(o.att_state)).length, p=n?Math.round(a*100/n):0; return `<div class="kpi" data-kf="${id||'attno'}" title="من كل الصفوف، لا يتغير بالفلاتر — اضغط لعرض ما لم يُرفق">نسبة الإرفاق<b style="color:${p>=80?'var(--ok)':p>=50?'#A15C00':'var(--dan)'}">${p}%</b><small class="muted">${a} من ${n}</small></div>`; }
+function attKpi(L,id,okFn,what){ okFn=okFn||(o=>attOk(o.att_state)); const n=L.length, a=L.filter(okFn).length, p=n?Math.round(a*100/n):0; return `<div class="kpi" data-kf="${id||'attno'}" title="${what||'المرفق كاملاً'} من كل الصفوف، لا يتغير بالفلاتر — اضغط لعرض ما لم يكتمل">نسبة الإرفاق<b style="color:${p>=80?'var(--ok)':p>=50?'#A15C00':'var(--dan)'}">${p}%</b><small class="muted">${a} من ${n}</small></div>`; }
+function attPartKpi(L){ const n=L.filter(o=>attPart(o.att_state)).length; return `<div class="kpi" data-kf="attpart" title="مرفق جزئياً — اضغط لعرضها فقط">مرفق جزئي<b style="color:#A15C00">${n}</b></div>`; }
 const OPTS = k => { const L=S.B.lists, names=S.B.people.map(p=>p.name);
   const stl=stNames().map(stLbl);
   return ({att_state:ATT_V, cur_stage:[STAGE_OLAP].concat(stl), stage:[STAGE_OLAP].concat(stl), cur_owner:names, site_engineer:names, engineer:names, qf_owner:names, blocker_owner:L.blocker_owner,
@@ -1744,7 +1747,7 @@ function bulkEdit(list){
 
 const BASECOLS=['wo','type','office','district','contractor','assign_date','duration','due_date','left','site_engineer','notes','oracle','last_action','cur_stage','cur_owner','since','qf','vio','mom','site','boq','tasks','att','att_state','pdc_val','aji_val'];
 function vOrders(){ const canAdd=S.B.admin||S.B.user.role==='قائد مكتب';
-  const ATTX={kpis:`<div class="kpis">${attKpi(S.orders)}</div>`, kf:{attno:{label:'لم يتم الإرفاق',fn:o=>!attOk(o.att_state)}}};
+  const ATTX={kpis:`<div class="kpis">${attKpi(S.orders)}${attPartKpi(S.orders)}</div>`, kf:{attno:{label:'لم يكتمل الإرفاق',fn:o=>!attOk(o.att_state)}, attpart:{label:'مرفق جزئي',fn:o=>attPart(o.att_state)}}};
   sheet(S.orders, BASECOLS, canAdd&&!roView()?{...ATTX, draft:{ need:'رقم أمر العمل والنوع والمكتب',
     fields:['wo','type','office','district','contractor','group','assign_date','duration','due_date','desc','engineer','site_engineer','cost','po','notes','cur_owner','next_action','followup_date','stage','cur_stage'],
     ready:o=>!o._dup&&/^\d{6,12}$/.test(String(o.wo||'').trim())&&String(o.type||'').trim()&&String(o.office||'').trim(), noPaste:['wo'],
@@ -3025,7 +3028,7 @@ async function vMaint(){
     save:recs=>api('saveMaintCells',S.tok,recs).then(r=>{ r.rows.forEach(x=>{ const n={}; r.headers.forEach((k,i)=>n[k]=x[i]); const o=L.find(y=>y.id===n.id); if(o) Object.assign(o,n); const i=R.rows.findIndex(y=>y[0]===n.id); if(i>=0) R.rows[i]=H.map(k=>n[k]); }); }),
     bar:(R.can?'<button class="pri" id="mnew">+ إشعار جديد</button><button id="mundo">↶ تراجع</button>':'')+'<button id="mstm" title="جدول مواقع المحطات لكل مكتب">📍 جداول المحطات</button>', hint:(R.mine?'، إشعاراتك أنت فقط (مهندس التنفيذ: '+esc(R.mine)+')':'')+'، نقرتان على رقم الإشعار «م» لفتح نموذجه',
     onDraw:l=>{ const inv=l.filter(x=>numOf(x.inv_aji)>0), n=k=>l.filter(x=>x.status===k).length; if(!$('#mk')) return;
-      $('#mk').innerHTML=attKpi(L)+`<div class="kpi" data-kf="all">الإشعارات<b>${l.length}</b></div><div class="kpi" data-kf="done">تم التنفيذ<b>${n('تم التنفيذ')}</b></div><div class="kpi" data-kf="open">لم يُنفّذ / جارٍ<b class="${n('لم يتم التنفيذ')+n('جار التنفيذ')?'late':''}">${n('لم يتم التنفيذ')+n('جار التنفيذ')}</b></div><div class="kpi" data-kf="cancel">ملغي<b>${n('ملغي')}</b></div>
+      $('#mk').innerHTML=attKpi(L,'attno',o=>String(o.attach||'').trim()==='تم','عمود «الإرفاق» = تم')+`<div class="kpi" data-kf="all">الإشعارات<b>${l.length}</b></div><div class="kpi" data-kf="done">تم التنفيذ<b>${n('تم التنفيذ')}</b></div><div class="kpi" data-kf="open">لم يُنفّذ / جارٍ<b class="${n('لم يتم التنفيذ')+n('جار التنفيذ')?'late':''}">${n('لم يتم التنفيذ')+n('جار التنفيذ')}</b></div><div class="kpi" data-kf="cancel">ملغي<b>${n('ملغي')}</b></div>
       <div class="kpi" data-kf="inv">لها فاتورة أرابتك<b>${inv.length}</b></div><div class="kpi">فواتير أرابتك (ريال)<b>${money(Math.round(inv.reduce((s,x)=>s+numOf(x.inv_aji),0)*100)/100)||0}</b></div><div class="kpi">فواتير المقاول (ريال)<b>${money(Math.round(l.reduce((s,x)=>s+numOf(x.inv_con),0)))||0}</b></div>`; },
     wire:g=>{ if($('#mstm')) $('#mstm').onclick=()=>stModal(); if($('#mnew')) $('#mnew').onclick=()=>maintForm(null); if($('#mundo')) $('#mundo').onclick=()=>undoForm('mt',AD.lbl); } };
   const again=()=>{ R.L=null; vMaint(); };
@@ -3033,8 +3036,8 @@ async function vMaint(){
   const MD=R.can&&!roView()?{ need:'رقم الإشعار (D9 أو D-1) والمكتب', fields:Object.keys(ML).filter(k=>k!=='id'), ready:o=>!!((String(o.d9||'').trim()||String(o.d1||'').trim())&&String(o.office||'').trim()),
     init:()=>({date:S.B.today,office:S.B.user.offices.length===1?S.B.user.offices[0]:'',work_type:'مجدول',status:'جار التنفيذ'}),
     commit:async x=>{ const row=await api('saveMaint',S.tok,x); R.rows.push(row); return obj(row); }, done:o=>'أُضيف الإشعار '+(o.d9||o.d1) }:null;
-  sheet(L, ['id','date','d9','mvio','mqf','matt','d1','office','contractor','station','station_url','work_type','work_desc','engineer','status'].concat(MCHK,['inv_aji','inv_con','mcinv','msf','att_state','notes']), {ad:AD, draft:null /* الإنشاء من «+ إشعار جديد» وحده */,
-    kf:{attno:{label:'لم يتم الإرفاق',fn:o=>!attOk(o.att_state)},done:{label:'تم التنفيذ',fn:o=>o.status==='تم التنفيذ'}, open:{label:'لم يُنفّذ / جارٍ',fn:o=>o.status==='لم يتم التنفيذ'||o.status==='جار التنفيذ'}, cancel:{label:'ملغي',fn:o=>o.status==='ملغي'}, inv:{label:'لها فاتورة أرابتك',fn:o=>numOf(o.inv_aji)>0}},
+  sheet(L, ['id','date','d9','mvio','mqf','matt','d1','office','contractor','station','station_url','work_type','work_desc','engineer','status'].concat(MCHK,['inv_aji','inv_con','mcinv','msf','notes']), {ad:AD, draft:null /* الإنشاء من «+ إشعار جديد» وحده */,
+    kf:{attno:{label:'لم يتم الإرفاق',fn:o=>String(o.attach||'').trim()!=='تم'},done:{label:'تم التنفيذ',fn:o=>o.status==='تم التنفيذ'}, open:{label:'لم يُنفّذ / جارٍ',fn:o=>o.status==='لم يتم التنفيذ'||o.status==='جار التنفيذ'}, cancel:{label:'ملغي',fn:o=>o.status==='ملغي'}, inv:{label:'لها فاتورة أرابتك',fn:o=>numOf(o.inv_aji)>0}},
     kpis:`<div id="mk" class="kpis"></div>`+(R.can&&R.admin!==false?`<div class="bar"><label>نسبة إنجاز الصيانة والطوارئ في التقرير الشهري % <input id="mpct" value="${esc(R.pct||'')}" style="width:70px" inputmode="decimal"></label><button id="mpsave">حفظ النسبة</button></div>`:(R.pct!==''&&R.pct!=null?`<div class="muted" style="margin-bottom:8px">نسبة إنجاز الصيانة في التقرير الشهري: ${esc(R.pct)}%</div>`:''))});
   if($('#mpsave')) $('#mpsave').onclick=()=>api('setMaintPct',S.tok,$('#mpct').value).then(p=>{ R.pct=p; S.rpMeta=null; toast('تم حفظ نسبة إنجاز الصيانة'); }).catch(e=>toast(e.message));
   // حقول النموذج تُبنى من أعمدة الصيانة نفسها لا بتعداد يدوي: أي عمود يُضاف
