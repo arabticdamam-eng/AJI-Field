@@ -695,6 +695,8 @@ const actLbl=c=>{ c=String(c==null?'':c).trim(); if(!c||/[—\-]\s*\D/.test(c)) 
 // المالك 08-11: لم يتم الإرفاق ← مرفق جزئي ← مرفق كامل (المخزَّن للكامل «تم الإرفاق» كما كان)
 const ATT_V=['لم يتم الإرفاق','مرفق جزئي','مرفق كامل'], attOk=v=>/^(تم الإرفاق|مرفق كامل)/.test(String(v||'')), attPart=v=>/جزئ/.test(String(v||'')),
   attCell=v=>attOk(v)?'<span style="color:var(--ok);font-weight:700">مرفق كامل ✅</span>':attPart(v)?'<span style="color:#A15C00;font-weight:700">مرفق جزئي ◐</span>':'<span style="color:var(--dan)">لم يتم الإرفاق ❌</span>';
+// القيمة المخزّنة للكامل «تم الإرفاق» — عند النسخ (Ctrl+D) أو اللصق تُقرأ «مرفق كامل» حتى تُقبل من القائمة
+const attNormK=(k,v)=>k!=='att_state'?v:attOk(v)?'مرفق كامل':attPart(v)?'مرفق جزئي':v;
 const attCan=()=>S.B.admin||(S.B.editable||[]).includes('att_state');
 function attKpi(L,id,okFn,what){ okFn=okFn||(o=>attOk(o.att_state)); const n=L.length, a=L.filter(okFn).length, p=n?Math.round(a*100/n):0; return `<div class="kpi" data-kf="${id||'attno'}" title="${what||'المرفق كاملاً'} من كل الصفوف، لا يتغير بالفلاتر — اضغط لعرض ما لم يكتمل">نسبة الإرفاق<b style="color:${p>=80?'var(--ok)':p>=50?'#A15C00':'var(--dan)'}">${p}%</b><small class="muted">${a} من ${n}</small></div>`; }
 function attPartKpi(L){ const n=L.filter(o=>attPart(o.att_state)).length; return `<div class="kpi" data-kf="attpart" title="مرفق جزئياً — اضغط لعرضها فقط">مرفق جزئي<b style="color:#A15C00">${n}</b></div>`; }
@@ -1154,16 +1156,16 @@ function sheet(base, defCols, opt={}){
     inp.onblur=()=>setTimeout(()=>{ if(ed&&ed.inp===inp) commit(); },120);
   }
   function closeEditor(cancel){ if(ed){ const d=ed.d; ed=null; d.remove(); } }
-  function commit(){ if(!ed) return; const {k,inp}=ed; let v=inp.value.trim(); const opts=optsFor(rows[act[0]],k); v=A.norm(rows[act[0]],k,v);
+  function commit(){ if(!ed) return; const {k,inp}=ed; let v=inp.value.trim(); const opts=optsFor(rows[act[0]],k); v=attNormK(k,A.norm(rows[act[0]],k,v));
     closeEditor(); if(opts&&v&&!opts.includes(v)&&!A.free.includes(k)){ toast('اختر قيمة من القائمة'); return; }
     setMany(targets().map(r=>[r,act[1],v])); box.focus({preventScroll:true}); }
   function move(dr,dc){ if(!act) return; const r=Math.max(0,Math.min(rows.length-1,act[0]+dr)), c=Math.max(0,Math.min(cols.length-1,act[1]+dc)); act=[r,c]; anchor=act; sel=new Set([key(r,c)]); paintSel(); const t=cell(r,c); t&&t.scrollIntoView({block:'nearest',inline:'nearest'}); }
   let q=[], timer=null;
   function setMany(list){
     let n=0, skip=0; const ro={}, bad={};
-    list.forEach(([r,c,v])=>{ const k=cols[c], o=rows[r]; if(!o) return; if(!canEditCell(o,k)){ skip++; ro[lbl(k)]=ro[lbl(k)]||[0,roMsg(k)]; ro[lbl(k)][0]++; return; } const opts=optsFor(o,k); v=A.norm(o,k,v);
+    list.forEach(([r,c,v])=>{ const k=cols[c], o=rows[r]; if(!o) return; if(!canEditCell(o,k)){ skip++; ro[lbl(k)]=ro[lbl(k)]||[0,roMsg(k)]; ro[lbl(k)][0]++; return; } const opts=optsFor(o,k); v=attNormK(k,A.norm(o,k,v));
       if(opts&&v&&!opts.includes(v)&&!A.free.includes(k)){ skip++; const bk=lbl(k)+'|'+v; bad[bk]=(bad[bk]||0)+1; return; }
-      if(String(val(o,k))===String(v)) return;
+      if(String(attNormK(k,val(o,k)))===String(v)) return;
       if(!setMany.noHist) (setMany.h=setMany.h||[]).push([rid(o),k,String(val(o,k))]);
       o._p=o._p||{}; o._p[k]=1; if(o._e) delete o._e[k];
       q.push({rec:A.put(o,k,v),o,k}); n++; });
