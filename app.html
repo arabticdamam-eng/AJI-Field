@@ -696,6 +696,8 @@ const actLbl=c=>{ c=String(c==null?'':c).trim(); if(!c||/[—\-]\s*\D/.test(c)) 
 const ATT_V=['لم يتم الإرفاق','مرفق جزئي','مرفق كامل'], attOk=v=>/^(تم الإرفاق|مرفق كامل)/.test(String(v||'')), attPart=v=>/جزئ/.test(String(v||'')),
   attCell=v=>attOk(v)?'<span style="color:var(--ok);font-weight:700">مرفق كامل ✅</span>':attPart(v)?'<span style="color:#A15C00;font-weight:700">مرفق جزئي ◐</span>':'<span style="color:var(--dan)">لم يتم الإرفاق ❌</span>';
 // القيمة المخزّنة للكامل «تم الإرفاق» — عند النسخ (Ctrl+D) أو اللصق تُقرأ «مرفق كامل» حتى تُقبل من القائمة
+// الفلتر والترتيب يعرضان أسماء الحالات الثلاث بترتيبها، لا القيمة المخزّنة
+const attFv=(k,v)=>k!=='att_state'?v:attOk(v)?'مرفق كامل':attPart(v)?'مرفق جزئي':'لم يتم الإرفاق';
 const attNormK=(k,v)=>k!=='att_state'?v:attOk(v)?'مرفق كامل':attPart(v)?'مرفق جزئي':v;
 const attCan=()=>S.B.admin||(S.B.editable||[]).includes('att_state');
 function attKpi(L,id,okFn,what){ okFn=okFn||(o=>attOk(o.att_state)); const n=L.length, a=L.filter(okFn).length, p=n?Math.round(a*100/n):0; return `<div class="kpi" data-kf="${id||'attno'}" title="${what||'المرفق كاملاً'} من كل الصفوف، لا يتغير بالفلاتر — اضغط لعرض ما لم يكتمل">نسبة الإرفاق<b style="color:${p>=80?'var(--ok)':p>=50?'#A15C00':'var(--dan)'}">${p}%</b><small class="muted">${a} من ${n}</small></div>`; }
@@ -820,11 +822,12 @@ function applyF(list, cols, ST, A){ ST=ST||S; A=A||GRID0;
   const q=((ST.f||{}).q||'').trim(), mt=!A.match&&gMulti(q), MS=mt&&new Set(mt);
   return list.filter(o => (!q || (A.match?A.match(o,q):mt?gWords(o,A).some(w=>MS.has(w)):A.search(o).includes(q)))
     && (!ST.xf || (((A.kf||{})[ST.xf.key]||XF[ST.xf.key]||{fn:()=>true}).fn)(o))
-    && Object.entries(ST.cf||{}).every(([k,vals]) => !vals || vals.includes(String(A.val(o,k))) || (k==='contractor' && (vals.includes(String(A.rawVal?A.rawVal(o,k):o.contractor)) || vals.includes(CSHOW(String(o.contractor||''),'cn')) || vals.includes(CSHOW(String(o.contractor||''),'mt'))))));
+    && Object.entries(ST.cf||{}).every(([k,vals]) => !vals || vals.includes(String(attFv(k,A.val(o,k)))) || (k==='contractor' && (vals.includes(String(A.rawVal?A.rawVal(o,k):o.contractor)) || vals.includes(CSHOW(String(o.contractor||''),'cn')) || vals.includes(CSHOW(String(o.contractor||''),'mt'))))));
 }
 function sortList(list, ST, A){ ST=ST||S; A=A||GRID0; const val=A.val;
   if(!ST.sort) return list; const [k,d]=ST.sort;
   if(A.orders&&k==='cur_stage'){ const ix={}; stNames().forEach((n,i)=>ix[n]=i+1); return [...list].sort((a,b)=>((ix[a.cur_stage]||0)-(ix[b.cur_stage]||0))*d); }
+  if(k==='att_state') return [...list].sort((a,b)=>(ATT_V.indexOf(attFv(k,val(a,k)))-ATT_V.indexOf(attFv(k,val(b,k))))*d);
   return [...list].sort((a,b)=>{ const x=val(a,k), y=val(b,k); const nx=+x, ny=+y;
     return ((x!==''&&y!==''&&!isNaN(nx)&&!isNaN(ny)) ? nx-ny : String(x).localeCompare(String(y),'ar'))*d; });
 }
@@ -1247,9 +1250,9 @@ function sheet(base, defCols, opt={}){
   function filterMenu(k, anchorEl){
     document.querySelectorAll('.fmenu').forEach(m=>m.remove());
     const others=Object.assign({},ST.cf); delete others[k]; const saved=ST.cf; ST.cf=others; const pool=applyF(base,cols,ST,A); ST.cf=saved;
-    const cnt={}; pool.forEach(o=>{ const v=String(val(o,k)); cnt[v]=(cnt[v]||0)+1; });
+    const cnt={}; pool.forEach(o=>{ const v=String(attFv(k,val(o,k))); cnt[v]=(cnt[v]||0)+1; });
     const six={}; const stg=A.orders&&k==='cur_stage'; if(stg) stNames().forEach((n,i)=>six[stLbl(n)]=i+1);
-    const vals=Object.keys(cnt).sort((a,b)=>{ if(stg) return (six[a]||0)-(six[b]||0); const na=+a, nb=+b; return (a!==''&&b!==''&&!isNaN(na)&&!isNaN(nb))?na-nb:a.localeCompare(b,'ar'); });
+    const vals=Object.keys(cnt).sort((a,b)=>{ if(stg) return (six[a]||0)-(six[b]||0); if(k==='att_state') return ATT_V.indexOf(a)-ATT_V.indexOf(b); const na=+a, nb=+b; return (a!==''&&b!==''&&!isNaN(na)&&!isNaN(nb))?na-nb:a.localeCompare(b,'ar'); });
     const cur=ST.cf[k]; const m=document.createElement('div'); m.className='fmenu';
     m.innerHTML=`<div class="fm-s"><a data-s="1">ترتيب تصاعدي ↑</a><a data-s="-1">ترتيب تنازلي ↓</a></div>
       <input class="fm-q" placeholder="بحث في ${esc(lbl(k))}"><label class="fm-all"><input type="checkbox" checked> (تحديد الكل)</label>
