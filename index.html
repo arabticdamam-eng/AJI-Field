@@ -132,6 +132,7 @@ async function runOp(op) {
   if (op.t === 'del') return call('qdRemove', op.ref, op.slot, op.fid);
   if (op.t === 'ci') return call('fieldCInvPhoto', op.ref, op.b64, op.mime, !!op.isNew);
   if (op.t === 'sf') return call('sfUpload', op.ref, op.b64, op.mime, op.name || '', op.loc || '');
+  if (op.t === 'att') return call('uploadAttachment', op.ref, op.b64, op.mime, op.name || '', op.loc || '');
   if (op.t === 'boq') return call('boqSave', op.ref, { lines: op.lines });
   if (op.t === 'draw') return call('boqDraw', op.ref, op.draw, op.png || '');
   if (op.t === 'mt') {
@@ -354,7 +355,7 @@ function mtView(A) {
 }
 function queueView(A) {
   A.innerHTML = topBar('بانتظار الإرسال', 1) + `<div class="wrap">${S.Q.map(op => `<div class="card"><div class="row"><b>${esc(op.ref)}</b><span class="muted">${esc(op.at)}</span><span style="flex:1"></span><button data-dq="${op.id}" style="color:var(--dan)">حذف</button></div>
-    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'ci' ? 'صورة فاتورة المقاول' : op.t === 'sf' ? 'ملف السلامة' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'mt' ? 'إشعار صيانة ' + esc(op.ref) + (op.photos && op.photos.length ? ' (' + op.photos.length + ' صور)' : '') : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
+    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'ci' ? 'صورة فاتورة المقاول' : op.t === 'sf' ? 'ملف السلامة' : op.t === 'att' ? 'مرفقات أخرى' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'mt' ? 'إشعار صيانة ' + esc(op.ref) + (op.photos && op.photos.length ? ' (' + op.photos.length + ' صور)' : '') : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
     <button class="pri big" id="sn" style="width:100%">إرسال الآن</button></div>`;
   wire(); $('#sn').onclick = () => sync(true);
   $$('[data-dq]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذا العمل من الجوال نهائياً؟')) return; await DB.qdel(+b.dataset.dq); S.Q = S.Q.filter(x => x.id !== +b.dataset.dq); render(); });
@@ -387,6 +388,8 @@ function itemView(A) {
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-ci="0" hidden></label><label class="cam btn">🖼 من الجهاز<input type="file" accept="image/*,application/pdf" multiple data-ci="0" hidden></label><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cinew" style="width:auto"> فاتورة جديدة</label></div></div>`}
     <h3>ملف السلامة</h3><div class="card"><div class="muted">مستندات وصور السلامة لهذا ${it.d9 ? 'الإشعار' : 'الأمر'}: ${(() => { let n = 0; try { n = JSON.parse(it.sf_files || '[]').length; } catch (e) {} return n ? n + ' ملفاً مرفوعاً' : 'لا ملفات بعد'; })()}${S.Q.filter(q => q.t === 'sf' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'sf' && q.ref === key).length : ''}</div>
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-sf="1" hidden></label><label class="cam btn">🖼 صور أو PDF<input type="file" accept="image/*,application/pdf" multiple data-sf="1" hidden></label></div></div>
+    ${it.d9 ? '' : `<h3>مرفقات أخرى</h3><div class="card"><div class="muted">أي ملف عام لأمر العمل (رسائل، مخططات، مستندات). يظهر في البرنامج ضمن «مرفقات أمر العمل».${S.Q.filter(q => q.t === 'att' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'att' && q.ref === key).length : ''}</div>
+      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-at="1" hidden></label><label class="cam btn">📎 ملفات<input type="file" multiple data-at="1" hidden></label><a class="btn" href="./app.html?att=${encodeURIComponent(key)}">📎 مرفقات أمر العمل</a></div></div>`}
     <h3>الصور المطلوبة</h3>${ph || '<div class="card muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
     <h3>ملف الجودة</h3><div class="card"><div class="muted">بعد إرسال كل الصور والنماذج (يحتاج اتصالاً)${S.Q.some(q => q.ref === key) ? ' — <b>ما زال عندك ' + S.Q.filter(q => q.ref === key).length + ' بانتظار الإرسال</b>' : ''}</div>
       <div class="row" style="margin-top:8px"><a class="btn" href="./app.html?qd=${encodeURIComponent(key)}">📄 إنشاء / تحديث / رفع ملف جاهز</a>${it.qf_url ? `<a class="btn" href="${esc(it.qf_url)}" target="_blank" rel="noopener">👁 عرض ملف الجودة${it.qf_status ? ' (' + esc(it.qf_status) + ')' : ''}</a>` : ''}</div></div></div>`;
@@ -405,6 +408,10 @@ function itemView(A) {
     try { for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'sf', ref: key, b64: await fileB64(f), mime: 'application/pdf', name: f.name }); }
         else { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'sf', ref: key, b64: b, mime: 'image/jpeg', name: f.name }); } }
       toast('حُفظ ملف السلامة على الجوال' + (navigator.onLine ? '' : ' — يُرسل عند الاتصال')); } catch (e) { toast(e.message, 4000); } });
+  $$('input[data-at]').forEach(inp => inp.onchange = async () => { const files = [...inp.files]; inp.value = ''; if (!files.length) return;
+    try { for (const f of files) { if (/^image\//.test(f.type)) { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'att', ref: key, b64: b, mime: 'image/jpeg', name: f.name }); }
+        else { if (f.size > 15e6) throw new Error(f.name + ': أكبر من 15 ميغابايت'); await enqueue({ t: 'att', ref: key, b64: await fileB64(f), mime: f.type || 'application/octet-stream', name: f.name }); } }
+      toast('حُفظت المرفقات على الجوال' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); } catch (e) { toast(e.message, 4000); } });
   $$('input[data-ci]').forEach(inp => inp.onchange = async () => { const files = [...inp.files]; if (!files.length) return; const nw = !!($('#cinew') && $('#cinew').checked); let first = true;
     try { for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'ci', ref: key, b64: await fileB64(f), mime: 'application/pdf', isNew: nw && first }); }
         else { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'ci', ref: key, b64: b, mime: 'image/jpeg', isNew: nw && first }); } first = false; }

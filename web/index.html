@@ -640,13 +640,14 @@ function navFwd(){ if(!navNext()) return; if(NAV_G){ navGo(S.navI+1); const x=S.
 try{ if(NAV_G) google.script.history.setChangeHandler(e=>navOn(e.state)); else window.addEventListener('popstate',e=>navOn(e.state)); }catch(e){}
 // شاشة مركّزة يفتحها التطبيق الميداني (المالك 07-11): ?qd=<المرجع> لملف الجودة، و?pf=<النموذج>&ref=<المرجع> لعرض المخالفة وطباعتها PDF —
 // بلا قوائم ولا تبويبات، ومعها زر الرجوع إلى التطبيق
-const FOCUS=(()=>{ try{ const q=new URLSearchParams(location.search); return q.get('qd')?{t:'qd',ref:q.get('qd')}:q.get('pf')?{t:'pf',id:q.get('pf'),ref:q.get('ref')||''}:null; }catch(e){ return null; } })();
+const FOCUS=(()=>{ try{ const q=new URLSearchParams(location.search); return q.get('qd')?{t:'qd',ref:q.get('qd')}:q.get('att')?{t:'att',ref:q.get('att')}:q.get('pf')?{t:'pf',id:q.get('pf'),ref:q.get('ref')||''}:null; }catch(e){ return null; } })();
 function focusBack(){ if(history.length>1) history.back(); else location.href='./index.html'; }
 function focusPage(){ const a=$('#app'); if(!a) return;
-  if(!$('#fmain')){ a.innerHTML=`<div class="top" style="display:flex;gap:8px;align-items:center;padding:10px 12px"><button id="fback">→ رجوع للتطبيق الميداني</button><b id="ftitle">${FOCUS.t==='qd'?'ملف الجودة':'المخالفة / المحضر'}</b></div><div id="main"><div id="fmain" class="card" style="margin:12px"></div></div>`; $('#fback').onclick=focusBack; }
+  if(!$('#fmain')){ a.innerHTML=`<div class="top" style="display:flex;gap:8px;align-items:center;padding:10px 12px"><button id="fback">→ رجوع للتطبيق الميداني</button><b id="ftitle">${FOCUS.t==='qd'?'ملف الجودة':FOCUS.t==='att'?'مرفقات أمر العمل':'المخالفة / المحضر'}</b></div><div id="main"><div id="fmain" class="card" style="margin:12px"></div></div>`; $('#fback').onclick=focusBack; }
   if(FOCUS.done) return; FOCUS.done=1; focusRun(); }
 async function focusRun(){ const box=$('#fmain');
   if(FOCUS.t==='qd'){ box.innerHTML=`<div class="muted">أمر / إشعار: <b>${esc(String(FOCUS.ref).replace(/^D9:/,'D9 ').replace(/~.*$/,''))}</b></div><div class="bar" style="margin-top:8px"><button class="pri" id="fqd">📄 فتح ملف الجودة</button></div>`; $('#fqd').onclick=()=>qdModal(FOCUS.ref); qdModal(FOCUS.ref); return; }
+  if(FOCUS.t==='att'){ box.innerHTML=`<div class="muted">أمر العمل: <b>${esc(FOCUS.ref)}</b></div><div class="bar" style="margin-top:8px"><button class="pri" id="fat">📎 مرفقات أمر العمل</button><button id="fatf">📁 ملف أمر العمل كاملاً</button></div>`; $('#fat').onclick=()=>woFilesModal(FOCUS.ref); $('#fatf').onclick=()=>attModal(FOCUS.ref); woFilesModal(FOCUS.ref); return; }
   box.innerHTML='<div class="loading">جارٍ تجهيز النموذج…</div>';
   try{ const r=await api('listForms',S.tok,FOCUS.ref); const f=(r.forms||[]).find(x=>x.id===FOCUS.id); if(!f) throw new Error('النموذج غير موجود — ربما لم يُرسل بعد');
     const M=await fmMeta(); let sg={sig:'',emp_no:''}; const ak=String((f.data||{}).author||'').trim(); if(f.sg) sg=f.sg; else if(ak){ try{ sg=await api('formSig',S.tok,ak); }catch(e){} }
@@ -977,7 +978,7 @@ function sheet(base, defCols, opt={}){
     setTimeout(()=>document.addEventListener('mousedown',function h(e){ if(!m.contains(e.target)){ m.remove(); document.removeEventListener('mousedown',h); } }),0); };
   const roMsg=k=>OLAP_F.includes(String(k).replace(/^o:/,''))||isLK(k)||A.file==='olap'?OLAP_RO:'هذا العمود للقراءة فقط بصلاحيتك';
   const EXTRA=gridAugment(A).concat(lxAugment(A));
-  const allCols = [...new Set((A.all ? defCols.concat(A.all) : defCols.concat(Object.keys(LBL)).concat(['since'])).concat(EXTRA))].filter(k=>(canMoney()||!['pdc_val','aji_val','o:pdc_val','o:aji_val'].includes(k))&&(canCost()||!['cost','o:cost'].includes(k)));
+  const allCols = [...new Set((A.all ? defCols.concat(A.all) : defCols.concat(Object.keys(LBL)).concat(['since'])).concat(EXTRA))].filter(k=>(canMoney()||!['pdc_val','aji_val','o:pdc_val','o:aji_val'].includes(k))&&(canCost()||!['cost','o:cost'].includes(k))&&!(opt.hide||[]).includes(k));
   let cols = getCols(defCols).filter(k=>allCols.includes(k)||k==='wofiles'); if(!cols.length) cols=defCols.slice();
   if(S.view==='orders'&&!opt.ad) cols=woFilesCols(cols);
   // empty rows ("drafts"): typed like any row, they become a record once the required cells are filled
@@ -1364,15 +1365,22 @@ function exportCsv(list, cols, A){ A=A||GRID0; cols=cols||Object.keys(LBL);
   const file=A.file||'اوامر_العمل', nm=tabName(S.view)||String(file).replace(/_/g,' ');
   xuDownload(file,[xuFlat(nm,list,cols,A)]).then(()=>toast('صُدِّر الملف')).catch(e=>toast('تعذّر التصدير: '+e.message)); }
 const QF_ST={'':{t:'بلا ملف',c:'qf0',i:'📎'},'بانتظار الجودة':{t:'بانتظار الجودة',c:'qf1',i:'🕒'},'معتمد':{t:'معتمد',c:'qf2',i:'✅'},'مرفوض':{t:'مرفوض',c:'qf3',i:'⛔'}};
+// المالك 09-11: ملفات لا يعرضها المتصفح (رسائل Outlook ‎.msg/.eml، Word، Excel، مضغوطة…) تُنزَّل بدل فتحها في تبويب، فتفتح ببرنامجها
+const VIEWABLE=/\.(pdf|jpe?g|png|gif|webp|bmp|svg|txt|mp4|webm|mp3|wav)$/i;
+function stDl(url,name){ name=String(name||'').trim(); if(!url||!/\/storage\/v1\/object\//.test(url)||!name||VIEWABLE.test(name)||/[?&]download=/.test(url)) return url; return url+(url.includes('?')?'&':'?')+'download='+encodeURIComponent(name); }
+['click','auxclick'].forEach(ev=>document.addEventListener(ev,e=>{ const a=e.target.closest&&e.target.closest('a[href*="/storage/v1/object/"]'); if(!a) return; const nm=a.getAttribute('download')||a.dataset.name||a.textContent; const u=stDl(a.href,nm); if(u!==a.href) a.href=u; },true));
 // المالك 09-11: «مرفقات أمر العمل» عمود واحد بدل ملف الجودة وملف السلامة والمرفقات (المخالفات والمحاضر وبطاقات التسليم تبقى أعمدة منفصلة)
 function woFilesCols(cols){ const R=['qf','att','sf']; let out=[], put=cols.includes('wofiles'); cols.forEach(k=>{ if(R.includes(k)){ if(!put){ out.push('wofiles'); put=true; } return; } out.push(k); }); return out; }
 function wfCell(o){ const s=QF_ST[o.qf_status||'']||QF_ST['']; let n=0; try{ n=(JSON.parse(o.sf_files||'[]')||[]).length; }catch(e){}
   return `<span class="wfb" data-wf="${esc(o.key)}" title="مرفقات أمر العمل: ملف الجودة، ملف السلامة، ملف الإشراف، ومرفقات أخرى"><span class="qfb ${s.c}" style="pointer-events:none">${s.i} ${o.qd_prog&&o.qf_status!=='معتمد'?esc(qdProgTxt(o.qd_prog)):esc(s.t)}</span> <span class="fmb ${n?'fm1':'fm0'}" style="pointer-events:none">🦺 ${n}</span> <span class="fmb fm0" style="pointer-events:none">📎</span></span> <span class="fmb fm0 atb" data-att="${esc(o.key)}" title="ملف أمر العمل كاملاً — كل ما يخصه">📁</span>`; }
 async function woFilesModal(key){
-  const o=byRef(key)||{key}; modal('<div class="loading">جارٍ فتح مرفقات أمر العمل…</div>');
-  let SF, AF; try{ [SF,AF]=await Promise.all([api('sfList',S.tok,key),api('orderFiles',S.tok,key)]); }catch(e){ modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); return; }
-  let busy=0;
-  const otherOf=()=>{ const sfIds={}; SF.files.forEach(f=>sfIds[f.id]=1); return (AF.files||[]).filter(f=>!sfIds[f.id]&&(!f.kind||f.kind==='att')); };
+  // يفتح فوراً من بيانات الجدول، ثم يكمل الصلاحية وقائمة «مرفقات أخرى» حين تصل (كانت النافذة تنتظر الخادم كاملاً)
+  const o=byRef(key)||{key}; let loc=[]; try{ loc=JSON.parse(o.sf_files||'[]')||[]; }catch(e){}
+  let SF={ref:o.key||key,files:loc.map(f=>Object.assign({url:phView(f.id)},f)),can:false,_wait:1}, AF=null, busy=0, open=true;
+  const otherOf=()=>{ const sfIds={}; SF.files.forEach(f=>sfIds[f.id]=1); return ((AF&&AF.files)||[]).filter(f=>!sfIds[f.id]&&(!f.kind||f.kind==='att')); };
+  const live=()=>open&&document.querySelector('#mdl #wfall');
+  api('sfList',S.tok,key).then(r=>{ SF=r; if(live()) draw(); }).catch(e=>{ SF._wait=0; if(live()){ draw(); $('#wferr').textContent=e.message; } });
+  api('orderFiles',S.tok,key).then(r=>{ AF=r; if(live()) draw(); }).catch(e=>{ AF={files:[],err:e.message}; if(live()) draw(); });
   const row=(f,act)=>`<tr><td><a href="${esc(f.url||phView(f.id))}" target="_blank" rel="noopener">${esc(f.name)}</a></td><td class="muted">${esc(f.at||'')}</td><td class="muted">${esc(f.by||'')}</td><td style="white-space:nowrap">${act||''}</td></tr>`;
   const tbl=(L,act)=>L.length?`<div class="tw" style="max-height:28vh"><table><tbody>${L.map(f=>row(f,act(f))).join('')}</tbody></table></div>`:'<div class="muted" style="padding:6px 2px">لا ملفات بعد.</div>';
   const upl=id=>`<label class="upl">📷 تصوير<input type="file" id="${id}c" accept="image/*" capture="environment" style="display:none"></label><label class="upl">＋ صور أو PDF<input type="file" id="${id}f" accept="image/*,application/pdf" multiple style="display:none"></label><span id="${id}p" class="muted"></span>`;
@@ -1380,19 +1388,19 @@ async function woFilesModal(key){
     modal(`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">📎 مرفقات أمر العمل ${esc(SF.ref||key)}</h3><span class="sp"></span><button id="wfall" title="كل ما يخص الأمر في مكان واحد" style="margin-inline-end:40px">📁 ملف أمر العمل كاملاً</button></div>
      <div class="card" style="margin-top:10px"><b>📋 ملف الجودة</b> <span class="qfb ${q.c}" style="margin-inline-start:6px">${q.i} ${o.qd_prog&&o.qf_status!=='معتمد'?esc(qdProgTxt(o.qd_prog)):esc(q.t)}</span> <button id="wfqd" style="margin-inline-start:8px">فتح ملف الجودة وإرفاقه</button></div>
      <div class="card" style="margin-top:8px"><b>🦺 ملف السلامة</b> <span class="muted">(${SF.files.length})</span>
-       ${SF.can?`<div class="bar" style="margin:6px 0">${upl('wfs')}</div>`:'<div class="muted">للاطلاع — يرفعه مهندس الموقع أو السلامة أو التنفيذ أو قائد المكتب أو المدير.</div>'}
+       ${SF.can?`<div class="bar" style="margin:6px 0">${upl('wfs')}</div>`:SF._wait?'<div class="muted">…</div>':'<div class="muted">للاطلاع — يرفعه مهندس الموقع أو السلامة أو التنفيذ أو قائد المكتب أو المدير.</div>'}
        ${tbl(SF.files,f=>SF.can?`<button data-wfback="${esc(f.id)}" title="إرجاعه إلى مرفقات أخرى">↩︎ إلى مرفقات أخرى</button>`:'')}</div>
      <div class="card" style="margin-top:8px"><b>👷 ملف الإشراف (النماذج)</b>
        <div class="bar" style="margin-top:6px">${Object.keys(fg).map(g=>`<button data-wffg="${g}">${fg[g]}${+o[g+'_n']?' ('+esc(o[g+'_n'])+')':''}</button>`).join('')}</div></div>
-     <div class="card" style="margin-top:8px"><b>📁 مرفقات أخرى</b> <span class="muted">(${OT.length}) — الملفات القديمة التي لا يُعرف نوعها، وأي ملف عام للأمر</span>
+     <div class="card" style="margin-top:8px"><b>📁 مرفقات أخرى</b> <span class="muted">${AF?'('+OT.length+') — ':''}الملفات القديمة التي لا يُعرف نوعها، وأي ملف عام للأمر</span>
        <div class="bar" style="margin:6px 0">${upl('wfo')}</div>
-       ${tbl(OT,f=>SF.can?`<button data-wfmv="${esc(f.id)}" title="نقل الملف إلى ملف السلامة">نقل إلى… ملف السلامة</button>`:'')}</div>
+       ${AF?(AF.err?`<div class="err">${esc(AF.err)}</div>`:tbl(OT,f=>SF.can?`<button data-wfmv="${esc(f.id)}" title="نقل الملف إلى ملف السلامة">نقل إلى… ملف السلامة</button>`:'')):'<div class="loading" style="padding:6px 2px">جارٍ تحميل القائمة…</div>'}</div>
      <div class="err" id="wferr"></div>`);
     $('#wfall').onclick=()=>attModal(key); $('#wfqd').onclick=()=>qdModal(key);
     document.querySelectorAll('#mdl [data-wffg]').forEach(b=>b.onclick=()=>{ closeModal(); formsModal(key,b.dataset.wffg); });
     const send=async(which,fs)=>{ if(busy||!fs.length) return; busy=1; const P=$('#'+which+'p'); let done=0;
       for(const f of fs){ try{ if(f.size>30*1048576) throw new Error(f.name+': أكبر من 30 ميغابايت'); const img=/^image\//.test(f.type), b64=img?(await shrinkImg(f,1600,0.72)).b64:await pdfB64(f,t=>{ if(P) P.textContent=t; }), mt=img?'image/jpeg':f.type;
-          if(which==='wfs'){ SF=await api('sfUpload',S.tok,key,b64,mt,f.name,''); } else { const x=await api('uploadAttachment',S.tok,key,b64,mt,f.name,''); AF.files.unshift(Object.assign({kind:'att'},x)); } }
+          if(which==='wfs'){ SF=await api('sfUpload',S.tok,key,b64,mt,f.name,''); } else { const x=await api('uploadAttachment',S.tok,key,b64,mt,f.name,''); AF=AF||{files:[]}; AF.files.unshift(Object.assign({kind:'att'},x)); } }
         catch(e){ toast(e.message); } done++; if(P) P.textContent='جارٍ الرفع… '+done+'/'+fs.length; }
       busy=0; syncSf(); draw(); };
     ['wfs','wfo'].forEach(w=>['c','f'].forEach(t=>{ const el=$('#'+w+t); if(el) el.onchange=e=>send(w,[...e.target.files]); }));
@@ -3082,13 +3090,18 @@ async function vMaint(){
   if(S.view!=='maint') return;
   const H=R.headers, obj=x=>{ const o={}; H.forEach((k,i)=>o[k]=x[i]); return o; }; let L=R.L||(R.L=R.rows.map(obj));
   const u=k=>[...new Set(L.map(x=>x[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'ar'));
+  // رقم PO لا يتكرر بين الإشعارات (المالك 09-11): المكرر القائم يظهر بعلامة تحذير وله مرشّح
+  const poK=x=>String(x==null?'':x).split(/[،,;\n]+/).map(t=>t.replace(/\s+/g,'').toUpperCase()).filter(Boolean);
+  const POD={}; L.forEach(o=>{ const n=String(o.d9||o.d1||('#'+o.id)).trim(); poK(o.mr_po).forEach(p=>{ (POD[p]=POD[p]||new Set()).add(n); }); });
+  const poDup=o=>poK(o.mr_po).filter(p=>POD[p].size>1);
+  const poWarn=(o,v)=>{ const d=poDup(o); const oth=[...new Set(d.flatMap(p=>[...POD[p]]))].filter(n=>n!==String(o.d9||o.d1||('#'+o.id)).trim()); return `<span style="color:var(--dan);font-weight:700" title="رقم PO مكرر — مسجّل أيضاً في: ${esc(oth.join('، '))}">⚠️ ${esc(v)}</span>`; };
   S.gst=S.gst||{}; const ST=S.gst.maint||(S.gst.maint={cf:{},sort:['date',-1],xf:null,f:{q:''}}); const tc=TABC.maint, RO=['id','month','updated_at','updated_by'];
   const XL={month:'الشهر',updated_at:'آخر تحديث',updated_by:'بواسطة',reason:ML.reason,mvio:'المخالفات',mqf:'ملف الجودة',matt:'المرفقات',mcinv:'فاتورة المقاول (مرفق)',msf:'ملف السلامة',inv_link:'فاتورة المطابقة',inv_state:'حالة الفاتورة'};
   const AD={ del:R.admin===false?null:{kind:'maint',name:'إشعار صيانة',key:o=>o.id,ref:o=>'D9 '+(o.d9||'—')+' · '+(o.station||'')+' · '+(o.date||''),done:()=>{ S.mt=null; }}, st:ST, unit:'إشعاراً', stk:'id', file:'الصيانة_والطوارئ', orders:false, lx:['mi'], all:Object.keys(ML).filter(k=>k!=='c_inv_files'&&k!=='sf_files').concat(['inv_link','inv_state','mr_wo','mr_po','mvio','mqf','matt','mcinv','msf','month','updated_at','updated_by','qf_status','qd_prog','qd_rej']),
     lbl:k=>ML[k]||XL[k]||({qf_status:'حالة ملف الجودة',qd_prog:'تقدم مستندات الجودة',qd_rej:'مستندات جودة مرفوضة',mr_wo:'رقم أمر العمل',mr_po:'رقم أمر الشراء (PO)'}[k])||k, val:(o,k)=>k==='month'?(o.date||'').slice(0,7):k==='mvio'?(o.vio_n||''):k==='mqf'?(o.qf_status||o.qd_prog||''):k==='matt'?'':(o[k]==null?'':o[k]), can:(o,k)=>k==='att_state'&&attCan()&&!!o.id,   // حالة الإرفاق تُعدَّل في الجدول بصلاحيتها؛ والباقي من النموذج — جدول الصيانة للقراءة فقط: كل إدخال وتعديل عبر نموذج الإشعار وحده (قرار المالك 03-11)
     opts:(o,k)=>k==='att_state'?ATT_V:k==='office'?S.B.lists.office:k==='work_type'?['مجدول','طوارئ']:k==='status'?MSTAT:MCHK.includes(k)?['تم']:k==='contractor'?CONTR_MT():k==='engineer'?PEOPLE():undefined,
     dates:['date'], wrap:['work_desc','notes','reason'], free:['contractor','engineer'], src:k=>k==='mcinv'||k==='msf'?'الصيانة والطوارئ':k==='inv_link'||k==='inv_state'||k==='mr_wo'||k==='mr_po'?'المطابقة والصرف':k==='mvio'?'المخالفات والمحاضر':k==='mqf'||/^q[fd]_/.test(k)?'ملفات الجودة':k==='matt'?'البرنامج':'الصيانة والطوارئ', clr:k=>k==='inv_link'||k==='inv_state'?TABC.matching:k==='mvio'?TABC.forms:k==='mqf'||/^q[fd]_/.test(k)?TABC.quality:k==='matt'?TABC.mine:tc, chip:()=>'',
-    cell:(o,k,v)=>k==='inv_aji'&&o.inv_link?`<span title="من فواتير المطابقة والصرف">${esc(money(v)||v)} 🔗</span>`:k==='inv_state'&&v?`<span class="pill ${/المالية/.test(v)&&!/بانتظار/.test(v)?'p-ok':'p-w'}">${esc(v)}</span>`:k==='mvio'?mtCell(o):k==='mqf'?mqCell(o):k==='mcinv'?ciCell(o):k==='att_state'?attCell(v):k==='station_url'?stLink(v,o.station):k==='msf'?sfCell('D9:'+String(o.mref||o.d9||'').trim(),o.sf_files):k==='matt'?(String(o.d9||'').trim()?`<span class="fmb fm0 atb" data-att="D9:${esc(String(o.mref||o.d9).trim())}" title="مرفقات الإشعار">📁</span>`:''):['work_desc','notes','reason'].includes(k)?richHtml(v):esc(['inv_aji','inv_con'].includes(k)?(money(v)||v):v), cls:(o,k)=>k==='status'&&o.status&&o.status!=='تم التنفيذ'&&o.status!=='ملغي'?'late':'',
+    cell:(o,k,v)=>(k==='mr_po'||k==='m_po')&&v&&poDup(o).length?poWarn(o,v):k==='inv_aji'&&o.inv_link?`<span title="من فواتير المطابقة والصرف">${esc(money(v)||v)} 🔗</span>`:k==='inv_state'&&v?`<span class="pill ${/المالية/.test(v)&&!/بانتظار/.test(v)?'p-ok':'p-w'}">${esc(v)}</span>`:k==='mvio'?mtCell(o):k==='mqf'?mqCell(o):k==='mcinv'?ciCell(o):k==='att_state'?attCell(v):k==='station_url'?stLink(v,o.station):k==='msf'?sfCell('D9:'+String(o.mref||o.d9||'').trim(),o.sf_files):k==='matt'?(String(o.d9||'').trim()?`<span class="fmb fm0 atb" data-att="D9:${esc(String(o.mref||o.d9).trim())}" title="مرفقات الإشعار">📁</span>`:''):['work_desc','notes','reason'].includes(k)?richHtml(v):esc(['inv_aji','inv_con'].includes(k)?(money(v)||v):v), cls:(o,k)=>k==='status'&&o.status&&o.status!=='تم التنفيذ'&&o.status!=='ملغي'?'late':'',
     search:o=>[o.d9,o.d1,o.d2,o.mr_wo,o.mr_po,o.station,o.work_desc,o.reason,o.engineer,o.notes,o.contractor].join(' '),
     open:o=>maintForm(o), undo:R.can?(()=>undoLast('mt')):null, norm:(o,k,v)=>MCHK.includes(k)&&v?'تم':v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('saveMaintCells',S.tok,recs).then(r=>{ r.rows.forEach(x=>{ const n={}; r.headers.forEach((k,i)=>n[k]=x[i]); const o=L.find(y=>y.id===n.id); if(o) Object.assign(o,n); const i=R.rows.findIndex(y=>y[0]===n.id); if(i>=0) R.rows[i]=H.map(k=>n[k]); }); }),
@@ -3099,11 +3112,11 @@ async function vMaint(){
     wire:g=>{ if($('#mstm')) $('#mstm').onclick=()=>stModal(); if($('#mnew')) $('#mnew').onclick=()=>maintForm(null); if($('#mundo')) $('#mundo').onclick=()=>undoForm('mt',AD.lbl); } };
   const again=()=>{ R.L=null; vMaint(); };
   S.ciAgain=(id,x)=>{ const o=L.find(y=>y.id===id); if(o){ o.c_inv_files=JSON.stringify(x.files.map(f=>({id:f.id,name:f.name,mt:f.mt,at:f.at,by:f.by}))); o.inv_con=x.value; const i=R.rows.findIndex(y=>y[0]===id); if(i>=0) R.rows[i]=H.map(k=>o[k]==null?'':o[k]); } if(S.view==='maint') vMaint(); };
-  const MD=R.can&&!roView()?{ need:'رقم الإشعار (D9 أو D-1) والمكتب', fields:Object.keys(ML).filter(k=>k!=='id'), ready:o=>!!((String(o.d9||'').trim()||String(o.d1||'').trim())&&String(o.office||'').trim()),
+  const MD=R.can&&!roView()?{ need:'رقم الإشعار (D9 أو D-1) والمكتب', fields:Object.keys(ML).filter(k=>k!=='id'&&k!=='station_url'), ready:o=>!!((String(o.d9||'').trim()||String(o.d1||'').trim())&&String(o.office||'').trim()),
     init:()=>({date:S.B.today,office:S.B.user.offices.length===1?S.B.user.offices[0]:'',work_type:'مجدول',status:'جار التنفيذ'}),
     commit:async x=>{ const row=await api('saveMaint',S.tok,x); R.rows.push(row); return obj(row); }, done:o=>'أُضيف الإشعار '+(o.d9||o.d1) }:null;
-  sheet(L, ['id','date','d9','mvio','mqf','matt','d1','office','contractor','station','station_url','work_type','work_desc','engineer','status'].concat(MCHK,['inv_aji','inv_con','mcinv','msf','notes']), {ad:AD, draft:null /* الإنشاء من «+ إشعار جديد» وحده */,
-    kf:{attno:{label:'لم يتم الإرفاق',fn:o=>String(o.attach||'').trim()!=='تم'},done:{label:'تم التنفيذ',fn:o=>o.status==='تم التنفيذ'}, open:{label:'لم يُنفّذ / جارٍ',fn:o=>o.status==='لم يتم التنفيذ'||o.status==='جار التنفيذ'}, cancel:{label:'ملغي',fn:o=>o.status==='ملغي'}, inv:{label:'لها فاتورة أرابتك',fn:o=>numOf(o.inv_aji)>0}},
+  sheet(L, ['id','date','d9','mvio','mqf','matt','d1','office','contractor','station','work_type','work_desc','engineer','status'].concat(MCHK,['inv_aji','inv_con','mcinv','msf','notes']), {ad:AD, hide:['station_url'] /* رابط المحطة أُلغي من الصيانة (المالك 09-11) */, draft:null /* الإنشاء من «+ إشعار جديد» وحده */,
+    kf:{podup:{label:'⚠️ PO مكرر',fn:o=>poDup(o).length>0},attno:{label:'لم يتم الإرفاق',fn:o=>String(o.attach||'').trim()!=='تم'},done:{label:'تم التنفيذ',fn:o=>o.status==='تم التنفيذ'}, open:{label:'لم يُنفّذ / جارٍ',fn:o=>o.status==='لم يتم التنفيذ'||o.status==='جار التنفيذ'}, cancel:{label:'ملغي',fn:o=>o.status==='ملغي'}, inv:{label:'لها فاتورة أرابتك',fn:o=>numOf(o.inv_aji)>0}},
     kpis:`<div id="mk" class="kpis"></div>`+(R.can&&R.admin!==false?`<div class="bar"><label>نسبة إنجاز الصيانة والطوارئ في التقرير الشهري % <input id="mpct" value="${esc(R.pct||'')}" style="width:70px" inputmode="decimal"></label><button id="mpsave">حفظ النسبة</button></div>`:(R.pct!==''&&R.pct!=null?`<div class="muted" style="margin-bottom:8px">نسبة إنجاز الصيانة في التقرير الشهري: ${esc(R.pct)}%</div>`:''))});
   if($('#mpsave')) $('#mpsave').onclick=()=>api('setMaintPct',S.tok,$('#mpct').value).then(p=>{ R.pct=p; S.rpMeta=null; toast('تم حفظ نسبة إنجاز الصيانة'); }).catch(e=>toast(e.message));
   // حقول النموذج تُبنى من أعمدة الصيانة نفسها لا بتعداد يدوي: أي عمود يُضاف
