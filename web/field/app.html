@@ -643,13 +643,22 @@ function navFwd(){ if(!navNext()) return; if(NAV_G){ navGo(S.navI+1); const x=S.
 try{ if(NAV_G) google.script.history.setChangeHandler(e=>navOn(e.state)); else window.addEventListener('popstate',e=>navOn(e.state)); }catch(e){}
 // شاشة مركّزة يفتحها التطبيق الميداني (المالك 07-11): ?qd=<المرجع> لملف الجودة، و?pf=<النموذج>&ref=<المرجع> لعرض المخالفة وطباعتها PDF —
 // بلا قوائم ولا تبويبات، ومعها زر الرجوع إلى التطبيق
-const FOCUS=(()=>{ try{ const q=new URLSearchParams(location.search); return q.get('qd')?{t:'qd',ref:q.get('qd')}:q.get('att')?{t:'att',ref:q.get('att')}:q.get('pf')?{t:'pf',id:q.get('pf'),ref:q.get('ref')||''}:null; }catch(e){ return null; } })();
+const FOCUS=(()=>{ try{ const q=new URLSearchParams(location.search); return q.get('qp')?{t:'qp',ref:q.get('qp'),code:q.get('code')||'',day:q.get('day')||''}:q.get('qd')?{t:'qd',ref:q.get('qd')}:q.get('att')?{t:'att',ref:q.get('att')}:q.get('pf')?{t:'pf',id:q.get('pf'),ref:q.get('ref')||''}:null; }catch(e){ return null; } })();
 function focusBack(){ if(history.length>1) history.back(); else location.href='./index.html'; }
 function focusPage(){ const a=$('#app'); if(!a) return;
-  if(!$('#fmain')){ a.innerHTML=`<div class="top" style="display:flex;gap:8px;align-items:center;padding:10px 12px"><button id="fback">→ رجوع للتطبيق الميداني</button><b id="ftitle">${FOCUS.t==='qd'?'ملف الجودة':FOCUS.t==='att'?'مرفقات أمر العمل':'المخالفة / المحضر'}</b></div><div id="main"><div id="fmain" class="card" style="margin:12px"></div></div>`; $('#fback').onclick=focusBack; }
+  if(!$('#fmain')){ a.innerHTML=`<div class="top" style="display:flex;gap:8px;align-items:center;padding:10px 12px"><button id="fback">→ رجوع للتطبيق الميداني</button><b id="ftitle">${FOCUS.t==='qd'||FOCUS.t==='qp'?'ملف الجودة':FOCUS.t==='att'?'مرفقات أمر العمل':'المخالفة / المحضر'}</b></div><div id="main"><div id="fmain" class="card" style="margin:12px"></div></div>`; $('#fback').onclick=focusBack; }
   if(FOCUS.done) return; FOCUS.done=1; focusRun(); }
 async function focusRun(){ const box=$('#fmain');
   if(FOCUS.t==='qd'){ box.innerHTML=`<div class="muted">أمر / إشعار: <b>${esc(String(FOCUS.ref).replace(/^D9:/,'D9 ').replace(/~.*$/,''))}</b></div><div class="bar" style="margin-top:8px"><button class="pri" id="fqd">📄 فتح ملف الجودة</button></div>`; $('#fqd').onclick=()=>qdModal(FOCUS.ref); qdModal(FOCUS.ref); return; }
+  // عرض نموذج من ملف الجودة وطباعته PDF من التطبيق الميداني (المالك 10-11): ?qp=<الأمر>&code=<النموذج>
+  if(FOCUS.t==='qp'){ box.innerHTML='<div class="loading">جارٍ تجهيز النموذج…</div>';
+    try{ const C=await qdCat(), V=await api('qdGet',S.tok,FOCUS.ref), F=C.forms[FOCUS.code]; if(!F) throw new Error('النموذج غير موجود'); qdApply(V); const M=await fmMeta(), f=(V.d.f||{})[FOCUS.code]||{}, sg=await qdSigOf(f.by||V.ctx.o.site_engineer);
+      const o=V.ctx.o, day=FOCUS.day||((V.ext&&V.ext.days&&V.ext.days[0])||o.date||o.assign_date||S.B.today);
+      const html=F.k==='chk'?qdChkHtml(C,V,FOCUS.code,M.logos||{},sg.sig):F.k==='day'?qdGenHtml(C,V,FOCUS.code,F.sub==='week'?'':day,M.logos||{},sg.sig):'';
+      if(!html) throw new Error('هذا النموذج ليس قائمة تُطبع من هنا'); $('#ftitle').textContent=F.name;
+      box.innerHTML=`<div class="bar"><button class="pri" id="fprint">🖨 طباعة / حفظ PDF</button><a class="btn" href="./app.html?qd=${encodeURIComponent(FOCUS.ref)}" style="text-decoration:none">📄 ملف الجودة</a><span class="muted">من شاشة الطباعة اختر «حفظ كـ PDF» أو شاركها</span></div><div id="fprev" style="overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff">${html}</div>`;
+      $('#fprint').onclick=async()=>{ let p=$('#prt'); if(!p){ p=document.createElement('div'); p.id='prt'; document.body.appendChild(p); } p.innerHTML=chkFit(html); await Promise.all([...p.querySelectorAll('img')].map(im=>im.complete&&im.naturalWidth?1:new Promise(r=>{ im.onload=im.onerror=r; setTimeout(r,12000); }))); fitOnePage(p); window.print(); }; }
+    catch(e){ box.innerHTML=`<div class="err">${esc(e.message)}</div>`; } return; }
   if(FOCUS.t==='att'){ box.innerHTML=`<div class="muted">أمر العمل: <b>${esc(FOCUS.ref)}</b></div><div class="bar" style="margin-top:8px"><button class="pri" id="fat">📎 مرفقات أمر العمل</button><button id="fatf">📁 ملف أمر العمل كاملاً</button></div>`; $('#fat').onclick=()=>woFilesModal(FOCUS.ref); $('#fatf').onclick=()=>attModal(FOCUS.ref); woFilesModal(FOCUS.ref); return; }
   box.innerHTML='<div class="loading">جارٍ تجهيز النموذج…</div>';
   try{ const r=await api('listForms',S.tok,FOCUS.ref); const f=(r.forms||[]).find(x=>x.id===FOCUS.id); if(!f) throw new Error('النموذج غير موجود — ربما لم يُرسل بعد');
