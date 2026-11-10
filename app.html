@@ -1472,7 +1472,7 @@ function qdDraw(C,V){ const X=V.ctx, o=X.o, d=V.d, P=V.plan, ed=X.canEdit, qs=QF
     if(F.k==='chk'){ const f=(d.f||{})[k], df=!f&&!!qdDef(C,V,k); info=f?`${esc(f.by)} · ${esc(String(f.at).slice(0,16))}`:df?`<span class="muted">معبّأ تلقائياً${st==='need'?' — <b class="late">بيانات ناقصة</b>':''}</span>`:''; act=`<button data-qfm="${k}">${ed?(f?'تعديل':df?'تعديل':'تعبئة'):'عرض'}</button>${f||df?` <button data-qpr="${k}" title="طباعة">🖨</button>`:''}`; }
     else if(F.k==='up'){ const L=(d.up||{})[k]||[]; info=L.map(x=>`<span class="qdfile"><a href="${esc(/pdf$/.test(x.mime||'')?phView(x.id):phUrl(x.id,1600))}" target="_blank" rel="noopener">${/pdf$/.test(x.mime||'')?'📄':'🖼'} ${esc(x.by)}</a>${ed?`<b class="qdx" data-qdel="u:${k}" data-id="${esc(x.id)}" title="حذف">✕</b>`:''}</span>`).join(' ');
       act=ed?`<label class="qdup">📎 رفع<input type="file" data-qup="u:${k}" accept="application/pdf,image/jpeg,image/png" multiple hidden></label>`:''; }
-    else if(F.k==='site'||F.k==='meeting'){ const L=(V.linked||{})[k]||[]; info=L.length?L.map(x=>FK[F.k].i+' '+esc(x.seq)).join('، '):(F.k==='site'?'<span class="muted">تُبنى تلقائياً من بيانات الأمر — أو حرّر بطاقة بنفسك</span>':''); act=`<button data-qlk="${F.k==='site'?'site':'mom'}">${L.length?'فتح':'إنشاء'}</button>`; }
+    else if(F.k==='site'||F.k==='meeting'){ const L=(V.linked||{})[k]||[]; info=L.length?L.map(x=>FK[F.k].i+' '+esc(x.seq)).join('، '):''; act=`<button data-qlk="${F.k==='site'?'site':'mom'}">${L.length?'فتح':'إنشاء'}</button>`; }
     else if(F.k==='day'||F.k==='boq'){ const X2=V.ext||{}, L=(d.up||{})[k]||[];
       if(F.k==='day') info=X2.days&&X2.days.length?`من الجدول اليومي: ${X2.days.slice(0,4).map(esc).join('، ')}${X2.days.length>4?'…':''}`:'<span class="muted">معبّأ تلقائياً بتاريخ الأمر — ويأخذ أيام الجدول اليومي إن وُجدت</span>';
       else info=qdBoqRows(V,F.sub).length?`من المقايسة: ${qdBoqRows(V,F.sub).length} بنداً`:'<span class="late">لا توجد بنود في المقايسة'+(F.sub==='meas'?' للحفر':'')+' — عبّئ المقايسة، أو ارفع صورة النموذج</span>';
@@ -1606,9 +1606,6 @@ async function qdPrintOne(C,V,code){ let M; try{ M=await fmMeta(); }catch(e){ re
   toast('جارٍ تجهيز الطباعة…'); let p=$('#prt'); if(!p){ p=document.createElement('div'); p.id='prt'; document.body.appendChild(p); } p.innerHTML=chkFit(qdChkHtml(C,V,code,M.logos||{},sg.sig));
   await Promise.all([...p.querySelectorAll('img')].map(im=>im.complete&&im.naturalWidth?1:new Promise(r=>{ im.onload=im.onerror=r; setTimeout(r,12000); }))); fitOnePage(p); window.print(); }
 const QD_LG={se:'qdlogo:se',pdc:'qdlogo:pdc',stamp:'qdlogo:stamp'};
-// بطاقة تسليم الموقع الافتراضية (المالك 10-11): تُبنى من الأمر أو الإشعار حين لا توجد بطاقة محررة — نطاق العمل من وصف العمل، والتواريخ من الأمر
-function qdSiteDefault(V){ const o=V.ctx.o, hd=(V.d&&V.d.hdr)||{}, d0=o.date||o.assign_date||S.B.today;
-  return {kind:'site',wo:V.ctx.d9?'D9:'+o.wo:o.wo,office:o.office||'',seq:'',data:{src:V.ctx.d9?'maint':'',date:d0,time:'08:00',contractor:o.contractor||'',contractor_rep:hd.rep||'',location:o.district||o.station||hd.location||'',feeder:hd.feeder||'',author:o.site_engineer||'',stamp:'1',dept:(S.B.project||{}).dept||'',circle:o.group||'',start_date:d0,target_date:o.due_date||d0,actual_date:o.status==='تم التنفيذ'?(o.date||d0):'',notes:o.work_desc||''}}; }
 async function qdBuildHtml(C,V,msg){ const M=await fmMeta(), M2=Object.assign({},M,{logos:QD_LG}), o=V.ctx.o, d=V.d, P=V.plan, e=x=>esc(x==null?'':x), pg=[], sigT=n=>n?'qdsig:'+encodeURIComponent(n):'';
   const fid=h=>String(h).replace(new RegExp('src="https:\\/\\/drive\\.google\\.com\\/thumbnail\\?id=([\\w-]+)[^"]*"','g'),'data-fid="$1"');
   pg.push(`<div class="pf cov"><div class="logos"><img src="qdlogo:pdc"><img src="qdlogo:se"></div><h1>ملف الجودة</h1><h2>${V.ctx.d9?'إشعار الصيانة D9 '+e(o.wo):'أمر العمل '+e(o.wo)+(o.type?' - '+e(o.type):'')}</h2>
@@ -1620,8 +1617,7 @@ async function qdBuildHtml(C,V,msg){ const M=await fmMeta(), M2=Object.assign({}
   for(const k of P.req){ const F=C.forms[k];
     if(F.k==='chk'&&(d.f&&d.f[k]||qdDef(C,V,k))) pg.push(chkFit(qdChkHtml(C,V,k,QD_LG,sigT((d.f&&d.f[k]&&d.f[k].by)||o.site_engineer))));
     else if(F.k==='up') ((d.up||{})[k]||[]).forEach(x=>pg.push(/pdf$/.test(x.mime||'')?`<div class="pf cov"><h3>${e(F.name)}</h3><p>مرفق بصيغة PDF: <a href="${e(phView(x.id))}">${e(x.n)}</a></p></div>`:`<div class="pf att"><h3>${e(F.name)}</h3><img data-fid="${e(x.id)}"></div>`));
-    else if(F.k==='site'||F.k==='meeting'){ if(F.k==='site'&&!(ids[k]||[]).length) pg.push(fid(fmPrintHtml(qdSiteDefault(V),Object.assign({},o,{maint:V.ctx.d9?1:0,key:V.ctx.key}),M2,{sig:sigT(o.site_engineer),emp_no:''})));
-      (ids[k]||[]).forEach(id=>{ const f=FM[id]; if(f) pg.push(fid(fmPrintHtml(f,Object.assign({},o,{maint:V.ctx.d9?1:0,key:V.ctx.key}),M2,{sig:sigT((f.data||{}).author),emp_no:''}))); }); }
+    else if(F.k==='site'||F.k==='meeting'){ (ids[k]||[]).forEach(id=>{ const f=FM[id]; if(f) pg.push(fid(fmPrintHtml(f,Object.assign({},o,{maint:V.ctx.d9?1:0,key:V.ctx.key}),M2,{sig:sigT((f.data||{}).author),emp_no:''}))); }); }
     else if(F.k==='day'||F.k==='boq'){ const X2=V.ext||{}, sg=sigT(X2.engName||o.site_engineer);
       if(F.k==='day'){ const DD=(X2.days||[]).length?X2.days:[o.date||o.assign_date||S.B.today]; if(F.sub==='week') pg.push(chkFit(qdGenHtml(C,V,k,'',QD_LG,sg))); else DD.slice(0,6).forEach(dd=>pg.push(chkFit(qdGenHtml(C,V,k,dd,QD_LG,sg)))); }
       else if(F.k==='boq'&&qdBoqRows(V,F.sub).length) pg.push(chkFit(qdGenHtml(C,V,k,'',QD_LG,sigT(o.site_engineer))));
