@@ -75,7 +75,7 @@ const DB = { db: null,
   qall() { return this.tx('q', 'readonly', s => s.getAll()); }, qadd(o) { return this.tx('q', 'readwrite', s => s.add(o)); }, qput(o) { return this.tx('q', 'readwrite', s => s.put(o)); }, qdel(id) { return this.tx('q', 'readwrite', s => s.delete(id)); }
 };
 // a new choice (network / equipment / work kind) replaces the same unsent choice, so ticking many boxes stays one item
-const SAME = (a, b) => (a.t === 'boq' || a.t === 'draw') ? a.t === b.t && a.ref === b.ref && !a.sending : a.t === 'qd' && b.t === 'qd' && a.ref === b.ref && !a.sending && ['net', 'eq', 'mw'].some(k => a.op[k] !== undefined && b.op[k] !== undefined) && Object.keys(a.op).length === 1 && Object.keys(b.op).length === 1;
+const SAME = (a, b) => (a.t === 'boq' || a.t === 'draw') ? a.t === b.t && a.ref === b.ref && !a.sending : a.t === 'qd' && b.t === 'qd' && a.ref === b.ref && !a.sending && ['net', 'eq', 'mw', 'wt'].some(k => a.op[k] !== undefined && b.op[k] !== undefined) && Object.keys(a.op).length === 1 && Object.keys(b.op).length === 1;
 async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op));
   if (old) { Object.assign(old, op, { id: old.id }); delete old.err; await DB.qput(old); } else { op.id = await DB.qadd(op); S.Q.push(op); }
   render(); clearTimeout(enqueue.h); enqueue.h = setTimeout(sync, 1500); }
@@ -175,7 +175,8 @@ function itemOf(key) {
 function applyOp(d, op) {
   const C = S.B.cat;
   if (op.t === 'qd') { const o = op.op;
-    if (o.net !== undefined) d.net = o.net; if (o.eq) d.eq = o.eq; if (o.mw) d.mw = o.mw;
+    if (o.net !== undefined) d.net = o.net; if (o.eq) d.eq = o.eq; if (o.mw) d.mw = o.mw; if (o.wt !== undefined) d.wt = o.wt;
+    if (o.hdr) { d.hdr = d.hdr || {}; Object.keys(o.hdr).forEach(h => { if (o.hdr[h]) d.hdr[h] = o.hdr[h]; else delete d.hdr[h]; }); }
     if (o.add) { d.add = [...new Set((d.add || []).concat([o.add]))]; d.drop = (d.drop || []).filter(k => k !== o.add); }
     if (o.drop) { d.drop = [...new Set((d.drop || []).concat([o.drop]))]; d.add = (d.add || []).filter(k => k !== o.drop); }
     if (o.form) { d.f = d.f || {}; d.f[o.form.code] = { a: o.form.a, nt: o.form.nt, rm: o.form.rm, hdr: o.form.hdr, by: me(), at: op.at, local: 1 }; d.rej = (d.rej || []).filter(x => x.s !== 'f:' + o.form.code); } }
@@ -188,28 +189,35 @@ function applyOp(d, op) {
 function docOf(key) { const base = JSON.parse(JSON.stringify(((S.B.qd || {})[key] || {}).d || {})); S.Q.filter(op => op.ref === key && op.t !== 'form').forEach(op => applyOp(base, op)); return base; }
 const uq = a => a.filter((x, i) => a.indexOf(x) === i);
 function guessMw(t) { t = String(t || ''); if (/(mini ?pil|pillar|بيلر|بلر|مني|ميني|لوحة توزيع)/i.test(t)) return 'MPR'; if (/(cable|joint|termin|fault|كابل|كيبل|جوينت|ترمن|عطل)/i.test(t)) return 'CF'; return 'GEN'; }
+// التعبئة الافتراضية (المالك 10-11) كما في البرنامج: الإجابات من ملفاته حسب نوع الأمر أو نوع عمل الصيانة، والمحفوظ يغلب
+function typeOf(it, d) { const C = S.B.cat; if (!it.d9) return String(it.type); if (d && d.wt && C.mx[d.wt]) return d.wt; const t = String(it.work_desc || '').toLowerCase();
+  if (/lvp|lv panel|لوحة توزيع|لوحة ج/.test(t)) return 'MT_LVP'; if (/transformer|محول/.test(t)) return 'MT_TR'; if (/rmu|مفتاح حلقي|حلقي/.test(t)) return '334'; if (/عداد|meter/.test(t)) return '401'; return '802'; }
+function defOf(code, type) { const C = S.B.cat, F = C.forms[code]; if (!F || F.k !== 'chk') return null; const dd = (C.defT && C.defT[code] && C.defT[code][type]) || (C.def && C.def[code]); if (!dd) return null;
+  const a = {}; F.items.forEach((x, i) => { if (!x.h && dd[i] && (dd[i] !== 'x' || F.ans === 'ynx')) a[i] = dd[i]; }); return a; }
+function hdrVal(it, d, f, k) { const h = (f && f.hdr) || {}; if (h[k]) return h[k]; if (d && d.hdr && d.hdr[k]) return d.hdr[k]; if (k === 'equip_no') return it.station || ''; return ''; }
 function planOf(it, d) {
-  const C = S.B.cat; let mx = C.mx[it.d9 ? 'D9' : String(it.type)] || C.mx['*'], net = '', needNet = false; const hasNet = !!mx.g;
+  const C = S.B.cat, T = typeOf(it, d); let mx = C.mx[T] || C.mx[it.d9 ? 'D9' : String(it.type)] || C.mx['*'], net = '', needNet = false; const hasNet = !!mx.g;
   if (hasNet) { net = d.net || mx.net || ''; const g = mx.g, o = mx.o; if (net === 'g') mx = g; else if (net === 'o') mx = o; else if (net === 'b') mx = { req: uq(g.req.concat(o.req)), opt: uq(g.opt.concat(o.opt)) }; else { needNet = true; mx = { req: g.req.filter(k => o.req.includes(k)), opt: [] }; } }
   const drop = d.drop || [], add = d.add || [], set = mx.req.filter(k => !drop.includes(k)).concat(add), req = C.order.filter(k => set.includes(k));
   let cats; if (it.d9) cats = [d.mw || guessMw(it.work_desc)]; else if (Array.isArray(d.eq)) cats = C.eq.filter(e => d.eq.includes(e)); else { const s = []; req.forEach(k => (C.eq_of[k] || []).forEach(e => { if (!s.includes(e)) s.push(e); })); cats = C.eq.filter(e => s.includes(e)); }
-  return { req, sug: (mx.opt || []).filter(k => !req.includes(k)), net, needNet, hasNet, cats };
+  return { req, sug: (mx.opt || []).filter(k => !req.includes(k)), net, needNet, hasNet, cats, type: T };
 }
 function formsOf(key) { const L = ((S.B.forms || {})[key] || []).map(x => Object.assign({}, x)); S.Q.filter(op => op.t === 'form' && op.ref === key).forEach(op => L.push({ id: 'L' + op.id, kind: op.kind, seq: '…', local: 1, err: op.err })); return L; }
 const nk = s => String(s || '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
 function licOf(it, d) { const names = uq([it.site_engineer].concat(Object.keys(d.f || {}).map(k => d.f[k].by)).filter(Boolean)); const n = names[0] || ''; if (!n) return { name: '', has: false };
   const k = nk(n), L = (S.B.lic || []).map(nk); return { name: n, has: L.some(x => x === k || x.split(' ').slice(0, 2).join(' ') === k.split(' ').slice(0, 2).join(' ')) }; }
 function stateOf(it, d, P) {
-  const C = S.B.cat, st = {}, F = formsOf(it.key), lic = licOf(it, d); let fd = 0, pd = 0, pn = 0, miss = 0;
+  const C = S.B.cat, st = {}, F = formsOf(it.key), lic = licOf(it, d), need = []; let fd = 0, pd = 0, pn = 0, miss = 0;
   P.req.forEach(k => { const f = C.forms[k]; let s = 'none';
-    if (f.k === 'chk') { const a = ((d.f || {})[k] || {}).a || {}, n = f.items.filter(x => !x.h).length, m = Object.keys(a).filter(i => a[i]).length; s = m >= n ? 'done' : m ? 'part' : 'none'; }
+    if (f.k === 'chk') { const a = ((d.f || {})[k] || {}).a || {}, n = f.items.filter(x => !x.h).length, m = Object.keys(a).filter(i => a[i]).length; s = m >= n ? 'done' : m ? 'part' : (defOf(k, P.type) ? 'def' : 'none');
+      const ms = (f.hdr || []).filter(h => !hdrVal(it, d, (d.f || {})[k], h)); if (ms.length && s !== 'none') { s = 'need'; ms.forEach(h => { if (!need.includes(h)) need.push(h); }); } }
     else if (f.k === 'up') s = ((d.up || {})[k] || []).length ? 'done' : 'none';
     else if (f.k === 'day' || f.k === 'boq') s = ((d.up || {})[k] || []).length ? 'done' : 'auto';   // built in the program from the daily schedule / the BOQ
-    else if (f.k === 'site' || f.k === 'meeting') s = F.some(x => x.kind === f.k) ? 'done' : 'none';
+    else if (f.k === 'site' || f.k === 'meeting') s = F.some(x => x.kind === f.k) ? 'done' : (f.k === 'site' ? 'auto' : 'none');
     else if (f.k === 'lic') s = lic.has ? 'done' : 'none';
-    st[k] = s; if (s === 'done' || s === 'auto') fd++; else miss++; });
+    st[k] = s; if (s === 'done' || s === 'auto' || s === 'def') fd++; else miss++; });
   P.cats.forEach(g => { const G = C.ph[g]; if (G) G.items.forEach((t, i) => { pn++; if (((d.ph || {})[g + ':' + i] || []).length) pd++; else miss++; }); });
-  return { st, lic, prog: fd + '/' + P.req.length + ' · ' + pd + '/' + pn, miss };
+  return { st, lic, need, prog: fd + '/' + P.req.length + ' · ' + pd + '/' + pn, miss };
 }
 
 // ---------- photos: shrink, stamp (time, location, order, engineer, logo) ----------
@@ -363,13 +371,13 @@ function queueView(A) {
 function itemView(A) {
   const key = S.r.key, it = itemOf(key); if (!it) { go({ v: 'home' }); return; }
   const C = S.B.cat, d = docOf(key), P = planOf(it, d), ST = stateOf(it, d, P), F = formsOf(key), rj = s => (d.rej || []).find(x => x.s === s);
-  const K = { done: ['✓', 'k2'], part: ['◐', 'k1'], none: ['○', 'k0'], auto: ['⚙', 'k1'] };
+  const K = { done: ['✓', 'k2'], def: ['✓', 'k2'], part: ['◐', 'k1'], need: ['!', 'k1'], none: ['○', 'k0'], auto: ['✓', 'k2'] };
   const thumbs = (L, slot) => `<div class="th">${(L || []).map(x => `<span><img class="${x.local ? 'loc' : ''}" src="${x.local ? x.thumb || '' : phUrl(x.id, 160)}" alt=""><b class="x" data-del="${esc(slot)}" data-id="${esc(x.id)}">✕</b></span>`).join('')}</div>`;
   const fRow = k => { const f = C.forms[k], s = ST.st[k] || 'none'; let act = '', info = '';
-    if (f.k === 'chk') { const x = (d.f || {})[k]; info = x ? esc(x.by) + (x.local ? ' · بانتظار الإرسال' : '') : ''; act = `<button data-chk="${k}">${x ? 'تعديل' : 'تعبئة'}</button>`; }
+    if (f.k === 'chk') { const x = (d.f || {})[k], df = !x && !!defOf(k, P.type); info = x ? esc(x.by) + (x.local ? ' · بانتظار الإرسال' : '') : df ? 'معبّأ تلقائياً' + (s === 'need' ? ' — <span class="err">بيانات ناقصة</span>' : '') : ''; act = `<button data-chk="${k}">${x || df ? 'تعديل' : 'تعبئة'}</button>`; }
     else if (f.k === 'up') { info = thumbs((d.up || {})[k], 'u:' + k); act = `<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
-    else if (f.k === 'site' || f.k === 'meeting') { const L = F.filter(x => x.kind === f.k); info = L.map(x => x.local ? '⏳ ' + esc(x.seq) : `<a href="./app.html?pf=${encodeURIComponent(x.id)}&ref=${encodeURIComponent(key)}" title="عرض وطباعة PDF">🖨 ${esc(x.seq)}</a>`).join('، '); act = `<button data-nf="${f.k}">+ جديد</button>`; }
-    else if (f.k === 'day' || f.k === 'boq') { info = (f.k === 'day' ? 'يُعبّأ تلقائياً من الجدول اليومي في البرنامج' : 'يُعبّأ تلقائياً من المقايسة') + thumbs((d.up || {})[k], 'u:' + k); act = `<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
+    else if (f.k === 'site' || f.k === 'meeting') { const L = F.filter(x => x.kind === f.k); info = L.map(x => x.local ? '⏳ ' + esc(x.seq) : `<a href="./app.html?pf=${encodeURIComponent(x.id)}&ref=${encodeURIComponent(key)}" title="عرض وطباعة PDF">🖨 ${esc(x.seq)}</a>`).join('، '); if (f.k === 'site' && !L.length) info = 'تُبنى تلقائياً من بيانات الأمر — أو حرّر بطاقة بنفسك'; act = `<button data-nf="${f.k}">+ جديد</button>`; }
+    else if (f.k === 'day' || f.k === 'boq') { info = (f.k === 'day' ? 'يُعبّأ تلقائياً بتاريخ الأمر، ومن الجدول اليومي إن وُجد' : 'يُعبّأ تلقائياً من المقايسة') + thumbs((d.up || {})[k], 'u:' + k); act = `<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
     else if (f.k === 'lic') info = ST.lic.has ? 'مرفقة تلقائياً' : '<span class="err">لا توجد إجازة لـ ' + esc(ST.lic.name) + '</span>';
     return `<div class="fl ${rj('f:' + k) || rj('u:' + k) ? 'rj' : ''}"><span class="k ${K[s][1]}">${K[s][0]}</span><div class="n"><b>${esc(f.name)}</b>${f.no ? ' <span class="muted">' + esc(f.no) + '</span>' : ''}<div class="muted">${info}${rj('f:' + k) ? ' ⛔ مرفوض' : ''}</div></div>${act}${f.k !== 'lic' ? `<b class="x" data-drop="${k}" style="color:var(--mut);cursor:pointer;padding:4px">✕</b>` : ''}</div>`; };
   const ph = P.cats.map(g => { const G = C.ph[g]; if (!G) return ''; return `<h3>${esc(G.name)}</h3><div class="card">${G.items.map((t, i) => { const s = 'p:' + g + ':' + i, L = (d.ph || {})[g + ':' + i] || [];
@@ -379,7 +387,8 @@ function itemView(A) {
   A.innerHTML = topBar((it.d9 ? 'D9 ' : '') + it.wo + (it.type && !it.d9 ? '-' + it.type : ''), 1) + `<div class="wrap">
     <div class="card"><div class="muted">${esc(it.office || '')} · ${esc(it.contractor || '')} · ${esc(it.district || '')}</div>${it.d9 ? `<div class="muted">${esc(it.work_desc || '')}</div>` : ''}${it.visit && (it.visit.work || it.visit.desc) ? `<div class="muted" style="margin-top:2px">📅 ${esc(it.visit.date || '')}${it.visit.time ? ' ' + esc(it.visit.time) : ''} · ${esc(it.visit.work || '')}${it.visit.desc ? ' — ' + esc(it.visit.desc) : ''}</div>` : ''}${(() => { const su = String(it.station_url || (it.visit && it.visit.station_url) || '').replace(/#os$/, ''), lu = it.visit && it.visit.location || ''; return su || lu ? `<div class="row" style="margin-top:6px"><a class="btn" href="${esc(lu || su)}" target="_blank" rel="noopener">📍 الموقع${lu ? ' (من المقاول)' : ' — المحطة ' + esc(it.station || (it.visit && it.visit.station) || '') + ' من جدول المحطات'}</a>${lu && su ? `<a class="btn" href="${esc(su)}" target="_blank" rel="noopener">📍 موقع المحطة</a>` : ''}</div>` : ''; })()}<div class="row" style="margin-top:6px"><span class="pill">📝 ${esc(ST.prog.split(' · ')[0])}</span><span class="pill">📷 ${esc(ST.prog.split(' · ')[1])}</span>${(d.rej || []).length ? `<span class="pill p-d">⛔ مرفوض — ${esc(((S.B.qd || {})[key] || {}).qf_note || '')}</span>` : ''}</div></div>
     ${P.hasNet ? `<div class="card"><label class="muted">الشبكة<select id="net"><option value="">— اختر —</option><option value="g" ${P.net === 'g' ? 'selected' : ''}>أرضي</option><option value="o" ${P.net === 'o' ? 'selected' : ''}>هوائي</option><option value="b" ${P.net === 'b' ? 'selected' : ''}>أرضي وهوائي</option></select></label>${P.needNet ? '<div class="err">اختر نوع الشبكة لتظهر نماذجها</div>' : ''}</div>` : ''}
-    ${it.d9 ? `<div class="card"><label class="muted">نوع العمل<select id="mw">${C.mw.map(k => `<option value="${k}" ${P.cats[0] === k ? 'selected' : ''}>${esc(C.ph[k].name)}</option>`).join('')}</select></label></div>` : `<div class="card"><div class="muted">المعدّات في هذا الأمر (تحدد الصور المطلوبة)</div>${C.eq.map(e => `<label class="eq"><input type="checkbox" data-eq="${e}" ${P.cats.includes(e) ? 'checked' : ''}>${esc(C.ph[e].name)}</label>`).join('')}</div>`}
+    ${it.d9 ? `<div class="card"><label class="muted">نماذج العمل<select id="wt">${Object.keys(C.mtTypes || {}).map(k => `<option value="${k}" ${P.type === k ? 'selected' : ''}>${esc(C.mtTypes[k])}</option>`).join('')}${Object.keys(C.mx).filter(k => k !== 'D9' && k !== '*' && !/^MT_/.test(k) && !(C.mtTypes || {})[k]).map(k => `<option value="${k}" ${P.type === k ? 'selected' : ''}>نوع ${esc(k)}</option>`).join('')}</select></label></div><div class="card"><label class="muted">الصور<select id="mw">${C.mw.map(k => `<option value="${k}" ${P.cats[0] === k ? 'selected' : ''}>${esc(C.ph[k].name)}</option>`).join('')}</select></label></div>` : `<div class="card"><div class="muted">المعدّات في هذا الأمر (تحدد الصور المطلوبة)</div>${C.eq.map(e => `<label class="eq"><input type="checkbox" data-eq="${e}" ${P.cats.includes(e) ? 'checked' : ''}>${esc(C.ph[e].name)}</label>`).join('')}</div>`}
+    ${(ST.need || []).length ? `<h3>بيانات ناقصة</h3><div class="card"><div class="muted">تُكتب مرة واحدة وتنتقل إلى كل النماذج التي تحتاجها</div><div class="f" style="margin-top:6px">${ST.need.map(h => { const O = (C.opts || {})[h]; return `<label>${esc((C.hdr || {})[h] || h)}${O ? `<select data-hd="${h}"><option></option>${O.map(x => `<option ${x === ((d.hdr || {})[h] || '') ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` : `<input data-hd="${h}" value="${esc((d.hdr || {})[h] || '')}">`}</label>`; }).join('')}</div><button class="pri" id="hdsave" style="margin-top:8px">حفظ البيانات</button></div>` : ''}
     <h3>النماذج</h3><div class="card">${P.req.map(fRow).join('')}${addOpts.length ? `<select id="add" style="margin-top:8px"><option value="">+ إضافة نموذج…</option>${addOpts.map(k => `<option value="${k}">${P.sug.includes(k) ? '★ ' : ''}${esc(C.forms[k].name)}</option>`).join('')}</select>` : ''}</div>
     <h3>المخالفات${it.d9 ? '' : ' والمحاضر'}</h3><div class="card"><div class="muted">${vio.length ? vio.map(x => x.local ? '⏳ ' + (x.kind === 'safety' ? 'سلامة ' : 'جودة ') + esc(x.seq) : `<a href="./app.html?pf=${encodeURIComponent(x.id)}&ref=${encodeURIComponent(key)}" title="عرض وطباعة PDF">🖨 ${x.kind === 'safety' ? 'سلامة ' : 'جودة '}${esc(x.seq)}</a>`).join('، ') : 'لا توجد مخالفات'}</div>
       <div class="row" style="margin-top:8px"><button data-nf="safety">+ مخالفة سلامة</button><button data-nf="quality">+ مخالفة جودة</button>${it.d9 ? '' : '<button data-nf="meeting">+ محضر اجتماع</button>'}</div></div>
@@ -395,7 +404,8 @@ function itemView(A) {
       <div class="row" style="margin-top:8px"><a class="btn" href="./app.html?qd=${encodeURIComponent(key)}">📄 إنشاء / تحديث / رفع ملف جاهز</a>${it.qf_url ? `<a class="btn" href="${esc(it.qf_url)}" target="_blank" rel="noopener">👁 عرض ملف الجودة${it.qf_status ? ' (' + esc(it.qf_status) + ')' : ''}</a>` : ''}</div></div></div>`;
   wire();
   const save = op => enqueue({ t: 'qd', ref: key, op });
-  if ($('#net')) $('#net').onchange = e => save({ net: e.target.value }); if ($('#mw')) $('#mw').onchange = e => save({ mw: e.target.value });
+  if ($('#net')) $('#net').onchange = e => save({ net: e.target.value }); if ($('#mw')) $('#mw').onchange = e => save({ mw: e.target.value }); if ($('#wt')) $('#wt').onchange = e => save({ wt: e.target.value });
+  if ($('#hdsave')) $('#hdsave').onclick = () => { const hdr = {}; $$('[data-hd]').forEach(e => hdr[e.dataset.hd] = e.value.trim()); save({ hdr }); toast('حُفظت البيانات' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); };
   $$('[data-eq]').forEach(c => c.onchange = () => save({ eq: $$('[data-eq]:checked').map(x => x.dataset.eq) }));
   if ($('#add')) $('#add').onchange = e => { if (e.target.value) save({ add: e.target.value }); };
   $$('[data-drop]').forEach(b => b.onclick = () => { if (confirm('إزالة «' + C.forms[b.dataset.drop].name + '» من هذا الأمر؟')) save({ drop: b.dataset.drop }); });
@@ -422,12 +432,12 @@ function itemView(A) {
     catch (e) { toast(e.message, 4000); } });
 }
 function chkView(A) {
-  const { key, code } = S.r, it = itemOf(key), C = S.B.cat, F = C.forms[code], d = docOf(key), f = (d.f || {})[code] || {}, a = Object.assign({}, f.a || {}), nt = Object.assign({}, f.nt || {});
-  const H = ['date', 'time', 'location'].concat(F.hdr || []), HL = Object.assign({ date: 'التاريخ', time: 'الوقت', location: 'الموقع' }, C.hdr), hv = k => (f.hdr || {})[k] || (k === 'date' ? today() : k === 'time' ? hm() : k === 'location' ? it.district || '' : '');
+  const { key, code } = S.r, it = itemOf(key), C = S.B.cat, F = C.forms[code], d = docOf(key), f = (d.f || {})[code] || {}, P0 = planOf(it, d), isDef = !(f.a && Object.keys(f.a).length), a = Object.assign({}, isDef ? (defOf(code, P0.type) || {}) : f.a), nt = Object.assign({}, f.nt || {});
+  const H = ['date', 'time', 'location'].concat(F.hdr || []), HL = Object.assign({ date: 'التاريخ', time: 'الوقت', location: 'الموقع' }, C.hdr), hv = k => (f.hdr || {})[k] || (d.hdr || {})[k] || (k === 'date' ? (it.date || it.assign_date || today()) : k === 'time' ? '08:00' : k === 'location' ? it.district || it.station || '' : k === 'equip_no' ? (it.station || '') : '');
   const total = F.items.filter(x => !x.h).length, opts = ['y', 'n'].concat(F.ans === 'ynx' ? ['x'] : []), L = { y: 'نعم', n: 'لا', x: 'لا ينطبق' };
   A.innerHTML = topBar(F.name, 1) + `<div class="wrap"><div class="card"><div class="muted">${esc(F.no || '')} · ${it.d9 ? 'D9 ' : ''}${esc(it.wo)} · ${esc(it.contractor || '')}</div>
     <div class="f" style="margin-top:8px">${H.map(k => { const O = (C.opts || {})[k]; return `<label>${esc(HL[k] || k)}${O ? `<select data-h="${k}"><option></option>${O.map(x => `<option ${x === hv(k) ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` : `<input data-h="${k}" value="${esc(hv(k))}" ${k === 'date' ? 'type="date"' : k === 'time' ? 'type="time"' : ''}>`}</label>`; }).join('')}</div></div>
-    <div class="sticky"><button class="pri" id="all">✓ الكل نعم</button><span id="cnt" class="muted"></span><span style="flex:1"></span><button class="pri" id="sv">حفظ</button></div>
+    ${isDef && Object.keys(a).length ? '<div class="card muted">معبّأ تلقائياً بالإجابات الافتراضية — عدّل ما يلزم ثم احفظ</div>' : ''}<div class="sticky"><button class="pri" id="all">✓ الكل نعم</button><span id="cnt" class="muted"></span><span style="flex:1"></span><button class="pri" id="sv">حفظ</button></div>
     <div class="card">${F.items.map((x, i) => x.h ? `<div class="qh">${esc(x.t)}</div>` : `<div class="qi"><div class="tx"><b>${esc(x.n || '')}</b> ${esc(x.t)}${x.e ? `<small>${esc(x.e)}</small>` : ''}</div><div class="ab">${opts.map(v => `<button class="${v} ${a[i] === v ? 'on' : ''}" data-i="${i}" data-v="${v}">${L[v]}</button>`).join('')}</div><input data-nt="${i}" placeholder="ملاحظة" value="${esc(nt[i] || '')}" style="margin-top:6px;${F.notes || a[i] === 'n' || nt[i] ? '' : 'display:none'}"></div>`).join('')}</div>
     <div class="card"><label class="muted">ملاحظات<textarea id="rm" rows="3">${esc(f.rm || '')}</textarea></label></div><button class="pri big" id="sv2" style="width:100%;margin-bottom:20px">حفظ</button></div>`;
   wire();
