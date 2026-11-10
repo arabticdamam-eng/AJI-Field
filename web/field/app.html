@@ -270,7 +270,10 @@ async function ajiPost(fn,args){
 // a session that ran out is renewed once from the phone's device key, then the call is repeated
 async function ajiCall(fn,args){
   try{ return await ajiPost(fn,args); }
-  catch(e){ if(/انتهت الجلسة/.test(e.message)&&AJI.dev&&fn!=='webTok'&&fn!=='login'&&typeof S!=='undefined'&&S.tok&&args[0]===S.tok){ const t=await ajiPost('webTok',[AJI.dev]).catch(()=>null); if(t&&t.token){ S.tok=t.token; localStorage.setItem('wo_tok',t.token); args=[t.token].concat(args.slice(1)); return await ajiPost(fn,args); } } throw e; }
+  catch(e){ if(/انتهت الجلسة/.test(e.message)&&AJI.dev&&fn!=='webTok'&&fn!=='login'&&typeof S!=='undefined'&&S.tok&&args[0]){ const old=args[0];
+    // الطلبات المتوازية عند فتح الصفحة تشترك في تجديد واحد (كانت كل واحدة تفتح جلسة جديدة: 12 جلسة في 4 ثوانٍ)
+    if(S.tok===old){ AJI.renew=AJI.renew||ajiPost('webTok',[AJI.dev]).catch(()=>null).then(t=>{ setTimeout(()=>{ AJI.renew=null; },5000); if(t&&t.token&&S.tok===old){ S.tok=t.token; localStorage.setItem('wo_tok',t.token); } return t; }); await AJI.renew; }
+    if(S.tok&&S.tok!==old){ args=[S.tok].concat(args.slice(1)); return await ajiPost(fn,args); } } throw e; }
 }
 window.google={script:{run:(function mk(ok,no){ return new Proxy({},{get:(t,p)=>p==='withSuccessHandler'?(f=>mk(f,no)):p==='withFailureHandler'?(f=>mk(ok,f)):((...a)=>{ ajiCall(String(p),a).then(r=>{ if(ok) ok(r); }).catch(e=>{ if(no) no(e); }); })}); })(null,null)}};
 async function appBoot(){ if(!localStorage.getItem('wo_tok')&&AJI.dev){ try{ const t=await ajiPost('webTok',[AJI.dev]); if(t&&t.token){ localStorage.setItem('wo_tok',t.token); if(typeof S!=='undefined') S.tok=t.token; } }catch(e){} } }
