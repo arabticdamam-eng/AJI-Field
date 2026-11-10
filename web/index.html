@@ -1105,7 +1105,8 @@ function sheet(base, defCols, opt={}){
     b.querySelectorAll('.gsi').forEach(x=>x.onclick=()=>{ try{ navigator.clipboard.writeText(String(Math.round(+x.dataset.v*100)/100)); toast('نُسخ: '+gFmt(+x.dataset.v)); }catch(e){} }); };
   const rect=(a,b)=>{ const s=new Set(); for(let r=Math.min(a[0],b[0]);r<=Math.max(a[0],b[0]);r++) for(let c=Math.min(a[1],b[1]);c<=Math.max(a[1],b[1]);c++) s.add(key(r,c)); return s; };
   const box=$('#tbox');
-  box.onmousedown=e=>{ if(e.target.closest('.sfb,.cinb')){ e.preventDefault(); return; }   // ملف السلامة وفاتورة المقاول تفتحهما نقرتهما (لا نافذة النماذج: كانت تظهر «أمر العمل غير موجود»)
+  box.onmousedown=e=>{ if(e.target.closest('.sfb,.cinb')){ e.preventDefault(); return; }
+    const mi=e.target.closest('.mtinv'); if(mi){ e.preventDefault(); vMaintInv(mi.dataset.mtinv); return; }   // فواتير أرابتك للإشعار (الصيانة)   // ملف السلامة وفاتورة المقاول تفتحهما نقرتهما (لا نافذة النماذج: كانت تظهر «أمر العمل غير موجود»)
     const qb=e.target.closest('.qfb'); if(qb){ e.preventDefault(); qdModal(qb.dataset.mq?'D9:'+qb.dataset.mq:qb.dataset.qf); return; } const wf=e.target.closest('.wfb'); if(wf){ e.preventDefault(); e.stopPropagation(); woFilesModal(wf.dataset.wf); return; } const ab=e.target.closest('.atb'); if(ab){ e.preventDefault(); attModal(ab.dataset.att); return; } const cp=e.target.closest('.cip'); if(cp){ e.preventDefault(); e.stopPropagation(); ciPick(cp.dataset.ci); return; } const cl=e.target.closest('.cil'); if(cl){ e.preventDefault(); e.stopPropagation(); ciFilesModal(cl.dataset.ci); return; } const sd=e.target.closest('.sdir'); if(sd){ e.preventDefault(); e.stopPropagation(); stDirApply(sd.dataset.sd); return; } const pb=e.target.closest('.pmb'); if(pb){ e.preventDefault(); goPermits(pb.dataset.pm); return; } const pu=e.target.closest('.pmu'); if(pu){ e.preventDefault(); e.stopPropagation(); permitPick(pu.dataset.pm); return; } const px=e.target.closest('.pmx'); if(px){ e.preventDefault(); e.stopPropagation(); if(confirm('إخفاء هذا الملف؟ لا يُحذف من Drive، ويُرجع من قائمة ملفات التصريح.')) api('removePermitFile',S.tok,px.dataset.pm).then(()=>{ toast('أُخفي الملف'); S.pm=null; shell(); }).catch(er=>toast(er.message)); return; }
     const pl=e.target.closest('.pml'); if(pl){ e.preventDefault(); e.stopPropagation(); permitFilesModal(pl.dataset.pm); return; } const al=e.target.closest('.atb2'); if(al){ e.stopPropagation(); return; } const tk=e.target.closest('.tkb'); if(tk){ e.preventDefault(); e.stopPropagation(); taskModal(tk.dataset.tk); return; } const bq=e.target.closest('.bqb'); if(bq){ e.preventDefault(); boqModal(bq.dataset.bq); return; } const fb=e.target.closest('.fmb'); if(fb){ e.preventDefault(); formsModal(fb.dataset.wo,fb.dataset.fg); return; } const rn=e.target.closest('td[data-rr]'); if(rn){ e.preventDefault(); if(ed) commit(); const r=+rn.dataset.rr, last=cols.length-1;
       if(e.shiftKey&&anchor){ sel=rect([anchor[0],0],[r,last]); act=[r,0]; } else if(e.ctrlKey||e.metaKey){ rect([r,0],[r,last]).forEach(x=>sel.add(x)); act=[r,0]; } else { act=[r,0]; anchor=[r,0]; sel=rect([r,0],[r,last]); }
@@ -2841,19 +2842,65 @@ function vUsers(){ const sub=S.usub||'users';
 async function vContractors(){ $('#usub').innerHTML='<div class="loading">جارٍ التحميل…</div>'; let L; try{ L=await apiC(vContractors,'listContractors',S.tok); }catch(e){ $('#usub').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
   if(S.view!=='users'||S.usub!=='ctr'||!$('#usub')) return; const q=(S.ctrQ||'').trim();
   const rows=L.filter(x=>!q||[x.name,x.full,x.aliases,x.contract_no,x.safety_rep].join(' ').includes(q)).sort((a,b)=>(b.active-a.active)||(b.n-a.n)||a.name.localeCompare(b.name,'ar'));
-  $('#usub').innerHTML=`<div class="bar"><input id="ctq" placeholder="بحث" value="${esc(q)}" style="max-width:220px"><span class="muted">${L.filter(x=>x.active).length} مقاولاً فعّالاً${L.some(x=>!x.active)?' · '+L.filter(x=>!x.active).length+' موقوفاً':''}</span><span class="sp"></span><button class="pri" id="ctadd">+ مقاول</button></div>
+  $('#usub').innerHTML=`<div class="bar"><input id="ctq" placeholder="بحث" value="${esc(q)}" style="max-width:220px"><span class="muted">${L.filter(x=>x.active).length} مقاولاً فعّالاً${L.some(x=>!x.active)?' · '+L.filter(x=>!x.active).length+' موقوفاً':''}</span><span class="sp"></span><button id="ctimp" title="يملأ رقم المورد ورقم العقد وأشخاص التواصل من ملف «أرقام تواصل المقاولين»">استيراد أرقام التواصل</button><input type="file" id="ctfile" accept=".xlsx,.xls" style="display:none"><button id="ctexp" title="ملف Excel بشكل «أرقام تواصل مقاولي العقد الموحد»">تصدير أرقام التواصل</button><button class="pri" id="ctadd">+ مقاول</button></div>
    <div class="muted" style="margin:4px 0 8px">الاسم المختصر يظهر في الجداول والقوائم، والاسم الكامل في المحاضر. تعديل الاسم يغيّره في كل ملفات المشروع (الإسنادات والتصاريح والجدول اليومي والصيانة والمطابقة والمخالفات)، ويبقى الاسم القديم معروفاً عند الاستيراد. الإيقاف يخفي المقاول من القوائم ولا يغيّر أوامره.</div>
-   <div class="tw" style="max-height:none"><table><thead><tr><th>الاسم المختصر</th><th>الاسم الكامل</th><th>رقم العقد</th><th>مسؤول السلامة</th><th>أوامر العمل</th><th>أسماء سابقة</th><th>الحالة</th><th>آخر تعديل</th></tr></thead><tbody>
-   ${rows.map(x=>`<tr data-ct="${esc(x.name)}" style="cursor:pointer${x.active?'':';color:#888780'}"><td><b>${esc(x.name)}</b></td><td>${esc(x.full)}</td><td>${esc(x.contract_no||'')}</td><td>${esc(x.safety_rep||'')}</td><td>${x.n}</td><td class="muted">${esc(x.aliases)}</td><td>${x.active?'<span class="pill p-ok">فعّال</span>':'<span class="pill p-d">موقوف</span>'}</td><td class="muted">${esc((x.by||'')+' '+(x.at||'').slice(0,10))}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">لا يوجد مقاولون بعد — أضف أول مقاول.</td></tr>'}</tbody></table></div>`;
+   <div class="tw" style="max-height:none"><table><thead><tr><th>الاسم المختصر</th><th>الاسم الكامل</th><th>المورد</th><th>رقم العقد</th><th>التواصل</th><th>مسؤول السلامة</th><th>أوامر العمل</th><th>أسماء سابقة</th><th>الحالة</th><th>آخر تعديل</th></tr></thead><tbody>
+   ${rows.map(x=>`<tr data-ct="${esc(x.name)}" style="cursor:pointer${x.active?'':';color:#888780'}"><td><b>${esc(x.name)}</b></td><td>${esc(x.full)}</td><td>${esc(x.vendor||'')}</td><td>${esc(x.contract_no||'')}</td><td class="muted" title="${esc((x.contacts||[]).map(c=>[c.n,c.p,c.t,c.e].filter(Boolean).join(' · ')).join('\n'))}">${(x.contacts||[]).length?esc((x.contacts[0].n||'')+((x.contacts[0].t)?' '+x.contacts[0].t:''))+((x.contacts.length>1)?' +'+(x.contacts.length-1):''):''}</td><td>${esc(x.safety_rep||'')}</td><td>${x.n}</td><td class="muted">${esc(x.aliases)}</td><td>${x.active?'<span class="pill p-ok">فعّال</span>':'<span class="pill p-d">موقوف</span>'}</td><td class="muted">${esc((x.by||'')+' '+(x.at||'').slice(0,10))}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">لا يوجد مقاولون بعد — أضف أول مقاول.</td></tr>'}</tbody></table></div>`;
   $('#ctq').oninput=e=>{ S.ctrQ=e.target.value; clearTimeout(S.ctrT); S.ctrT=setTimeout(()=>{ vContractors().then(()=>{ const i=$('#ctq'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }); },350); };
-  const form=x=>{ modal(`<h3 style="margin-top:0">${x?'تعديل المقاول':'مقاول جديد'}</h3><div class="f"><label>الاسم المختصر<input id="ctn" value="${esc(x?x.name:'')}"></label><label>الاسم الكامل (للمحاضر)<input id="ctf" value="${esc(x?x.full:'')}"></label><label>رقم العقد<input id="ctc" value="${esc(x&&x.contract_no?x.contract_no:'')}" placeholder="4400023524"></label><label>مسؤول السلامة<input id="ctr2" value="${esc(x&&x.safety_rep?x.safety_rep:'')}" placeholder="اسم ممثل المقاول"></label><label>الاسم في الصيانة<input id="ctmt" value="${esc(x&&x.name_mt?x.name_mt:'')}" placeholder="اتركه فارغاً ليُستعمل الاسم المختصر"></label><label>الاسم في الإنشاءات<input id="ctcn" value="${esc(x&&x.name_cn?x.name_cn:'')}" placeholder="اتركه فارغاً ليُستعمل الاسم المختصر"></label></div><div class="muted" style="margin-top:6px">الشركة واحدة والاسم الرسمي موحَّد؛ هذان الاسمان للعرض فقط: الأول في الصيانة، والثاني في الإسنادات والإنشاءات والجدول اليومي. والبرنامج يفهم الاسمين فيصلان إلى المقاول نفسه عند الاستيراد.</div><div class="muted" style="margin-top:6px">رقم العقد ومسؤول السلامة يُكتبان في «رقم عقد المشروع» و«ممثل السلامة لدى المقاول» عند فتح مخالفة سلامة جديدة لهذا المقاول.</div>
+  const form=x=>{ modal(`<h3 style="margin-top:0">${x?'تعديل المقاول':'مقاول جديد'}</h3><div class="f"><label>الاسم المختصر<input id="ctn" value="${esc(x?x.name:'')}"></label><label>الاسم الكامل (للمحاضر)<input id="ctf" value="${esc(x?x.full:'')}"></label><label>رقم العقد<input id="ctc" value="${esc(x&&x.contract_no?x.contract_no:'')}" placeholder="4400023524"></label><label>رقم المورد (vendor)<input id="ctv" dir="ltr" value="${esc(x&&x.vendor?x.vendor:'')}" placeholder="1000179"></label><label>مسؤول السلامة<input id="ctr2" value="${esc(x&&x.safety_rep?x.safety_rep:'')}" placeholder="اسم ممثل المقاول"></label><label>الاسم في الصيانة<input id="ctmt" value="${esc(x&&x.name_mt?x.name_mt:'')}" placeholder="اتركه فارغاً ليُستعمل الاسم المختصر"></label><label>الاسم في الإنشاءات<input id="ctcn" value="${esc(x&&x.name_cn?x.name_cn:'')}" placeholder="اتركه فارغاً ليُستعمل الاسم المختصر"></label></div><div class="muted" style="margin-top:6px">الشركة واحدة والاسم الرسمي موحَّد؛ هذان الاسمان للعرض فقط: الأول في الصيانة، والثاني في الإسنادات والإنشاءات والجدول اليومي. والبرنامج يفهم الاسمين فيصلان إلى المقاول نفسه عند الاستيراد.</div><div class="muted" style="margin-top:6px">رقم العقد ومسؤول السلامة يُكتبان في «رقم عقد المشروع» و«ممثل السلامة لدى المقاول» عند فتح مخالفة سلامة جديدة لهذا المقاول.</div>
       ${x?`<label style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="cta" ${x.active?'checked':''} style="width:auto"> فعّال (يظهر في القوائم)</label><div class="muted" style="margin-top:6px">له ${x.n} أمر عمل.${x.n?' تغيير الاسم المختصر يغيّره فيها كلها.':''}</div>`:''}
+      <h4 style="margin:12px 0 4px">أشخاص التواصل</h4><div class="tw" style="max-height:none"><table><thead><tr><th>#</th><th>الاسم</th><th>المنصب</th><th>رقم الاتصال</th><th>البريد الإلكتروني</th></tr></thead><tbody>${[0,1,2].map(i=>{ const c=(x&&x.contacts&&x.contacts[i])||{}; return `<tr><td>${i+1}</td><td><input data-cc="${i}" data-f="n" value="${esc(c.n||'')}"></td><td><input data-cc="${i}" data-f="p" value="${esc(c.p||'')}" list="ctpos"></td><td><input data-cc="${i}" data-f="t" dir="ltr" inputmode="tel" value="${esc(c.t||'')}"></td><td><input data-cc="${i}" data-f="e" dir="ltr" type="email" value="${esc(c.e||'')}"></td></tr>`; }).join('')}</tbody></table></div><datalist id="ctpos"><option value="م. المشروع"><option value="م. المشاريع"><option value="مهندس"><option value="المالك"></datalist>
       <div class="err" id="cte"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="cts">حفظ</button><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
     $('#cts').onclick=async()=>{ const n=$('#ctn').value.trim(); if(x&&n!==x.name&&x.n&&!confirm('سيتغير اسم «'+x.name+'» إلى «'+n+'» في '+x.n+' أمر عمل وفي باقي الملفات. متابعة؟')) return; $('#cts').disabled=true;
-      try{ const r=await api('saveContractor',S.tok,{old:x?x.name:'',name:n,full:$('#ctf').value.trim(),contract_no:$('#ctc').value.trim(),safety_rep:$('#ctr2').value.trim(),name_mt:$('#ctmt').value.trim(),name_cn:$('#ctcn').value.trim(),active:x?$('#cta').checked:true}); closeModal(); toast(x?(r.moved?'حُفظ — تغيّر الاسم في '+r.moved+' سجلاً':'حُفظ'):'أُضيف المقاول');
+      try{ const r=await api('saveContractor',S.tok,{old:x?x.name:'',name:n,full:$('#ctf').value.trim(),contract_no:$('#ctc').value.trim(),safety_rep:$('#ctr2').value.trim(),vendor:$('#ctv').value.trim(),contacts:[0,1,2].map(i=>{ const o={}; document.querySelectorAll('[data-cc="'+i+'"]').forEach(el=>o[el.dataset.f]=el.value.trim()); return o; }),name_mt:$('#ctmt').value.trim(),name_cn:$('#ctcn').value.trim(),active:x?$('#cta').checked:true}); closeModal(); toast(x?(r.moved?'حُفظ — تغيّر الاسم في '+r.moved+' سجلاً':'حُفظ'):'أُضيف المقاول');
         if(x&&r.moved){ S.mt=null; S.pm=null; S.mr=null; S.dlAll=null; start(false); return; } const B=await api('boot',S.tok).catch(()=>null); if(B){ S.B.lists.contractor=B.lists.contractor; S.B.lists.contractor_full=B.lists.contractor_full; } vContractors(); }
       catch(e){ $('#cte').textContent=e.message; $('#cts').disabled=false; } }; };
+  $('#ctexp').onclick=()=>ctrExport(L); $('#ctimp').onclick=()=>$('#ctfile').click(); $('#ctfile').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f) ctrImport(f,L); };
   $('#ctadd').onclick=()=>form(null); document.querySelectorAll('[data-ct]').forEach(tr=>tr.onclick=()=>form(L.find(x=>x.name===tr.dataset.ct))); }
+
+// ---- أرقام تواصل المقاولين (المالك 10-11): تصدير بشكل ملف «أرقام تواصل مقاولي العقد الموحد» واستيراده ----
+async function ctrExport(L){ toast('جارٍ تجهيز الملف…');
+  try{ const A=L.filter(x=>x.active), half=Math.ceil(A.length/2), W=8, HD=['م','اسم المقاول','vender','رقم العقد','اسم الشخص','المنصب','رقم الإتصال','بريد الكتروني'];
+    const hs={b:1,fc:'FFFFFF',fill:'F78F3A',al:'center',va:'center',wrap:1,bd:1}, cs={al:'center',va:'center',wrap:1,bd:1,sz:10}, ns={b:1,al:'center',va:'center',wrap:1,bd:1};
+    const rows=[], merges=[], hts={}; const put=(r,c,cell)=>{ (rows[r]=rows[r]||[])[c]=cell; };
+    put(1,0,{v:'ارقام تواصل مقاولين '+((S.B.project&&S.B.project.name)||'العقد الموحد')+' '+String(S.B.today||'').slice(0,4),st:{b:1,sz:20,al:'center',va:'center'}}); merges.push('A2:P3'); merges.push('A4:P4');
+    [0,1].forEach(g=>HD.forEach((t,i)=>put(4,g*W+i,{v:t,st:hs}))); hts[4]=30;
+    A.forEach((x,i)=>{ const g=i<half?0:1, k=g?i-half:i, r=5+k*3, c0=g*W, col=n=>String.fromCharCode(65+c0+n);
+      for(let j=0;j<3;j++){ const c=(x.contacts||[])[j]||{}; hts[r+j]=24;
+        put(r+j,c0,j?{v:'',st:ns}:{v:i+1,st:ns}); put(r+j,c0+1,j?{v:'',st:ns}:{v:x.full||x.name,st:ns}); put(r+j,c0+2,j?{v:'',st:cs}:{v:x.vendor||'',st:cs}); put(r+j,c0+3,j?{v:'',st:cs}:{v:x.contract_no||'',st:cs});
+        put(r+j,c0+4,{v:c.n||'',st:cs}); put(r+j,c0+5,{v:c.p||'',st:cs}); put(r+j,c0+6,{v:c.t||'',st:cs}); put(r+j,c0+7,{v:c.e||'',st:cs}); }
+      [0,1,2,3].forEach(n=>merges.push(col(n)+(r+1)+':'+col(n)+(r+3))); });
+    for(let r=0;r<rows.length;r++) if(!rows[r]) rows[r]=[];
+    const blob=await xuZip(xuParts({author:S.B.user.name,sheets:[{name:'ارقام التواصل',color:'F78F3A',rows,merges,hts,widths:[4,26,12,15,18,13,15,34,4,26,12,15,18,13,15,34],print:{landscape:1,fit:1}}]}));
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ارقام_تواصل_المقاولين_'+S.B.today+'.xlsx'; a.click(); toast('صُدِّر الملف'); }
+  catch(e){ toast(e.message); console.error(e); } }
+// يقرأ أي ورقة فيها صف عناوين به «اسم المقاول»: المجموعات المتجاورة (عمودان من المقاولين) تُقرأ كلها، وصفوف الأشخاص تتبع مقاولها
+function ctrParse(wb){ const out=[], t=v=>String(v==null?'':v).replace(/\s+/g,' ').trim(), key=h=>/اسم المقاول/.test(h)?'full':/vend/i.test(h)?'vendor':/رقم العقد/.test(h)?'contract_no':/اسم الشخص/.test(h)?'n':/المنصب/.test(h)?'p':/رقم ال[إا]تصال|الجوال|الهاتف/.test(h)?'t':/بريد|mail/i.test(h)?'e':'';
+  const pick=wb.SheetNames.map(n=>({n,a:XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''})})).map(x=>{ const hr=x.a.findIndex(r=>r.some(c=>/اسم المقاول/.test(t(c)))&&r.some(c=>/اسم الشخص/.test(t(c)))); return Object.assign(x,{hr,sc:hr<0?-1:(x.a[hr].some(c=>/vend/i.test(t(c)))?2:1)}); }).filter(x=>x.hr>=0).sort((a,b)=>b.sc-a.sc)[0];
+  if(!pick) throw new Error('لم أجد في الملف صف عناوين فيه «اسم المقاول» و«اسم الشخص»');
+  const H=pick.a[pick.hr].map(t), groups=[]; H.forEach((h,c)=>{ const k=key(h); if(k==='full') groups.push({full:c}); else if(k&&groups.length&&groups[groups.length-1][k]==null) groups[groups.length-1][k]=c; });
+  groups.forEach(g=>{ let cur=null; for(let r=pick.hr+1;r<pick.a.length;r++){ const row=pick.a[r]||[], gv=k=>g[k]==null?'':t(row[g[k]]); const full=gv('full');
+      if(full){ cur={full,vendor:gv('vendor'),contract_no:gv('contract_no'),contacts:[]}; out.push(cur); }
+      if(cur){ const c={n:gv('n'),p:gv('p'),t:gv('t').replace(/[^0-9+]/g,''),e:gv('e')}; if((c.n||c.t||c.e)&&cur.contacts.length<3) cur.contacts.push(c); } } });
+  return {sheet:pick.n,list:out.filter(x=>x.vendor||x.contract_no||x.contacts.length)}; }
+function ctrKey(x){ return String(x||'').replace(/[ـ\u064B-\u0652]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/(^|\s)(شركه|مؤسسه|موسسه|للمقاولات|المقاولات|والمقاولات|للتجاره|المحدوده|العامه|وشريكه|وشركاه|وشركاؤه|العربيه|للانشاءات|والتطوير)(?=\s|$)/g,' ').replace(/\s+/g,' ').trim(); }
+function ctrMatch(x,L){ if(x.contract_no){ const m=L.find(o=>o.contract_no&&String(o.contract_no).trim()===x.contract_no); if(m) return m.name; }
+  if(x.vendor){ const m=L.find(o=>o.vendor&&String(o.vendor).trim()===x.vendor); if(m) return m.name; }
+  const k=ctrKey(x.full); if(!k) return ''; const sc=o=>{ const names=[o.name,o.full,o.name_mt,o.name_cn].concat(String(o.aliases||'').split(/[,|،]/)).map(ctrKey).filter(Boolean); let b=0; names.forEach(n=>{ if(n===k) b=Math.max(b,3); else if((' '+k+' ').includes(' '+n+' ')||(' '+n+' ').includes(' '+k+' ')) b=Math.max(b,2); }); return b; };
+  const best=L.map(o=>({o,s:sc(o)})).filter(z=>z.s).sort((a,b)=>b.s-a.s); return best.length&&(best.length===1||best[0].s>best[1].s)?best[0].o.name:''; }
+async function ctrImport(file,L){ let P; try{ await loadXlsx(); P=ctrParse(XLSX.read(await file.arrayBuffer(),{type:'array'})); }catch(e){ return toast(e.message); }
+  if(!P.list.length) return toast('لم أجد مقاولين في الملف');
+  const R=P.list.map(x=>({x,to:ctrMatch(x,L)})), opts=to=>`<option value="">— تجاهل —</option><option value="+"${to==='+'?' selected':''}>➕ مقاول جديد</option>`+L.map(o=>`<option value="${esc(o.name)}"${o.name===to?' selected':''}>${esc(o.name)}</option>`).join('');
+  modal(`<h3 style="margin-top:0">استيراد أرقام التواصل</h3><div class="muted" style="margin-bottom:8px">من ورقة «${esc(P.sheet)}»: ${R.length} مقاولاً. راجع عمود «يُكتب في» — المطابقة برقم العقد ثم بالاسم. يُملأ رقم المورد ورقم العقد وأشخاص التواصل فقط؛ الاسم المختصر وأوامر العمل لا تتغير.</div>
+    <div class="tw" style="max-height:55vh"><table><thead><tr><th>في الملف</th><th>المورد</th><th>العقد</th><th>الأشخاص</th><th>يُكتب في</th></tr></thead><tbody>${R.map((r,i)=>`<tr><td>${esc(r.x.full)}</td><td>${esc(r.x.vendor)}</td><td>${esc(r.x.contract_no)}</td><td class="muted" title="${esc(r.x.contacts.map(c=>[c.n,c.p,c.t,c.e].filter(Boolean).join(' · ')).join('\n'))}">${r.x.contacts.length}</td><td><select data-ci="${i}"${r.to?'':' style="border-color:var(--dan)"'}>${opts(r.to)}</select></td></tr>`).join('')}</tbody></table></div>
+    <div class="err" id="cie"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="cis">استيراد</button><span class="muted" id="cin"></span><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`,true);
+  const cnt=()=>{ const v=[...document.querySelectorAll('[data-ci]')].map(s=>s.value); $('#cin').textContent=v.filter(x=>x&&x!=='+').length+' تحديثاً · '+v.filter(x=>x==='+').length+' جديداً · '+v.filter(x=>!x).length+' متجاهَلاً'; }; cnt(); document.querySelectorAll('[data-ci]').forEach(s=>s.onchange=cnt);
+  $('#cis').onclick=async()=>{ const items=[], seen={}; let bad='';
+    document.querySelectorAll('[data-ci]').forEach(s=>{ const r=R[+s.dataset.ci], to=s.value; if(!to) return; const nm=to==='+'?ctrKey(r.x.full)||r.x.full:to; if(seen[nm]) bad='مقاولان في الملف يُكتبان في «'+nm+'»'; seen[nm]=1;
+      items.push({name:nm,add:to==='+',full:r.x.full,vendor:r.x.vendor,contract_no:r.x.contract_no,contacts:r.x.contacts}); });
+    if(bad) return $('#cie').textContent=bad; if(!items.length) return $('#cie').textContent='اختر مقاولاً واحداً على الأقل'; $('#cis').disabled=true;
+    try{ const r=await api('importContractorContacts',S.tok,items); closeModal(); toast('حُدِّث '+r.updated+(r.added?' وأُضيف '+r.added:'')); if(r.added){ const B=await api('boot',S.tok).catch(()=>null); if(B){ S.B.lists.contractor=B.lists.contractor; S.B.lists.contractor_full=B.lists.contractor_full; } } vContractors(); }
+    catch(e){ $('#cie').textContent=e.message; $('#cis').disabled=false; } }; }
 
 function vProject(){
   const P=S.B.project||{}, st=P.sites||{}; let O=(S.B.lists.office||[]).map(a=>({ar:a,en:st[a]||''}));
@@ -3099,7 +3146,31 @@ const ML={id:'م',date:'التاريخ',d1:'رقم الإشعار D-1',d9:'D9',d
 const MCHK=['inv_status','safety','supervision','exec_p','cert','quality','attach'];
 const MSTAT=['تم التنفيذ','جار التنفيذ','لم يتم التنفيذ','ملغي'];
 const numOf=x=>{ const n=parseFloat(String(x==null?'':x).replace(/,/g,'')); return isNaN(n)?0:n; };
+// ---- فواتير أرابتك داخل قسم الصيانة (المالك 10-11): الجدول نفسه الذي كان تبويباً في المطابقة، وكل فاتورة مربوطة بإشعارها ----
+async function vMaintInv(q){
+  $('#main').innerHTML='<div class="loading">جارٍ تحميل الفواتير…</div>'; S.mtInv=true;
+  try{ await mrLoad(); }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
+  if(S.view!=='maint') return;
+  S.gst=S.gst||{}; const ST=S.gst.mrinv||(S.gst.mrinv={cf:{},sort:null,xf:null,f:{q:''}}); if(q!==undefined) ST.f.q=q;
+  const can=S.mr.can&&!roView();
+  const top=`<div class="bar"><button id="mtback">→ الصيانة والطوارئ</button><b style="margin-inline-start:6px">فواتير أرابتك للصيانة والطوارئ</b>${can?'<button id="mtlink" title="فواتير بلا إشعار في البرنامج: اربط كل واحدة بإشعارها">🔗 ربط الفواتير بلا إشعار</button>':''}${S.B.admin?'<button id="mtfix" title="مرة واحدة: نسخة احتياطية، ثم دمج الفاتورة المسجلة مرتين (صف بالمبلغ بلا إشعار + صف بالإشعار بلا مبلغ، ورقم PO واحد)، ثم ربط كل فاتورة بإشعارها">🧹 دمج المكرر وربط الفواتير</button>':''}</div>`;
+  const wire=()=>{ $('#mtback').onclick=()=>{ S.mtInv=false; S.mt=null; vMaint(); }; if($('#mtlink')) $('#mtlink').onclick=mtLinkModal;
+    if($('#mtfix')) $('#mtfix').onclick=async()=>{ if(!confirm('تُؤخذ نسخة احتياطية (ورقة Match_bak) ثم تُدمج الفواتير المكررة وتُربط بإشعاراتها. متابعة؟')) return; $('#mtfix').disabled=true;
+      try{ const r=await api('mtInvFix',S.tok); S.mr=null; S.mt=null; modal(`<h3 style="margin-top:0">نتيجة الدمج والربط</h3><div>الفواتير: ${r.invoices} · رُبط: ${r.linked} · دُمج: ${r.merged.length} · بلا إشعار: ${r.unlinked.length}</div>${r.merged.length?`<div class="tw" style="margin-top:8px"><table><thead><tr><th>PO</th><th>الإشعار</th><th>بقي التسلسل</th><th>حُذف التسلسل</th></tr></thead><tbody>${r.merged.map(m=>`<tr><td dir="ltr">${esc(m.po)}</td><td>${esc(m.d9)}</td><td>${esc(m.kept)}</td><td>${esc(m.removed)}</td></tr>`).join('')}</tbody></table></div>`:''}${r.unlinked.length?`<div class="muted" style="margin-top:8px">بلا إشعار: ${r.unlinked.map(u=>'تسلسل '+u.seq+(u.po?' PO '+u.po:'')).join('، ')} — اربطها من «ربط الفواتير بلا إشعار».</div>`:''}<div style="display:flex;gap:8px;margin-top:10px"><span class="sp"></span><button onclick="closeModal();vMaintInv()">إغلاق</button></div>`); }
+      catch(e){ toast(e.message); $('#mtfix').disabled=false; } }; };
+  vMatchRec(true,top,wire);
+}
+async function mtLinkModal(){ modal('<div class="loading">جارٍ القراءة…</div>'); let U; try{ U=await api('mtInvUnlinked',S.tok); }catch(e){ return modal(`<div class="err">${esc(e.message)}</div>`); }
+  const M=S.mt||await api('listMaint',S.tok); const H=M.headers, NL=M.rows.map(r=>{ const o={}; H.forEach((k,i)=>o[k]=r[i]); return o; }).filter(o=>o.id).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const opt=u=>`<option value=""></option>`+NL.map(o=>`<option value="${esc(o.id)}"${u.d9&&String(o.d9).trim()===String(u.d9).trim()?' selected':''}>${esc([o.d9||o.d1||('#'+o.id),o.station,o.contractor,o.date].filter(Boolean).join(' · '))}</option>`).join('');
+  modal(`<h3 style="margin-top:0">فواتير بلا إشعار في البرنامج</h3>${U.length?`<div class="muted" style="margin-bottom:8px">${U.length} فاتورة. اختر لكل فاتورة إشعارها ثم «ربط». يُرفض الربط إن كان رقم PO مسجّلاً لإشعار آخر.</div>
+    <div class="tw" style="max-height:60vh"><table><thead><tr><th>تسلسل</th><th>رقم الفاتورة</th><th>الصافي</th><th>PO</th><th>D2 / D9 في الفاتورة</th><th>الإشعار</th><th></th></tr></thead><tbody>${U.map((u,i)=>`<tr><td>${esc(u.seq)}</td><td>${esc(u.no)}</td><td>${esc(money(u.net)||u.net)}</td><td dir="ltr">${esc(u.po)}</td><td dir="ltr">${esc([u.wo,u.d9].filter(Boolean).join(' / '))}</td><td><select data-lk="${i}">${opt(u)}</select></td><td><button data-lkb="${i}">ربط</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="muted">كل الفواتير مربوطة بإشعاراتها.</div>'}
+    <div class="err" id="lke"></div><div style="display:flex;gap:8px;margin-top:10px"><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`,true);
+  document.querySelectorAll('[data-lkb]').forEach(b=>b.onclick=async()=>{ const i=+b.dataset.lkb, mid=document.querySelector('[data-lk="'+i+'"]').value; if(!mid) return $('#lke').textContent='اختر الإشعار أولاً';
+    b.disabled=true; try{ await api('mtInvLink',S.tok,U[i].key,mid); b.closest('tr').remove(); $('#lke').textContent=''; toast('رُبطت الفاتورة '+U[i].seq); S.mr=null; S.mt=null; }catch(e){ b.disabled=false; $('#lke').textContent=e.message; } });
+}
 async function vMaint(){
+  if(S.mtInv) return vMaintInv();
   $('#main').innerHTML='<div class="loading">جارٍ التحميل…</div>';
   let R; try{ R=S.mt||(S.mt=await api('listMaint',S.tok)); }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
   if(S.view!=='maint') return;
@@ -3116,11 +3187,11 @@ async function vMaint(){
     lbl:k=>ML[k]||XL[k]||({qf_status:'حالة ملف الجودة',qd_prog:'تقدم مستندات الجودة',qd_rej:'مستندات جودة مرفوضة',mr_wo:'رقم أمر العمل',mr_po:'رقم أمر الشراء (PO)'}[k])||k, val:(o,k)=>k==='month'?(o.date||'').slice(0,7):k==='mvio'?(o.vio_n||''):k==='mqf'?(o.qf_status||o.qd_prog||''):k==='matt'?'':(o[k]==null?'':o[k]), can:(o,k)=>k==='att_state'?attCan()&&!!o.id:mtGridCan(o,k),   // حالة الإرفاق تُعدَّل في الجدول بصلاحيتها؛ والباقي من النموذج — جدول الصيانة للقراءة فقط: كل إدخال وتعديل عبر نموذج الإشعار وحده (قرار المالك 03-11)
     opts:(o,k)=>k==='att_state'?ATT_V:k==='office'?S.B.lists.office:k==='work_type'?['مجدول','طوارئ']:k==='status'?MSTAT:MCHK.includes(k)?['تم']:k==='contractor'?CONTR_MT():k==='engineer'?PEOPLE():undefined,
     dates:['date'], wrap:['work_desc','notes','reason'], free:['contractor','engineer'], src:k=>k==='mcinv'||k==='msf'?'الصيانة والطوارئ':k==='inv_link'||k==='inv_state'||k==='mr_wo'||k==='mr_po'?'المطابقة والصرف':k==='mvio'?'المخالفات والمحاضر':k==='mqf'||/^q[fd]_/.test(k)?'ملفات الجودة':k==='matt'?'البرنامج':'الصيانة والطوارئ', clr:k=>k==='inv_link'||k==='inv_state'?TABC.matching:k==='mvio'?TABC.forms:k==='mqf'||/^q[fd]_/.test(k)?TABC.quality:k==='matt'?TABC.mine:tc, chip:()=>'',
-    cell:(o,k,v)=>(k==='mr_po'||k==='m_po')&&v&&poDup(o).length?poWarn(o,v):k==='inv_aji'&&o.inv_link?`<span title="من فواتير المطابقة والصرف">${esc(money(v)||v)} 🔗</span>`:k==='inv_state'&&v?`<span class="pill ${/المالية/.test(v)&&!/بانتظار/.test(v)?'p-ok':'p-w'}">${esc(v)}</span>`:k==='mvio'?mtCell(o):k==='mqf'?mqCell(o):k==='mcinv'?ciCell(o):k==='att_state'?attCell(v):k==='station_url'?stLink(v,o.station):k==='msf'?sfCell('D9:'+String(o.mref||o.d9||'').trim(),o.sf_files):k==='matt'?(String(o.d9||'').trim()?`<span class="fmb fm0 atb" data-att="D9:${esc(String(o.mref||o.d9).trim())}" title="مرفقات الإشعار">📁</span>`:''):['work_desc','notes','reason'].includes(k)?richHtml(v):esc(['inv_aji','inv_con'].includes(k)?(money(v)||v):v), cls:(o,k)=>k==='status'&&o.status&&o.status!=='تم التنفيذ'&&o.status!=='ملغي'?'late':'',
+    cell:(o,k,v)=>(k==='mr_po'||k==='m_po')&&v&&poDup(o).length?poWarn(o,v):k==='inv_aji'&&o.inv_link?`<span class="mtinv" data-mtinv="${esc(String(o.d9||'').trim())}" title="فواتير أرابتك لهذا الإشعار — انقر لفتحها" style="cursor:pointer">${esc(money(v)||v)} 🧾</span>`:k==='inv_state'&&v?`<span class="pill ${/المالية/.test(v)&&!/بانتظار/.test(v)?'p-ok':'p-w'}">${esc(v)}</span>`:k==='mvio'?mtCell(o):k==='mqf'?mqCell(o):k==='mcinv'?ciCell(o):k==='att_state'?attCell(v):k==='station_url'?stLink(v,o.station):k==='msf'?sfCell('D9:'+String(o.mref||o.d9||'').trim(),o.sf_files):k==='matt'?(String(o.d9||'').trim()?`<span class="fmb fm0 atb" data-att="D9:${esc(String(o.mref||o.d9).trim())}" title="مرفقات الإشعار">📁</span>`:''):['work_desc','notes','reason'].includes(k)?richHtml(v):esc(['inv_aji','inv_con'].includes(k)?(money(v)||v):v), cls:(o,k)=>k==='status'&&o.status&&o.status!=='تم التنفيذ'&&o.status!=='ملغي'?'late':'',
     search:o=>[o.d9,o.d1,o.d2,o.mr_wo,o.mr_po,o.station,o.work_desc,o.reason,o.engineer,o.notes,o.contractor].join(' '),
     open:o=>maintForm(o), undo:R.can?(()=>undoLast('mt')):null, norm:(o,k,v)=>MCHK.includes(k)&&v?'تم':v, put:(o,k,v)=>{ o[k]=v; return {id:o.id,k,v}; },
     save:recs=>api('saveMaintCells',S.tok,recs.map(x=>MT_GK[x.k]?Object.assign({},x,{k:MT_GK[x.k]}):x)).then(r=>{ r.rows.forEach(x=>{ const n={}; r.headers.forEach((k,i)=>n[k]=x[i]); const o=L.find(y=>y.id===n.id); if(o) Object.assign(o,n); const i=R.rows.findIndex(y=>y[0]===n.id); if(i>=0) R.rows[i]=H.map(k=>n[k]); }); }),
-    bar:(R.can?'<button class="pri" id="mnew">+ إشعار جديد</button><button id="mundo">↶ تراجع</button>':'')+'<button id="mstm" title="جدول مواقع المحطات لكل مكتب">📍 جداول المحطات</button>', hint:(R.mine?'، إشعاراتك أنت فقط (مهندس التنفيذ: '+esc(R.mine)+')':'')+'، نقرتان على رقم الإشعار «م» لفتح نموذجه',
+    bar:(R.can?'<button class="pri" id="mnew">+ إشعار جديد</button><button id="mundo">↶ تراجع</button>':'')+'<button id="mstm" title="جدول مواقع المحطات لكل مكتب">📍 جداول المحطات</button>'+(S.B.tabs&&S.B.tabs.matching!==false&&(S.B.admin||S.B.user.role==='قائد مكتب'||canMaintInv())?'<button id="minv" title="فواتير أرابتك للصيانة والطوارئ، كل فاتورة داخل إشعارها">🧾 فواتير أرابتك</button>':''), hint:(R.mine?'، إشعاراتك أنت فقط (مهندس التنفيذ: '+esc(R.mine)+')':'')+'، نقرتان على رقم الإشعار «م» لفتح نموذجه',
     onDraw:l=>{ const inv=l.filter(x=>numOf(x.inv_aji)>0), n=k=>l.filter(x=>x.status===k).length; if(!$('#mk')) return;
       $('#mk').innerHTML=attKpi(L,'attno',o=>String(o.attach||'').trim()==='تم','عمود «الإرفاق» = تم')+`<div class="kpi" data-kf="all">الإشعارات<b>${l.length}</b></div><div class="kpi" data-kf="done">تم التنفيذ<b>${n('تم التنفيذ')}</b></div><div class="kpi" data-kf="open">لم يُنفّذ / جارٍ<b class="${n('لم يتم التنفيذ')+n('جار التنفيذ')?'late':''}">${n('لم يتم التنفيذ')+n('جار التنفيذ')}</b></div><div class="kpi" data-kf="cancel">ملغي<b>${n('ملغي')}</b></div>
       <div class="kpi" data-kf="inv">لها فاتورة أرابتك<b>${inv.length}</b></div><div class="kpi">فواتير أرابتك (ريال)<b>${money(Math.round(inv.reduce((s,x)=>s+numOf(x.inv_aji),0)*100)/100)||0}</b></div><div class="kpi">فواتير المقاول (ريال)<b>${money(Math.round(l.reduce((s,x)=>s+numOf(x.inv_con),0)))||0}</b></div>`; },
@@ -3133,6 +3204,7 @@ async function vMaint(){
   sheet(L, ['id','date','d9','mvio','mqf','matt','d1','office','contractor','station','work_type','work_desc','engineer','status'].concat(MCHK,['inv_aji','inv_con','mcinv','msf','notes']), {ad:AD, hide:['station_url'] /* رابط المحطة أُلغي من الصيانة (المالك 09-11) */, draft:null /* الإنشاء من «+ إشعار جديد» وحده */,
     kf:{podup:{label:'⚠️ PO مكرر',fn:o=>poDup(o).length>0},attno:{label:'لم يتم الإرفاق',fn:o=>String(o.attach||'').trim()!=='تم'},done:{label:'تم التنفيذ',fn:o=>o.status==='تم التنفيذ'}, open:{label:'لم يُنفّذ / جارٍ',fn:o=>o.status==='لم يتم التنفيذ'||o.status==='جار التنفيذ'}, cancel:{label:'ملغي',fn:o=>o.status==='ملغي'}, inv:{label:'لها فاتورة أرابتك',fn:o=>numOf(o.inv_aji)>0}},
     kpis:`<div id="mk" class="kpis"></div>`+(R.can&&R.admin!==false?`<div class="bar"><label>نسبة إنجاز الصيانة والطوارئ في التقرير الشهري % <input id="mpct" value="${esc(R.pct||'')}" style="width:70px" inputmode="decimal"></label><button id="mpsave">حفظ النسبة</button>${S.B.admin?`<label style="margin-inline-start:16px">التعديل المباشر في الجدول <select id="mgrid">${Object.keys(MT_GRID_L).map(k=>`<option value="${k}"${(R.grid||'admin')===k?' selected':''}>${esc(MT_GRID_L[k])}</option>`).join('')}</select></label>`:''}</div>`:(R.pct!==''&&R.pct!=null?`<div class="muted" style="margin-bottom:8px">نسبة إنجاز الصيانة في التقرير الشهري: ${esc(R.pct)}%</div>`:''))});
+  if($('#minv')) $('#minv').onclick=()=>vMaintInv('');
   if($('#mgrid')) $('#mgrid').onchange=()=>api('setMaintGrid',S.tok,$('#mgrid').value).then(v=>{ R.grid=v; toast('التعديل المباشر: '+MT_GRID_L[v]); shell(); }).catch(e=>toast(e.message));
   if($('#mpsave')) $('#mpsave').onclick=()=>api('setMaintPct',S.tok,$('#mpct').value).then(p=>{ R.pct=p; S.rpMeta=null; toast('تم حفظ نسبة إنجاز الصيانة'); }).catch(e=>toast(e.message));
   // حقول النموذج تُبنى من أعمدة الصيانة نفسها لا بتعداد يدوي: أي عمود يُضاف
@@ -3175,7 +3247,8 @@ async function vMaint(){
       ${MF_RO.length?`<div class="card" style="margin:10px 0"><div class="muted" style="margin-bottom:6px">من أقسام أخرى — للعرض فقط</div><div class="f">${MF_RO.map(([k,src])=>`<label>${esc(mfLbl(k))}<input value="${esc(mfRoVal(o,k))}" readonly title="${esc(src)}" style="background:#F4F3EE"></label>`).join('')}</div></div>`:''}
       <datalist id="mdc">${CONTR_MT().map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="mde">${PEOPLE().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
       ${o.updated_by?`<div class="muted" style="margin-top:6px">آخر تعديل: ${esc(o.updated_by)} ${esc((o.updated_at||'').slice(0,16))}</div>`:''}<div class="err" id="merr"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">${ro?'':'<button class="pri" id="msave">حفظ</button>'}${!ro&&!isNew&&R.admin!==false?'<button id="mdel" style="color:var(--dan);border-color:var(--dan)">حذف</button>':''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+      <div style="display:flex;gap:8px;margin-top:8px">${ro?'':'<button class="pri" id="msave">حفظ</button>'}${!ro&&!isNew&&R.admin!==false?'<button id="mdel" style="color:var(--dan);border-color:var(--dan)">حذف</button>':''}${!isNew&&$('#minv')?`<button id="mfinv" title="فواتير أرابتك لهذا الإشعار">🧾 الفواتير${o.c_inv_no?' ('+esc(String(o.c_inv_no).split('،').length)+')':''}</button>`:''}<span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+    if($('#mfinv')) $('#mfinv').onclick=()=>{ closeModal(); vMaintInv(String(o.d9||o.d2||'').trim()); };
     if($('#msave')) $('#msave').onclick=async()=>{ const x={id:o.id||''}; document.querySelectorAll('[data-m]').forEach(el=>x[el.dataset.m]=el.value.trim()); document.querySelectorAll('[data-mc]').forEach(el=>x[el.dataset.mc]=el.checked?'تم':'');
       $('#msave').disabled=true; try{ const row=await api('saveMaint',S.tok,x); const n=obj(row); const i=R.rows.findIndex(r=>r[0]===n.id); if(i>=0) R.rows[i]=row; else R.rows.push(row); closeModal(); toast('تم الحفظ'); again(); }
       catch(e){ $('#merr').textContent=e.message; $('#msave').disabled=false; } };
@@ -3482,7 +3555,7 @@ function xuSheetXml(sh,st,first,drawRel){
   const spr=(sh.color||sh.print)?'<sheetPr>'+(sh.color?'<tabColor rgb="FF'+sh.color+'"/>':'')+(sh.print?'<pageSetUpPr fitToPage="1"/>':'')+'</sheetPr>':'';
   const xml=XU_D+'<worksheet xmlns="'+XU_M+'" xmlns:r="'+XU_R+'">'+spr+'<dimension ref="A1:'+last+'"/>'
     +'<sheetViews><sheetView rightToLeft="1"'+(first?' tabSelected="1"':'')+(sh.nogrid?' showGridLines="0"':'')+' workbookViewId="0">'+pane+'</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+body.join('')+'</sheetData>'
-    +(sh.protect?'<sheetProtection sheet="1" objects="1" scenarios="1" autoFilter="0" sort="0" formatColumns="0" formatRows="0" insertRows="0" deleteRows="0" formatCells="0"/>':'')+(sh.filter?'<autoFilter ref="'+sh.filter+'"/>':'')+mg+cf+dv+(sh.print?'<printOptions horizontalCentered="1"/>':'')+'<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>'+(sh.print?'<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>':'')+'<ignoredErrors><ignoredError sqref="A1:XFD1048576" numberStoredAsText="1"/></ignoredErrors>'+(drawRel?'<drawing r:id="'+drawRel+'"/>':'')+'</worksheet>';
+    +(sh.protect?'<sheetProtection sheet="1" objects="1" scenarios="1" autoFilter="0" sort="0" formatColumns="0" formatRows="0" insertRows="0" deleteRows="0" formatCells="0"/>':'')+(sh.filter?'<autoFilter ref="'+sh.filter+'"/>':'')+mg+cf+dv+(sh.print?'<printOptions horizontalCentered="1"/>':'')+'<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>'+(sh.print?'<pageSetup paperSize="9" orientation="'+(sh.print.landscape?'landscape':'portrait')+'" fitToWidth="1" fitToHeight="1"/>':'')+'<ignoredErrors><ignoredError sqref="A1:XFD1048576" numberStoredAsText="1"/></ignoredErrors>'+(drawRel?'<drawing r:id="'+drawRel+'"/>':'')+'</worksheet>';
   return {xml,dyn};
 }
 function xuChartXml(ch,n){
@@ -4511,14 +4584,15 @@ function mrLists(){ const L=S.mr.rows||[], X=S.mr.lists||{}, u=(k,inv)=>[...new 
     appr:m(['تحت الاعتماد'],X.appr||[])}; }
 async function mrLoad(force){ if(S.mr&&S.mr.rows&&!force) return S.mr; const r=await api('listMatchRec',S.tok); S.mr={can:r.can,lists:r.lists||{},rows:r.rows.map(x=>{ const o={}; r.headers.forEach((k,i)=>o[k]=x[i]); return o; })}; return S.mr; }
 function vMatching(){
-  const SUBS=['cons','maint','cinv','po','cover'], sub=SUBS.includes(S.mtSub)?S.mtSub:'cons', tc=TABC.matching, tm=TABC.maint, ti=TABC.cinv;
-  const TN={cons:['الإنشاءات',tc],maint:['الصيانة والطوارئ',tm],cinv:['مراجعة فواتير المقاول',ti],po:['أوامر الشراء والاعتمادات',tc],cover:['كفر الفاتورة',tm]};
+  // تبويب «الصيانة والطوارئ» انتقل إلى قسم الصيانة نفسه (المالك 10-11): فواتير أرابتك هناك، داخل إشعاراتها
+  const SUBS=['cons','cinv','po','cover'], sub=SUBS.includes(S.mtSub)?S.mtSub:'cons', tc=TABC.matching, tm=TABC.maint, ti=TABC.cinv;
+  const TN={cons:['الإنشاءات',tc],cinv:['مراجعة فواتير المقاول',ti],po:['أوامر الشراء والاعتمادات',tc],cover:['كفر الفاتورة',tm]};
   const top=`<div class="bar whtabs">${SUBS.map(k=>`<a data-mts="${k}" class="${sub===k?'on':''}" style="--tc:${TN[k][1][0]};--tt:${TN[k][1][1]}">${TN[k][0]}</a>`).join('')}</div>`;
   const wireTop=()=>document.querySelectorAll('[data-mts]').forEach(a=>a.onclick=()=>{ S.mtSub=a.dataset.mts; vMatching(); });
   $('#main').innerHTML=top+'<div class="loading">جارٍ تحميل المطابقة والصرف…</div>'; wireTop();
   // «أوامر الشراء» adds up the matching records, so it needs them loaded as well as its own stored rows
   const load=sub==='cinv'?ciLoad():sub==='po'?Promise.all([mrLoad(),poLoad()]):sub==='cover'?Promise.all([mrLoad(),cvLoad()]):mrLoad();
-  load.then(()=>{ if(S.view!=='matching') return; sub==='cinv'?vCInv(top,wireTop):sub==='po'?vPO(top,wireTop):sub==='cover'?vCover(top,wireTop):vMatchRec(sub==='maint',top,wireTop); })
+  load.then(()=>{ if(S.view!=='matching') return; sub==='cinv'?vCInv(top,wireTop):sub==='po'?vPO(top,wireTop):sub==='cover'?vCover(top,wireTop):vMatchRec(false,top,wireTop); })
     .catch(e=>{ $('#main').innerHTML=top+`<div class="err">${esc(e.message)}</div>`; wireTop(); });
 }
 // ---------- «كفر الفاتورة»: a tab of المطابقة والصرف (the owner, 31/10) ----------
@@ -4623,11 +4697,11 @@ function cvSettings(C){ const F=[['vat_no','الرقم الضريبي'],['contra
 // the matching rows carrying the same PO, and the value with VAT is that × 1.15, so they can never drift from the records
 // the way the hand-kept workbook did. Only the dates, the approvals and the notes are stored (listPOs / savePOCells).
 const PO_VAT=1.15;
-const PO_COLS=['sec','po','notice_no','n_wo','net','gross','tax_date','sap_date','appr_head','appr_mgr','appr_fin','notes'];
-const PO_L={sec:'القسم',po:'رقم PO',notice_no:'رقم الإشعار',n_wo:'عدد أوامر العمل',net:'القيمة بدون الضريبة',gross:'القيمة بالضريبة',
+const PO_COLS=['sec','po','office','contractor','orders','notice_no','n_wo','net','gross','tax_date','sap_date','appr_head','appr_mgr','appr_fin','notes'];
+const PO_L={sec:'القسم',po:'رقم PO',office:'المكتب',contractor:'المقاول',orders:'أوامر العمل / الإشعارات',notice_no:'رقم الإشعار',n_wo:'عدد أوامر العمل',net:'القيمة بدون الضريبة',gross:'القيمة بالضريبة',
   tax_date:'تاريخ إصدار الفاتورة الضريبية',sap_date:'موقف الارفاق على الساب',appr_head:'اعتماد رئيس القسم',appr_mgr:'اعتماد مدير الدائرة',appr_fin:'اعتماد المالية',notes:'ملاحظات'};
 const PO_ED=['notice_no','tax_date','sap_date','appr_head','appr_mgr','appr_fin','notes'];
-const PO_CALC=['n_wo','net','gross'];
+const PO_CALC=['n_wo','net','gross','office','contractor','orders'];   // المكتب والمقاول والأوامر من سجلات المطابقة نفسها (المالك 10-11)
 const PO_SECL={cons:'الإنشاءات',maint:'الصيانة والطوارئ'};
 const poSecOf=o=>mrInv(o)?'maint':'cons';
 const poIsNo=x=>/^\d{5,}$/.test(String(x==null?'':x).replace(/\s/g,''));   // a real PO number, not «تحت الاعداد» or «جاري المطابقه»
@@ -4637,12 +4711,13 @@ function poRows(){ const R=S.mr||{rows:[]}, P=S.po||{rows:[]}, M={};
   (P.rows||[]).forEach(r=>{ const sec=r.sec, po=String(r.po||''); if(!sec||!po) return; M[sec+'|'+po]=r; });
   const G={};
   (R.rows||[]).forEach(o=>{ const sec=poSecOf(o), po=String(o.po==null?'':o.po).trim()||String(o.po_status==null?'':o.po_status).trim(); if(!po) return;
-    const k=sec+'|'+po, g=G[k]||(G[k]={sec,po,n_wo:0,net:0,bucket:!poIsNo(po)});
-    g.n_wo++; const v=mrNum(mrInv(o)?o.inv_net:o.value); if(v!=null) g.net+=v; });
+    const k=sec+'|'+po, g=G[k]||(G[k]={sec,po,n_wo:0,net:0,bucket:!poIsNo(po),of:new Set(),ct:new Set(),od:[]});
+    g.n_wo++; const v=mrNum(mrInv(o)?o.inv_net:o.value); if(v!=null) g.net+=v;
+    const of=mrInv(o)?(o.n_office||''):(o.office||''), ct=mrInv(o)?(o.n_contractor||''):(o.contractor||''), od=mrInv(o)?(o.n_d9||o.d9||o.wo||''):(o.wo||''); if(of) g.of.add(of); if(ct) g.ct.add(ct); if(od&&g.od.indexOf(String(od))<0) g.od.push(String(od)); });
   // a stored row whose PO no longer appears in the records still shows, so nothing typed is ever lost from sight
-  Object.keys(M).forEach(k=>{ if(!G[k]){ const r=M[k]; G[k]={sec:r.sec,po:r.po,n_wo:0,net:0,bucket:!poIsNo(r.po)}; } });
+  Object.keys(M).forEach(k=>{ if(!G[k]){ const r=M[k]; G[k]={sec:r.sec,po:r.po,n_wo:0,net:0,bucket:!poIsNo(r.po),of:new Set(),ct:new Set(),od:[]}; } });
   return Object.keys(G).map(k=>{ const g=G[k], m=M[k]||{};
-    return Object.assign({key:k,n_wo:g.n_wo,net:poRound(g.net),gross:poRound(g.net*PO_VAT),bucket:g.bucket},
+    return Object.assign({key:k,n_wo:g.n_wo,net:poRound(g.net),gross:poRound(g.net*PO_VAT),bucket:g.bucket,office:[...g.of].join('، '),contractor:[...g.ct].join('، '),orders:g.od.join('، ')},
       {sec:g.sec,po:g.po},PO_ED.reduce((a,c)=>(a[c]=m[c]||'',a),{}),{updated_at:m.updated_at||'',updated_by:m.updated_by||''}); })
     .sort((a,b)=>(a.sec===b.sec?0:a.sec==='cons'?-1:1)||(a.bucket-b.bucket)||String(a.po).localeCompare(String(b.po),'ar'));
 }
@@ -4659,14 +4734,14 @@ function vPO(top,wireTop){
   const AD={ noImp:1, st:ST, unit:'أمر شراء', stk:'po', file:'أوامر_الشراء', sub:'po', subName:'أوامر الشراء والاعتمادات', orders:false,
     all:PO_COLS.concat(['updated_at','updated_by']), lbl, val:(o,k)=>k==='sec'?(PO_SECL[o.sec]||o.sec):(o[k]==null?'':o[k]),
     can:(o,k)=>can&&PO_ED.includes(k), opts:(o,k)=>k==='sec'?Object.values(PO_SECL):k==='sap_date'||k==='appr_head'||k==='appr_mgr'||k==='appr_fin'?['تحت الاعتماد','تحت الاعتماد ع الساب']:undefined,
-    dates:['tax_date'], wrap:['notes'], free:PO_ED,
+    dates:['tax_date'], wrap:['notes','orders'], free:PO_ED,
     src:()=>'أوامر الشراء', clr:()=>tc, chip:()=>'',
     cls:(o,k)=>poRed(o)?'late':'',
     cell:(o,k,v)=>k==='po'&&o.bucket?`<span class="pill p-w" title="ليست أمر شراء — مجموعة أوامر بهذا الموقف">${esc(v)}</span>`
       :k==='net'||k==='gross'?(v===''||v==null?'':gFmt(+v))
       :k==='sap_date'&&poRed(o)?`<span class="pill p-d" title="صدرت الفاتورة الضريبية قبل اعتماد الساب">${esc(v||'لم يُرفع')}</span>`:esc(v==null?'':v),
     rowCls:o=>poRed(o)?'po-red':poGreen(o)?'po-green':'',
-    search:o=>[o.po,PO_SECL[o.sec],o.notice_no,o.notes].join(' '),
+    search:o=>[o.po,PO_SECL[o.sec],o.notice_no,o.office,o.contractor,o.orders,o.notes].join(' '),
     norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {sec:o.sec,po:o.po,k,v}; },
     save:recs=>api('savePOCells',S.tok,recs).then(r=>{ (r.rows||[]).forEach(x=>{ const o=rows.find(y=>y.key===x.key); if(o) PO_ED.concat(['updated_at','updated_by']).forEach(k=>o[k]=x[k]||''); });
       const P=S.po; (r.rows||[]).forEach(x=>{ const i=(P.rows||[]).findIndex(y=>y.key===x.key); if(i>=0) P.rows[i]=x; else (P.rows=P.rows||[]).push(x); }); }),
@@ -4779,7 +4854,7 @@ function vMatchRec(inv,top,wireTop){
     ready:o=>inv?!!(String(o.wo||'').trim()||String(o.d9||'').trim()):/^\d{6,12}$/.test(String(o.wo||'').trim()),
     fill:(o,k)=>{ if(inv||k!=='wo') return; const x=byRef(o.wo); if(!x) return; o.wo=x.wo; if(!o.ccode) o.ccode=x.ccode||''; if(!o.type) o.type=x.type||''; if(!o.office) o.office=x.office||''; if(!o.contractor) o.contractor=x.contractor||''; },
     commit:async x=>{ x.kind=inv?'صيانة وطوارئ':'إنشاءات'; const r=await api('addMatchRec',S.tok,x); const M=await mrLoad(true); const n=M.rows.find(y=>y.key===r.key); if(!n) throw new Error('لم يُحفظ السجل (قد يكون محذوفاً سابقاً)'); return n; },
-    noPush:true, after:()=>{ if(S.view==='matching') shell(); }, done:o=>'أُضيف سجل المطابقة '+(o.wo||'') }:null;
+    noPush:true, after:()=>{ if(S.view==='matching'||S.mtInv) { S.mt=null; shell(); } }, done:o=>'أُضيف سجل المطابقة '+(o.wo||'') }:null;
   // الكروت فلاتر كباقي التبويبات (المالك 07-11)
   const KF=inv?{fin:{label:'معتمدة من المالية',fn:o=>/^\d{4}-/.test(o.appr_fin)},nf:{label:'بلا إشعار في البرنامج',fn:o=>!o.n_found}}
     :{gis:{label:'من GIS',fn:o=>!!o.gis_date},rem:{label:'موقف المطابقة: متبقي',fn:o=>o.status==='متبقي'},po:{label:'صدر لها PO',fn:o=>/^\d+$/.test(o.po)},sug:{label:'مقترحة من الرحلة',fn:o=>!!o._a}};
