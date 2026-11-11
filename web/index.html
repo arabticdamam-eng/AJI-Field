@@ -1607,17 +1607,38 @@ function qdGenHtml(C,V,code,day,L,sig){ const F=C.forms[code], X2=V.ext||{}, o=V
   const hd=head([['رقم أمر العمل',o.wo+(o.type?'-'+o.type:'')],['المقاول',FULLC(o.contractor||'')],['ادارة كهرباء','الدمام'],['الدائرة',o.office||''],['الموقع',o.district||''],['التاريخ',S.B.today]]);
   if(F.sub==='meas') return `<div class="pf chk">${top}${hd}${tbl(['م','رقم البند','الوصف','النوع','الوحدة','المخطط','المنفذ'],B.map((l,i)=>[i+1,l.c,(IT[l.c]||[])[0]||'',surf(l.c),(IT[l.c]||[])[1]||'',q(l.p),q(l.d)]))}${foot(o.site_engineer)}</div>`;
   return `<div class="pf chk">${top}${hd}${tbl(['م','رقم البند','الوصف','الوحدة','الكمية المخططة','الكمية المنفذة'],B.map((l,i)=>[i+1,l.c,(IT[l.c]||[])[0]||'',(IT[l.c]||[])[1]||'',q(l.p),q(l.d)]))}${foot(o.site_engineer)}</div>`; }
+// إكمال تلقائي من جدول البنود (المالك 11-11): يطابق أي جزء من الوصف أو رقم البند، ويضع الرقم والوحدة
+const AC_N = t => String(t || '').toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+function acFind(list, q) { q = AC_N(q); if (q.length < 2) return []; const W = q.split(' ').filter(Boolean), out = [];
+  for (const x of list) { const h = x[3] || (x[3] = AC_N(x[1]) + ' ' + x[0]); if (W.every(w => h.includes(w))) { const p = h.indexOf(W[0]); out.push([p === 0 ? 0 : String(x[0]).startsWith(q) ? 0 : 1, p, x]); if (out.length > 400) break; } }
+  return out.sort((a, b) => a[0] - b[0] || a[1] - b[1] || String(a[2][1]).length - String(b[2][1]).length).slice(0, 12).map(z => z[2]); }
+function acAttach(sel, getList) { let box = null, cur = null, L = [], hi = -1;
+  const close = () => { if (box) box.remove(); box = null; cur = null; hi = -1; };
+  const pick = x => { const tr = cur.closest('tr'); cur.value = x[1]; const c = tr.querySelector('input[data-c="c"]'); if (c) c.value = x[0]; const u = String(x[2] || '').toLowerCase();
+    const set = k => { const i = tr.querySelector('input[data-c="' + k + '"]'); if (i) { i.focus(); return true; } return false; };
+    const uu = tr.querySelector('input[data-c="u"]'); if (uu) uu.value = x[2] || '';
+    close(); if (/m3|م3|م³|cum/.test(u)) set('m3') || set('q'); else if (/m2|م2|م²|sqm/.test(u)) set('m2') || set('q'); else if (/^(m|lm|م\.?ط|متر|ml)$/.test(u)) set('q') || set('ea'); else set('ea') || set('q'); };
+  const draw = () => { if (!box) { box = document.createElement('div'); box.className = 'acbox'; document.body.appendChild(box); }
+    const r = cur.getBoundingClientRect(); box.style.cssText = `position:fixed;z-index:9999;top:${Math.min(r.bottom + 2, innerHeight - 60)}px;right:${Math.max(4, innerWidth - r.right)}px;width:${Math.min(innerWidth - 8, Math.max(r.width, 300))}px;max-height:${Math.max(120, innerHeight - r.bottom - 10)}px;overflow:auto;background:#fff;color:#111;border:1px solid #999;border-radius:8px;box-shadow:0 4px 14px #0004;font-size:13px;direction:rtl`;
+    box.innerHTML = L.length ? L.map((x, i) => `<div data-i="${i}" style="padding:7px 9px;border-bottom:1px solid #eee;cursor:pointer;${i === hi ? 'background:#E6F1FB' : ''}"><div>${String(x[1]).replace(/[<>&]/g, '')}</div><div style="font-size:11px;color:#666;direction:ltr;text-align:right">${x[0]}${x[2] ? ' · ' + String(x[2]).replace(/[<>&]/g, '') : ''}</div></div>`).join('') : '<div style="padding:7px 9px;color:#888">لا يوجد بند مطابق — يبقى النص كما كتبته</div>';
+    box.querySelectorAll('[data-i]').forEach(d => d.onmousedown = e => { e.preventDefault(); pick(L[+d.dataset.i]); }); };
+  document.addEventListener('input', e => { const t = e.target; if (!t.matches || !t.matches(sel)) return; cur = t; const list = getList(); if (!list || !list.length) return close();
+    L = acFind(list, t.value); hi = -1; const c = t.closest('tr') && t.closest('tr').querySelector('input[data-c="c"]'); if (c && c.value && !L.some(x => x[1] === t.value)) c.value = ''; if (AC_N(t.value).length < 2) return close(); draw(); });
+  document.addEventListener('keydown', e => { if (!box || e.target !== cur) return; if (e.key === 'ArrowDown') { hi = Math.min(L.length - 1, hi + 1); draw(); e.preventDefault(); } else if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); draw(); e.preventDefault(); } else if (e.key === 'Enter' && hi >= 0) { pick(L[hi]); e.preventDefault(); } else if (e.key === 'Escape') close(); });
+  document.addEventListener('focusout', e => { if (e.target === cur) setTimeout(close, 150); });
+  addEventListener('scroll', () => { if (box && cur) draw(); }, true); }
+acAttach('#mg_act input[data-c="t"],#mg_mat input[data-c="t"],#mg_rem input[data-c="t"]', () => S.items ? (S.itemsL || (S.itemsL = Object.values(S.items.m).map(x => [x[0], x[1], x[2]]))) : []);
 // حصر الأعمال والقياس لإشعارات الصيانة: إدخال مباشر (المالك 11-11) — نفس الحقول في الميداني
 const MQ_COLS=[['earth','قضيب تأريض'],['ins','نهايات معزولة'],['term','النهايات'],['tape','شريط التحذير'],['expose','الكشف والتمديد'],['total','الطول الكلي للكابل'],['loop','طول الكابل الظاهر'],['thru','الطول داخل الوصلة'],['trench','طول الكابل بالحفرية'],['size','مقاس الكابل'],['joints','وصلات ض.ع/ض.م'],['pipe','تمديد مواسير'],['t_l','بلاط: الطول'],['t_w','بلاط: العرض'],['a_l','أسفلت: الطول'],['a_w','أسفلت: العرض'],['x_l','حفريات: الطول'],['x_w','حفريات: العرض'],['x_d','حفريات: العمق'],['soil','نوعية التربة'],['from','من نقطة … إلى نقطة']];
-function qdMqModal(C,V,code){ const o=V.ctx.o, d=V.d, isQ=code==='QTY', Q=JSON.parse(JSON.stringify((isQ?d.qty:d.meas)||{})), F=C.forms[code];
+function qdMqModal(C,V,code){ if(!S.items) boqItemsLoad().then(()=>{ S.itemsL=null; }).catch(()=>{}); const o=V.ctx.o, d=V.d, isQ=code==='QTY', Q=JSON.parse(JSON.stringify((isQ?d.qty:d.meas)||{})), F=C.forms[code];
   const inp=(k,l,v,t)=>`<label>${esc(l)}<input data-mk="${k}" value="${esc(v==null?'':v)}" ${t?'type="'+t+'"':''}></label>`;
   const grid=(id,cols,rows,min)=>{ const R=rows.slice(); while(R.length<(min||3)) R.push({}); return `<div class="tw" style="max-height:30vh"><table id="${id}"><thead><tr>${cols.map(c=>`<th>${esc(c[1])}</th>`).join('')}<th></th></tr></thead><tbody>${R.map(r=>`<tr>${cols.map(c=>`<td><input data-c="${c[0]}" value="${esc(r[c[0]]==null?'':r[c[0]])}" style="min-width:${c[2]||70}px"></td>`).join('')}<td><b class="qdx" data-rx="1" style="cursor:pointer">✕</b></td></tr>`).join('')}</tbody></table></div><button data-add="${id}" style="margin-top:4px">+ سطر</button>`; };
   const rowsOf=id=>[...document.querySelectorAll('#'+id+' tbody tr')].map(tr=>{ const x={}; tr.querySelectorAll('input[data-c]').forEach(i=>{ if(i.value.trim()) x[i.dataset.c]=i.value.trim(); }); return x; }).filter(x=>Object.keys(x).length);
   modal(`<h3 style="margin:0 0 6px">${esc(F.name)} — D9 ${esc(o.wo)}</h3>
    ${isQ?`<div class="f">${inp('date','التاريخ',Q.date||o.date||S.B.today,'date')}${inp('work','نوع العمل',Q.work||o.work_type||'')}${inp('fault','نوع العطل',Q.fault||o.work_desc||'')}${inp('area','المنطقة',Q.area||o.district||'')}${inp('station','رقم المحطة',Q.station||o.station||'')}${inp('start','تاريخ ووقت بدء العمل',Q.start)}${inp('end','وقت الانتهاء من العطل',Q.end)}${inp('dur','مدة الإصلاح',Q.dur)}${inp('con_sup','مشرف عمل المقاول',Q.con_sup)}${inp('emp','اسم الموظف',Q.emp)}</div>
-     <h4>الإجراء</h4>${grid('mg_act',[['t','الوصف',220],['ea','EA',50],['m2','M2',50],['m3','M3',50]],Q.act||[],3)}
-     <h4>المواد المستخدمة</h4>${grid('mg_mat',[['t','اسم المادة',220],['q','العدد / الطول',70]],Q.mat||[],3)}
-     <h4>المواد المزالة من الشبكة</h4>${grid('mg_rem',[['t','اسم المادة',220],['q','العدد / الطول',70]],Q.rem||[],1)}
+     <h4>الإجراء</h4>${grid('mg_act',[['t','الوصف (اكتب جزءاً منه أو رقم البند)',240],['c','رقم البند',80],['ea','EA',50],['m2','M2',50],['m3','M3',50]],Q.act||[],3)}
+     <h4>المواد المستخدمة</h4>${grid('mg_mat',[['t','اسم المادة (اكتب جزءاً منه أو رقم البند)',240],['c','رقم البند',80],['u','الوحدة',50],['q','العدد / الطول',70]],Q.mat||[],3)}
+     <h4>المواد المزالة من الشبكة</h4>${grid('mg_rem',[['t','اسم المادة (اكتب جزءاً منه أو رقم البند)',240],['c','رقم البند',80],['u','الوحدة',50],['q','العدد / الطول',70]],Q.rem||[],1)}
      <h4>الحفريات</h4>${grid('mg_exc',[['l','الطول',50],['w','العرض',50],['d','العمق',50],['k','نوع الحفر',100]],Q.exc||[],1)}
      <label>الملاحظات<textarea data-mk="notes" rows="2">${esc(Q.notes||'')}</textarea></label>`
    :`<div class="f">${inp('station','رقم المحطة',Q.station||o.station||'')}${inp('meters','عدد العدادات',Q.meters)}${inp('breaker','سعة القاطع الرئيسي',Q.breaker)}${inp('con_rep','اسم مندوب المقاول',Q.con_rep)}</div>
@@ -4356,7 +4377,7 @@ function taskMsg(msg,back){ const enc=encodeURIComponent(msg); window._tkBack=ba
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="pri" id="tkcp">📋 نسخ</button><a class="btn" href="https://wa.me/?text=${enc}" target="_blank" rel="noopener"><button>واتساب</button></a><span class="sp"></span><button onclick="closeModal();if(window._tkBack){const f=window._tkBack;window._tkBack=null;f();}">${back?'↩ رجوع للتاسكات':'إغلاق'}</button></div>`);
   $('#tkcp').onclick=()=>{ const t=$('#tkmsg'); t.select(); try{ navigator.clipboard.writeText(msg); }catch(e){ document.execCommand('copy'); } toast('نُسخت الرسالة'); }; }
 function boqCell(o){ const s=o.boq_st||'', x=BQS[s]||[s,'bq1']; return `<span class="fmb ${x[1]} bqb" data-bq="${esc(o.key)}" title="المقايسة: ${esc(x[0])}">${s?'📋 '+esc(x[0]):'📋'}</span>`; }
-async function boqItemsLoad(force){ if(S.items&&!force) return S.items; const r=await api('boqItems',S.tok); const m={}; r.rows.forEach(x=>m[x[0]]=x); S.items={m,price:r.price,n:r.rows.length}; return S.items; }
+async function boqItemsLoad(force){ if(S.items&&!force) return S.items; S.itemsL=null; const r=await api('boqItems',S.tok); const m={}; r.rows.forEach(x=>m[x[0]]=x); S.items={m,price:r.price,n:r.rows.length}; return S.items; }
 const bqDesc=d=>String(d||'').replace(/^\s*الاشراف على\s*/,'');
 async function boqModal(key){
   modal('<div class="loading">جارٍ فتح المقايسة…</div>');

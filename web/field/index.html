@@ -112,7 +112,7 @@ async function call(fn, ...args) {
 // The first project stays under the old key 'B', so nothing already on a phone is lost.
 const bKey = () => S.pid ? 'B:' + S.pid : 'B';
 async function loadProjects() { try { S.PJ = await call('fieldProjects'); await DB.set('PJ', S.PJ); } catch (e) { S.PJ = S.PJ || { sup: false, list: [] }; } }
-async function pull() { const B = await call('fieldPull', S.itv || ''); if (B.items) { S.IT = {}; B.items.forEach(x => S.IT[x[0]] = [x[1], x[2]]); S.itv = B.itemsVer; await DB.set('items', { v: S.itv, m: S.IT }); } delete B.items; S.B = B; await DB.set(bKey(), B); return B; }
+async function pull() { const B = await call('fieldPull', S.itv || ''); if (B.items) { S.IT = {}; B.items.forEach(x => S.IT[x[0]] = [x[1], x[2]]); S.ITL = null; S.itv = B.itemsVer; await DB.set('items', { v: S.itv, m: S.IT }); } delete B.items; S.B = B; await DB.set(bKey(), B); return B; }
 // switching needs the network, and never while something is still waiting to be sent
 async function switchProj(pid, name) {
   if (S.Q.length) { toast('لا يمكن تبديل المشروع وهناك ' + S.Q.length + ' عملاً بانتظار الإرسال. أرسله أولاً.'); return go({ v: 'queue' }); }
@@ -246,7 +246,7 @@ async function takePhotos(files, it, cam) { const out = []; const locP = cam ? g
 const fileB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(f); });
 
 // ---------- screens ----------
-function go(r) { S.r = r; history.pushState(r, ''); render(); scrollTo(0, 0); }
+function go(r) { S.rv = null; S.r = r; history.pushState(r, ''); render(); scrollTo(0, 0); }
 addEventListener('popstate', e => { menu(false); S.r = e.state || { v: 'home' }; render(); });
 function topBar(title, back) { const on = navigator.onLine, n = S.Q.length;
   return `<div class="top"><button id="mb" class="mb" title="القائمة" aria-label="القائمة">☰</button>${back ? '<button id="bk">→</button>' : ''}<b>${esc(title)}</b><span class="sp"></span>${S.api ? `<a id="web" class="webb" href="./app.html" title="البرنامج الكامل">🖥 البرنامج</a>` : ''}<span class="dot ${on ? 'on' : 'off'}" title="${on ? 'متصل' : 'بدون إنترنت'}"></span>
@@ -283,7 +283,8 @@ function render() {
   const A = $('#app');
   if (!S.api) return setupView(A);
   if (!S.dev || !S.B) return loginView(A);
-  const v = S.r.v; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'mq') return mqView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); homeView(A);
+  // لا يُعاد رسم شاشة تعبئة مفتوحة عند انتهاء مزامنة في الخلفية، فلا يضيع ما يكتبه المهندس (المالك 11-11)
+  const v = S.r.v, sig = JSON.stringify(S.r); if ((v === 'chk' || v === 'mq') && S.rv === sig && A.firstChild) return; S.rv = sig; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'mq') return mqView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); homeView(A);
 }
 function cleanApi(t) { const m = String(t || '').replace(/\s+/g, '').match(/https:\/\/script\.google(?:usercontent)?\.com\/[^?#]*?\/(?:exec|dev)\b/); return m ? m[0].replace(/\/dev$/, '/exec') : ''; }
 function setupView(A) {
@@ -449,6 +450,27 @@ function itemView(A) {
         else { const [p] = await takePhotos([f], it, !!inp.dataset.cam); await enqueue({ t: 'up', ref: key, slot, b64: p.b64, mime: p.mime, loc: p.loc, thumb: p.thumb }); } } toast('حُفظت على الجوال' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); }
     catch (e) { toast(e.message, 4000); } });
 }
+// إكمال تلقائي من جدول البنود (المالك 11-11): يطابق أي جزء من الوصف أو رقم البند، ويضع الرقم والوحدة
+const AC_N = t => String(t || '').toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+function acFind(list, q) { q = AC_N(q); if (q.length < 2) return []; const W = q.split(' ').filter(Boolean), out = [];
+  for (const x of list) { const h = x[3] || (x[3] = AC_N(x[1]) + ' ' + x[0]); if (W.every(w => h.includes(w))) { const p = h.indexOf(W[0]); out.push([p === 0 ? 0 : String(x[0]).startsWith(q) ? 0 : 1, p, x]); if (out.length > 400) break; } }
+  return out.sort((a, b) => a[0] - b[0] || a[1] - b[1] || String(a[2][1]).length - String(b[2][1]).length).slice(0, 12).map(z => z[2]); }
+function acAttach(sel, getList) { let box = null, cur = null, L = [], hi = -1;
+  const close = () => { if (box) box.remove(); box = null; cur = null; hi = -1; };
+  const pick = x => { const tr = cur.closest('tr'); cur.value = x[1]; const c = tr.querySelector('input[data-c="c"]'); if (c) c.value = x[0]; const u = String(x[2] || '').toLowerCase();
+    const set = k => { const i = tr.querySelector('input[data-c="' + k + '"]'); if (i) { i.focus(); return true; } return false; };
+    const uu = tr.querySelector('input[data-c="u"]'); if (uu) uu.value = x[2] || '';
+    close(); if (/m3|م3|م³|cum/.test(u)) set('m3') || set('q'); else if (/m2|م2|م²|sqm/.test(u)) set('m2') || set('q'); else if (/^(m|lm|م\.?ط|متر|ml)$/.test(u)) set('q') || set('ea'); else set('ea') || set('q'); };
+  const draw = () => { if (!box) { box = document.createElement('div'); box.className = 'acbox'; document.body.appendChild(box); }
+    const r = cur.getBoundingClientRect(); box.style.cssText = `position:fixed;z-index:9999;top:${Math.min(r.bottom + 2, innerHeight - 60)}px;right:${Math.max(4, innerWidth - r.right)}px;width:${Math.min(innerWidth - 8, Math.max(r.width, 300))}px;max-height:${Math.max(120, innerHeight - r.bottom - 10)}px;overflow:auto;background:#fff;color:#111;border:1px solid #999;border-radius:8px;box-shadow:0 4px 14px #0004;font-size:13px;direction:rtl`;
+    box.innerHTML = L.length ? L.map((x, i) => `<div data-i="${i}" style="padding:7px 9px;border-bottom:1px solid #eee;cursor:pointer;${i === hi ? 'background:#E6F1FB' : ''}"><div>${String(x[1]).replace(/[<>&]/g, '')}</div><div style="font-size:11px;color:#666;direction:ltr;text-align:right">${x[0]}${x[2] ? ' · ' + String(x[2]).replace(/[<>&]/g, '') : ''}</div></div>`).join('') : '<div style="padding:7px 9px;color:#888">لا يوجد بند مطابق — يبقى النص كما كتبته</div>';
+    box.querySelectorAll('[data-i]').forEach(d => d.onmousedown = e => { e.preventDefault(); pick(L[+d.dataset.i]); }); };
+  document.addEventListener('input', e => { const t = e.target; if (!t.matches || !t.matches(sel)) return; cur = t; const list = getList(); if (!list || !list.length) return close();
+    L = acFind(list, t.value); hi = -1; const c = t.closest('tr') && t.closest('tr').querySelector('input[data-c="c"]'); if (c && c.value && !L.some(x => x[1] === t.value)) c.value = ''; if (AC_N(t.value).length < 2) return close(); draw(); });
+  document.addEventListener('keydown', e => { if (!box || e.target !== cur) return; if (e.key === 'ArrowDown') { hi = Math.min(L.length - 1, hi + 1); draw(); e.preventDefault(); } else if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); draw(); e.preventDefault(); } else if (e.key === 'Enter' && hi >= 0) { pick(L[hi]); e.preventDefault(); } else if (e.key === 'Escape') close(); });
+  document.addEventListener('focusout', e => { if (e.target === cur) setTimeout(close, 150); });
+  addEventListener('scroll', () => { if (box && cur) draw(); }, true); }
+acAttach('#g_act input[data-c="t"],#g_mat input[data-c="t"],#g_rem input[data-c="t"]', () => S.IT ? (S.ITL || (S.ITL = Object.keys(S.IT).map(c => [c, S.IT[c][0], S.IT[c][1]]))) : []);
 // حصر الأعمال (QTY) والقياس (MEAS) لإشعارات الصيانة: إدخال مباشر من الموقع بلا مقايسة (المالك 11-11)
 const MQ_COLS = [['earth', 'قضيب تأريض'], ['ins', 'نهايات معزولة'], ['term', 'النهايات'], ['tape', 'شريط التحذير'], ['expose', 'الكشف والتمديد'], ['total', 'الطول الكلي للكابل'], ['loop', 'طول الكابل الظاهر'], ['thru', 'الطول داخل الوصلة'], ['trench', 'طول الكابل بالحفرية'], ['size', 'مقاس الكابل'], ['joints', 'وصلات ض.ع/ض.م'], ['pipe', 'تمديد مواسير'], ['t_l', 'بلاط: الطول'], ['t_w', 'بلاط: العرض'], ['a_l', 'أسفلت: الطول'], ['a_w', 'أسفلت: العرض'], ['x_l', 'حفريات: الطول'], ['x_w', 'حفريات: العرض'], ['x_d', 'حفريات: العمق'], ['soil', 'نوعية التربة'], ['from', 'من نقطة … إلى نقطة']];
 function mqView(A) {
@@ -458,9 +480,9 @@ function mqView(A) {
   const rowsOf = id => [...document.querySelectorAll('#' + id + ' tbody tr')].map(tr => { const o = {}; tr.querySelectorAll('input[data-c]').forEach(i => { if (i.value.trim()) o[i.dataset.c] = i.value.trim(); }); return o; }).filter(o => Object.keys(o).length);
   A.innerHTML = topBar(F.name, 1) + `<div class="wrap"><div class="card"><div class="muted">D9 ${esc(it.wo)} · ${esc(it.contractor || '')} · ${esc(it.station || '')}</div>
     ${isQ ? `<div class="f" style="margin-top:8px">${inp('date', 'التاريخ', Q.date || it.date || today(), 'date')}${inp('work', 'نوع العمل', Q.work || it.work_type || '')}${inp('fault', 'نوع العطل', Q.fault || it.work_desc || '')}${inp('area', 'المنطقة', Q.area || it.district || '')}${inp('station', 'رقم المحطة', Q.station || it.station || '')}${inp('start', 'تاريخ ووقت بدء العمل', Q.start)}${inp('end', 'وقت الانتهاء من العطل', Q.end)}${inp('dur', 'مدة الإصلاح', Q.dur)}${inp('con_sup', 'مشرف عمل المقاول', Q.con_sup)}${inp('emp', 'اسم الموظف', Q.emp)}</div>
-      <h3>الإجراء</h3>${grid('g_act', [['t', 'الوصف', 180], ['ea', 'EA', 50], ['m2', 'M2', 50], ['m3', 'M3', 50]], Q.act || [], 3)}
-      <h3>المواد المستخدمة</h3>${grid('g_mat', [['t', 'اسم المادة', 180], ['q', 'العدد / الطول', 70]], Q.mat || [], 3)}
-      <h3>المواد المزالة من الشبكة</h3>${grid('g_rem', [['t', 'اسم المادة', 180], ['q', 'العدد / الطول', 70]], Q.rem || [], 1)}
+      <h3>الإجراء</h3>${grid('g_act', [['t', 'الوصف (اكتب جزءاً منه أو رقم البند)', 220], ['c', 'رقم البند', 80], ['ea', 'EA', 50], ['m2', 'M2', 50], ['m3', 'M3', 50]], Q.act || [], 3)}
+      <h3>المواد المستخدمة</h3>${grid('g_mat', [['t', 'اسم المادة (اكتب جزءاً منه أو رقم البند)', 220], ['c', 'رقم البند', 80], ['u', 'الوحدة', 50], ['q', 'العدد / الطول', 70]], Q.mat || [], 3)}
+      <h3>المواد المزالة من الشبكة</h3>${grid('g_rem', [['t', 'اسم المادة (اكتب جزءاً منه أو رقم البند)', 220], ['c', 'رقم البند', 80], ['u', 'الوحدة', 50], ['q', 'العدد / الطول', 70]], Q.rem || [], 1)}
       <h3>الحفريات</h3>${grid('g_exc', [['l', 'الطول', 50], ['w', 'العرض', 50], ['d', 'العمق', 50], ['k', 'نوع الحفر', 90]], Q.exc || [], 1)}
       <label style="margin-top:8px">الملاحظات<textarea data-k="notes" rows="2">${esc(Q.notes || '')}</textarea></label>`
     : `<div class="f" style="margin-top:8px">${inp('station', 'رقم المحطة', Q.station || it.station || '')}${inp('meters', 'عدد العدادات', Q.meters)}${inp('breaker', 'سعة القاطع الرئيسي', Q.breaker)}${inp('con_rep', 'اسم مندوب المقاول', Q.con_rep)}</div>
