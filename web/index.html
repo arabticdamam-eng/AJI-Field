@@ -2377,27 +2377,49 @@ const sfBadge=js=>{ const q=sfSplit(js); return `🦺 ${q.doc.length} · 📷 ${
 const sfThumbs=(L,act)=>L.length?`<div class="qdth" style="margin-top:6px">${L.map(x=>`<span class="qdtw"><a href="${esc(x.url||phView(x.id))}" target="_blank" rel="noopener"><img src="${esc(phUrl(x.id,160))}" alt="" title="${esc((x.at||'')+' · '+(x.by||''))}"></a>${act?act(x):''}</span>`).join('')}</div>`:'<div class="muted" style="padding:4px 2px">لا صور بعد.</div>';
 function sfCell(ref,js){ const q=sfSplit(js), n=q.doc.length+q.ph.length; if(!ref||ref==='D9:') return ''; return `<span class="fmb ${n?'fm1':'fm0'} sfb" data-sf="${esc(ref)}" title="${n?'فتح ملف السلامة':'إرفاق ملف السلامة'}">${n?sfBadge(js):'🦺 ＋'}</span>`; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('.sfb'); if(b){ e.preventDefault(); e.stopPropagation(); sfModal(b.dataset.sf); } },true);
+// المالك 11-11: ملف PDF في ملف السلامة يُحوَّل إلى صور صفحاته؛ المستند يُطبع صفحة كاملة والصورة 4 في الصفحة، والتمييز تلقائي قابل للتبديل
+function isDocCanvas(cv){ try{ const n=48,t=document.createElement('canvas'); t.width=t.height=n; const g=t.getContext('2d'); g.drawImage(cv,0,0,n,n); const d=g.getImageData(0,0,n,n).data; let paper=0,sat=0;
+  for(let i=0;i<d.length;i+=4){ const mx=Math.max(d[i],d[i+1],d[i+2]), mn=Math.min(d[i],d[i+1],d[i+2]); if(mn>150&&mx-mn<50) paper++; sat+=mx-mn; } return paper/(n*n)>=0.5&&sat/(n*n)<48; }catch(e){ return false; } }
+async function pdfEach(data,each,prog){ await pdfLibs(); const doc=await pdfjsLib.getDocument({data}).promise, N=doc.numPages;
+  try{ for(let i=1;i<=N;i++){ if(prog) prog(i,N); const pg=await doc.getPage(i), v0=pg.getViewport({scale:1}), v=pg.getViewport({scale:Math.min(3,1500/Math.max(v0.width,v0.height))});
+    const c=document.createElement('canvas'); c.width=Math.round(v.width); c.height=Math.round(v.height); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); await pg.render({canvasContext:x,viewport:v}).promise;
+    let txt=0; try{ txt=(await pg.getTextContent()).items.length; }catch(e){}
+    await each(c,i,N,txt>15||isDocCanvas(c)); c.width=c.height=1; } }finally{ try{ doc.destroy(); }catch(e){} } return N; }
+const sfIsImg=x=>/^image\//i.test(x.mt||'')||(!/pdf/i.test(x.mt||'')&&/\.(jpe?g|png|webp|gif)$/i.test(x.name||''));
+const sfTitle=x=>x.src?x.src+(x.pg?' — ص '+x.pg+'/'+(x.n||x.pg):''):(x.name||'');
 async function sfModal(ref){
   modal('<div class="loading">جارٍ فتح ملف السلامة…</div>');
   let X; try{ X=await api('sfList',S.tok,ref); }catch(e){ modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); return; } let busy=0;
-  const sync=()=>{ const js=JSON.stringify(X.files.map(f=>({id:f.id,name:f.name,mt:f.mt,at:f.at,by:f.by,k:f.k})));
+  const sync=()=>{ const js=JSON.stringify(X.files.map(f=>{ const o={id:f.id,name:f.name,mt:f.mt,at:f.at,by:f.by,k:f.k}; ['g','pg','n','src'].forEach(k=>{ if(f[k]) o[k]=f[k]; }); return o; }));
     if(/^D9:/.test(X.ref)){ const R=S.mt; if(R){ const H=R.headers, k=X.ref.slice(3); (R.L||[]).forEach(o=>{ if(String(o.mref||o.d9)===k) o.sf_files=js; }); const im=H.indexOf('mref'), is=H.indexOf('sf_files'); if(is>=0) R.rows.forEach(r=>{ if(String(im>=0?r[im]:r[H.indexOf('d9')])===k) r[is]=js; }); } }
     else { const o=byRef(X.ref); if(o) o.sf_files=js; }
     document.querySelectorAll('.sfb[data-sf="'+X.ref+'"]').forEach(el=>{ el.outerHTML=sfCell(X.ref,js); }); };
   const draw=()=>{ modal(`<h3 style="margin:0 0 6px">🦺 ملف السلامة — ${esc(X.title||X.ref)}</h3>
      <div class="card"><b>المستندات</b> <span class="muted">شهادات، تصاريح، تقييم مخاطر…</span>
      ${X.can?`<div class="bar" style="margin:6px 0"><label class="upl">📷 تصوير مستند<input type="file" id="sfcam" accept="image/*" capture="environment" style="display:none"></label><label class="upl">＋ ملفات أو PDF<input type="file" id="sff" accept="image/*,application/pdf" multiple style="display:none"></label><span id="sfp" class="muted"></span></div>`:'<div class="muted">للاطلاع فقط — يرفع ملف السلامة مهندس الموقع أو السلامة أو التنفيذ أو قائد المكتب أو المدير.</div>'}
-     ${X.files.some(f=>sfKind(f)==='doc')?`<div class="tw"><table><thead><tr><th>الملف</th><th>التاريخ</th><th>بواسطة</th><th></th></tr></thead><tbody>${X.files.filter(f=>sfKind(f)==='doc').map(f=>`<tr><td><a href="${esc(f.url||phView(f.id))}" target="_blank" rel="noopener">${/pdf/i.test(f.mt||f.name)?'📄':'🖼'} ${esc(f.name)}</a></td><td>${esc(f.at||'')}</td><td>${esc(f.by||'')}</td><td>${X.can?`<button data-sfd="${esc(f.id)}" style="color:var(--dan)">حذف</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<div class="muted" style="margin-top:6px">لا مستندات بعد.</div>'}</div>
-     <div class="card" style="margin-top:8px"><b>📷 صور السلامة</b> <span class="muted">تُضاف إلى ملف الجودة، 4 صور في الصفحة</span>
+     ${X.files.some(f=>sfKind(f)==='doc')?`<div class="tw"><table><thead><tr><th>الملف</th><th>التاريخ</th><th>بواسطة</th><th></th></tr></thead><tbody>${X.files.filter(f=>sfKind(f)==='doc').map(f=>{ const img=sfIsImg(f), np=img?0:X.files.filter(z=>z.g&&z.g===f.g&&z.pg).length; return `<tr><td><a href="${esc(f.url||phView(f.id))}" target="_blank" rel="noopener">${img?'🖼':'📄'} ${esc(sfTitle(f))}</a>${img?'':` <span class="muted">${np?'('+np+' صفحة في ملف الجودة)':'(لم يُحوَّل إلى صور)'}</span>`}</td><td>${esc(f.at||'')}</td><td>${esc(f.by||'')}</td><td style="white-space:nowrap">${X.can&&img?`<button data-sfk="${esc(f.id)}" data-to="ph" title="تُطبع 4 صور في الصفحة بدل صفحة كاملة">⇄ صورة</button> `:''}${X.can&&!img&&!np&&/pdf/i.test((f.mt||'')+(f.name||''))?`<button data-sfc="${esc(f.id)}" title="تحويل صفحات الملف إلى صور لتدخل ملف الجودة">تحويل إلى صفحات</button> `:''}${X.can?`<button data-sfd="${esc(f.id)}" style="color:var(--dan)">حذف</button>`:''}</td></tr>`; }).join('')}</tbody></table></div>`:'<div class="muted" style="margin-top:6px">لا مستندات بعد.</div>'}</div>
+     <div class="card" style="margin-top:8px"><b>📷 صور السلامة</b> <span class="muted">تُضاف إلى ملف الجودة، 4 صور في الصفحة — ⇄ يجعلها مستنداً بصفحة كاملة</span>
      ${X.can?`<div class="bar" style="margin:6px 0"><label class="upl">📷 تصوير<input type="file" id="sfpc" accept="image/*" capture="environment" style="display:none"></label><label class="upl">🖼 من المعرض<input type="file" id="sfpf" accept="image/*" multiple style="display:none"></label><span id="sfpp" class="muted"></span></div>`:''}
-     ${sfThumbs(X.files.filter(f=>sfKind(f)==='ph'),x=>X.can?`<b class="qdx" data-sfd="${esc(x.id)}" title="حذف" style="cursor:pointer">✕</b>`:'')}</div>
+     ${sfThumbs(X.files.filter(f=>sfKind(f)==='ph'),x=>X.can?`<b class="qdx" data-sfd="${esc(x.id)}" title="حذف" style="cursor:pointer">✕</b><b class="qdx" data-sfk="${esc(x.id)}" data-to="doc" title="اجعلها مستنداً (صفحة كاملة)" style="cursor:pointer;top:auto;bottom:-6px;left:22px;color:var(--pri,#0E7C86)">⇄</b>`:'')}</div>
      <div class="err" id="sferr"></div><div style="display:flex;margin-top:8px"><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>`);
+    const pages=async(data,name,g,P)=>{ let k=0; await pdfEach(data,async(cv,i,n,isDoc)=>{ X=await api('sfUpload',S.tok,X.ref,cv.toDataURL('image/jpeg',0.8).split(',')[1],'image/jpeg',String(name).replace(/\.pdf$/i,'')+'_p'+i+'.jpg','',isDoc?'doc':'ph',{g,pg:i,n,src:name}); k=i; },(i,n)=>{ if(P) P.textContent='تحويل «'+name+'» إلى صور… صفحة '+i+' من '+n; }); return k; };
     const up=async(fs,kind)=>{ if(busy||!fs.length) return; busy=1; let k=0; const P=$(kind==='ph'?'#sfpp':'#sfp');
       for(const f of fs){ try{ if(f.size>30*1048576) throw new Error(f.name+': أكبر من 30 ميغابايت'); if(P) P.textContent='جارٍ الرفع… '+(++k)+'/'+fs.length; const img=/^image\//.test(f.type);
-          X=await api('sfUpload',S.tok,X.ref,img?(await shrinkImg(f,1800,0.78)).b64:await pdfB64(f,t=>{ if(P) P.textContent=t; }),img?'image/jpeg':(f.type||'application/pdf'),f.name,'',kind); sync(); }catch(e){ toast(e.message); } }
+          if(img){ const im=await shrinkImg(f,1800,0.78); let kd=kind; try{ const el=await new Promise((ok,no)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=no; i.src='data:'+im.mime+';base64,'+im.b64; }); kd=isDocCanvas(el)?'doc':'ph'; }catch(e){}
+            X=await api('sfUpload',S.tok,X.ref,im.b64,'image/jpeg',f.name,'',kd); }
+          else { const g='g'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); let n=0; try{ n=await pages(new Uint8Array(await f.arrayBuffer()),f.name,g,P); }catch(e){ console.warn('pdf pages',e); if(!n) toast('تعذّر تحويل «'+f.name+'» إلى صور؛ رُفع الأصل فقط'); }
+            if(P) P.textContent='رفع الملف الأصلي…'; X=await api('sfUpload',S.tok,X.ref,await pdfB64(f,t=>{ if(P) P.textContent=t; }),f.type||'application/pdf',f.name,'','doc',n?{g}:null); }
+          sync(); }catch(e){ toast(e.message); } }
       busy=0; if($('#mdl')) draw(); };
     [['sff','doc'],['sfcam','doc'],['sfpc','ph'],['sfpf','ph']].forEach(([id,kind])=>{ const el=$('#'+id); if(el) el.onchange=()=>{ const fs=[...el.files]; el.value=''; up(fs,kind); }; });
-    document.querySelectorAll('[data-sfd]').forEach(b=>b.onclick=async()=>{ if(!confirm('حذف الملف من ملف السلامة؟')) return; b.disabled=true;
+    document.querySelectorAll('[data-sfk]').forEach(b=>b.onclick=async()=>{ b.style.pointerEvents='none'; try{ X=await api('sfSetKind',S.tok,X.ref,b.dataset.sfk,b.dataset.to); sync(); draw(); }catch(e){ $('#sferr').textContent=e.message; b.style.pointerEvents=''; } });
+    // ملف PDF قديم رُفع قبل التحويل: تُجلب نسخته وتُرفع صفحاته صوراً مربوطة به
+    document.querySelectorAll('[data-sfc]').forEach(b=>b.onclick=async()=>{ if(busy) return; busy=1; b.disabled=true; const f=X.files.find(z=>z.id===b.dataset.sfc), P=$('#sfp');
+      try{ if(P) P.textContent='جارٍ جلب الملف…'; const r=await fetch(f.url&&!/drive\.google/.test(f.url)?f.url:phView(f.id)); if(!r.ok) throw new Error('تعذّر جلب الملف ('+r.status+')'); const g=f.g||('g'+Date.now().toString(36)+Math.random().toString(36).slice(2,7));
+        const n=await pages(new Uint8Array(await r.arrayBuffer()),f.name,g,P); if(n&&!f.g) X=await api('sfSetGroup',S.tok,X.ref,f.id,g); sync(); toast('حُوِّل إلى '+n+' صفحة'); }
+      catch(e){ $('#sferr').textContent='تعذّر التحويل: '+e.message+' — نزّل الملف وأعد رفعه ليتحوّل تلقائياً'; }
+      busy=0; if($('#mdl')) draw(); });
+    document.querySelectorAll('[data-sfd]').forEach(b=>b.onclick=async()=>{ if(!confirm('حذف الملف من ملف السلامة؟'+(X.files.some(z=>z.g&&z.pg&&z.g===(X.files.find(y=>y.id===b.dataset.sfd)||{}).g&&!(X.files.find(y=>y.id===b.dataset.sfd)||{}).pg)?' تُحذف معه صور صفحاته.':''))) return; b.disabled=true;
       try{ X=await api('sfDel',S.tok,X.ref,b.dataset.sfd); sync(); draw(); }catch(e){ $('#sferr').textContent=e.message; b.disabled=false; } }); };
   draw();
 }

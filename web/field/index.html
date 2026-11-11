@@ -32,7 +32,7 @@ h3{margin:12px 0 6px;font-size:16px}
 .k{display:inline-block;min-width:24px;text-align:center;border-radius:10px;font-weight:700}.k0{color:var(--mut)}.k1{color:var(--warn);background:var(--warnbg)}.k2{color:var(--ok);background:var(--okbg)}
 .ph{display:flex;gap:8px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}.ph .n{flex:1;font-size:14px}
 .th{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.th span{position:relative}.th img{width:62px;height:62px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.th .x{position:absolute;top:-7px;left:-7px;background:#fff;color:var(--dan);border-radius:50%;padding:0 5px;font-weight:700;cursor:pointer;border:1px solid var(--line)}
-.th .loc{outline:2px dashed var(--warn)}
+.th .loc{outline:2px dashed var(--warn)}.th .k{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);background:#fff;color:var(--pri,#0E7C86);border-radius:10px;padding:0 7px;font-weight:700;cursor:pointer;border:1px solid var(--line);font-size:13px;line-height:18px}
 .cam{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:20px;background:#fff;cursor:pointer}
 .qi{padding:10px 0;border-top:1px solid var(--line)}.qi .tx{font-size:15px}.qi small{display:block;color:var(--mut);direction:ltr;text-align:left;font-size:11px}
 .ab{display:flex;gap:6px;margin-top:8px}.ab button{flex:1;padding:12px 4px;font-size:15px}.ab .on.y{background:var(--ok);color:#fff;border-color:var(--ok)}.ab .on.n{background:var(--dan);color:#fff;border-color:var(--dan)}.ab .on.x{background:#777;color:#fff;border-color:#777}
@@ -86,14 +86,17 @@ async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op
 const EDGE_URL = 'https://cnauqprdllsboiayfrgn.supabase.co/functions/v1/aji?forceFunctionRegion=eu-central-1';
 const EDGE_RD = /^(fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdHtml|sfList|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet)$/;
 const EDGE_NO = /^(qdBuild|uploadSignature|deleteSignature)$/;   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
-let RID = null;
+let RID = null; const BIG_ARG = 1400000, EDGE_UP = /^(sfUpload|qdUpload|uploadAttachment|uploadFormPhoto|uploadFormScan|fieldCInvPhoto|fieldMaintPhoto|uploadLicense)$/;
 async function edgeTry(fn, args) {
   // وضع الطوارئ (fieldPull.fc موجود): كل شيء على Google
   try { if (!ON_NEW || localStorage.getItem('aji_edge') === '0' || EDGE_NO.test(fn) || (fn !== 'fieldLogin' && !S.dev) || (S.B && S.B.fc)) return null; } catch (e) { return null; }
-  const rd = EDGE_RD.test(fn), rid = rd ? '' : (RID ? RID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+  // المالك 11-11: الملف الكبير (PDF أصلي) لا يمرّ بالخادم الجديد — حدوده تُسقطه — بل يُرفع مباشرة عبر خادم Google
+  if (args.some(a => typeof a === 'string' && a.length > BIG_ARG)) return null;
+  const rd = EDGE_RD.test(fn), up = EDGE_UP.test(fn), rid = rd ? '' : (RID ? RID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 10)); let http = 0;
   const body = JSON.stringify(fn === 'fieldLogin' ? { fn, args, rid } : { fn, args, dev: S.dev, rid });
   for (let i = 0; i < (rd ? 1 : 3); i++) {
-    try { const r = await fetch(EDGE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); if (r.ok) { const j = await r.json(); return j.google ? null : j; } } catch (e) {}
+    try { const r = await fetch(EDGE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); if (r.ok) { const j = await r.json(); return j.google ? null : j; } http = r.status; } catch (e) {}
+    if (up && http >= 400 && i >= 1) return null;   // رفضٌ مؤكد من الخادم الجديد لملف مرفوع ← خادم Google
     if (!rd) await new Promise(r => setTimeout(r, 800 * (i + 1)));
   }
   if (rd) return null; const er = new Error('تعذّر الوصول إلى الخادم — سيُعاد الإرسال تلقائياً'); er.net = 1; throw er;
@@ -101,7 +104,7 @@ async function edgeTry(fn, args) {
 async function call(fn, ...args) {
   const ej = await edgeTry(fn, args);
   if (ej) { if (ej.err) { if (/انتهت الجلسة/.test(ej.err)) { S.dev = ''; await DB.delk('dev'); } throw new Error(ej.err); } return ej.ok === undefined ? null : ej.ok; }
-  let r; const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 90000); try { r = await fetch(S.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, args, dev: S.dev }), redirect: 'follow', signal: ac.signal }); clearTimeout(tm); }
+  let r; const ac = new AbortController(), tm = setTimeout(() => ac.abort(), args.some(a => typeof a === 'string' && a.length > BIG_ARG) ? 600000 : 90000); try { r = await fetch(S.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, args, dev: S.dev }), redirect: 'follow', signal: ac.signal }); clearTimeout(tm); }
   catch (e) { const er = new Error('لا يوجد اتصال بالإنترنت'); er.net = 1; throw er; }
   if (!r.ok) { const er = new Error('الخادم غير متاح (' + r.status + ')'); er.net = 1; throw er; }
   let j; try { j = await r.json(); } catch (e) { const er = new Error('رد غير متوقع من الخادم. تأكد من رابط البرنامج'); er.net = 1; throw er; }
@@ -126,12 +129,38 @@ async function switchProj(pid, name) {
     const cached = await DB.get(bKey()); if (cached) S.B = cached;
     await pull(); S.msg = 'المشروع: ' + (r.name || name || 'الأساسي'); S.q = ''; S.tab = 'o'; go({ v: 'home' }); toast('المشروع الآن: ' + (r.name || name || 'الأساسي')); }
   catch (e) { toast(e.message); } }
+// ---- ملف السلامة: تحويل PDF إلى صور صفحاته على الجهاز وتمييز المستند من الصورة (المالك 11-11) ----
+const gid = () => 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const b64Buf = b => { const t = atob(b), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; };
+const loadJs = src => new Promise((ok, no) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = () => { e.remove(); no(new Error('تعذّر تحميل محوّل PDF')); }; document.head.appendChild(e); });
+async function pdfLib() { if (!window.pdfjsLib) { await loadJs('./pdf.min.js'); pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js'; } return pdfjsLib; }
+// مستند = ورقة: أغلب المساحة فاتحة قليلة الألوان. صورة موقع = ألوان وتباين. التمييز تقريبي، وللمستخدم تبديله بضغطة.
+function isDocCanvas(cv) { try { const n = 48, t = document.createElement('canvas'); t.width = t.height = n; const g = t.getContext('2d'); g.drawImage(cv, 0, 0, n, n); const d = g.getImageData(0, 0, n, n).data; let paper = 0, sat = 0;
+    for (let i = 0; i < d.length; i += 4) { const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]); if (mn > 150 && mx - mn < 50) paper++; sat += mx - mn; }
+    return paper / (n * n) >= 0.5 && sat / (n * n) < 48; } catch (e) { return false; } }
+// each(canvas, page, pages, isDoc) لكل صفحة بالترتيب؛ الخطأ داخل each يوقف التحويل
+async function pdfEach(data, each, prog) { const lib = await pdfLib(), doc = await lib.getDocument({ data }).promise, N = doc.numPages;
+  try { for (let i = 1; i <= N; i++) { if (prog) prog(i, N); const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 }), v = pg.getViewport({ scale: Math.min(3, 1500 / Math.max(v0.width, v0.height)) });
+      const c = document.createElement('canvas'); c.width = Math.round(v.width); c.height = Math.round(v.height); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); await pg.render({ canvasContext: x, viewport: v }).promise;
+      let txt = 0; try { txt = (await pg.getTextContent()).items.length; } catch (e) {}
+      await each(c, i, N, txt > 15 || isDocCanvas(c)); c.width = c.height = 1; try { pg.cleanup(); } catch (e) {} } }
+  finally { try { doc.destroy(); } catch (e) {} } return N; }
+async function sfKeep(ref, r) { try { const js = JSON.stringify((r.files || []).map(f => { const o = { id: f.id, name: f.name, mt: f.mt, at: f.at, by: f.by, k: f.k }; ['g', 'pg', 'n', 'src'].forEach(k => { if (f[k]) o[k] = f[k]; }); return o; })); const n = (S.B.notices || []).find(x => 'D9:' + (x.mref || x.d9) === ref); if (n) n.sf_files = js; const o = (S.B.orders || []).find(x => x.key === ref); if (o) o.sf_files = js; await DB.set(bKey(), S.B); } catch (e) {} }
 async function runOp(op) {
   if (op.t === 'qd') return call('qdSave', op.ref, op.op);
   if (op.t === 'up') return call('qdUpload', op.ref, op.slot, op.b64, op.mime, op.loc || '');
   if (op.t === 'del') return call('qdRemove', op.ref, op.slot, op.fid);
   if (op.t === 'ci') return call('fieldCInvPhoto', op.ref, op.b64, op.mime, !!op.isNew);
-  if (op.t === 'sf') { const r = await call('sfUpload', op.ref, op.b64, op.mime, op.name || '', op.loc || '', op.kind || ''); try { const js = JSON.stringify((r.files || []).map(f => ({ id: f.id, name: f.name, mt: f.mt, at: f.at, by: f.by, k: f.k }))); const n = (S.B.notices || []).find(x => 'D9:' + (x.mref || x.d9) === op.ref); if (n) n.sf_files = js; const o = (S.B.orders || []).find(x => x.key === op.ref); if (o) o.sf_files = js; await DB.set(bKey(), S.B); } catch (e) {} return r; }
+  if (op.t === 'sfk') { const r = await call('sfSetKind', op.ref, op.fid, op.kind); await sfKeep(op.ref, r); return r; }
+  if (op.t === 'sf') {
+    // ملف PDF قديم في القائمة (قبل التحويل على الجهاز): تُرفع صفحاته صوراً أولاً ثم الأصل، ويُستأنف من حيث توقف
+    if (/pdf/i.test(op.mime || '') && !op.meta && !op.noconv) { op.g = op.g || gid(); op.done = op.done || 0; const R0 = RID;
+      try { await pdfEach(b64Buf(op.b64), async (cv, i, N, isDoc) => { if (i <= op.done) return; RID = () => 'q' + S.dev.slice(0, 8) + '-' + op.id + '-' + String(op.at || '').replace(/\D/g, '') + '-pg' + i;
+          try { await sfKeep(op.ref, await call('sfUpload', op.ref, cv.toDataURL('image/jpeg', 0.8).split(',')[1], 'image/jpeg', (op.name || 'safety') + '_p' + i + '.jpg', '', isDoc ? 'doc' : 'ph', { g: op.g, pg: i, n: N, src: op.name || '' })); } catch (e) { e.up = 1; throw e; }
+          op.done = i; await DB.qput(op); }); op.meta = { g: op.g }; }
+      catch (e) { RID = R0; if (e.up) throw e; if (op.done) op.meta = { g: op.g }; else op.noconv = 1; }
+      RID = R0; await DB.qput(op); }
+    const r = await call('sfUpload', op.ref, op.b64, op.mime, op.name || '', op.loc || '', op.kind || '', op.meta || null); await sfKeep(op.ref, r); return r; }
   if (op.t === 'att') return call('uploadAttachment', op.ref, op.b64, op.mime, op.name || '', op.loc || '');
   if (op.t === 'boq') return call('boqSave', op.ref, { lines: op.lines });
   if (op.t === 'draw') return call('boqDraw', op.ref, op.draw, op.png || '');
@@ -150,16 +179,20 @@ async function runOp(op) {
 }
 async function sync(manual) {
   if (S.syncing || !S.dev) return; if (!navigator.onLine && !manual) return render();
-  S.syncing = true; render(); let sent = 0, failed = 0; const tried = new Set();
+  S.syncing = true; render(); let sent = 0, failed = 0, nf = 0, stuck = 0; const tried = new Set();
   try {
     let op;
-    while ((op = S.Q.find(x => !tried.has(x.id)))) {
+    while ((op = S.Q.filter(x => !tried.has(x.id)).sort((a, b) => (a.tries || 0) - (b.tries || 0))[0])) {   // ما تعثّر سابقاً يُرسل آخراً
       tried.add(op.id); op.sending = 1; let rn = 0; RID = () => 'q' + S.dev.slice(0, 8) + '-' + op.id + '-' + String(op.at || '').replace(/\D/g, '') + '-' + (rn++);
-      try { await runOp(op); await DB.qdel(op.id); S.Q = S.Q.filter(x => x.id !== op.id); sent++; RID = null; render(); }
-      catch (e) { delete op.sending; RID = null; if (e.net) throw e; op.err = e.message; failed++; await DB.qput(op); }
+      try { await runOp(op); await DB.qdel(op.id); S.Q = S.Q.filter(x => x.id !== op.id); sent++; nf = 0; RID = null; render(); }
+      catch (e) { delete op.sending; RID = null;
+        // تعذّر الوصول: يُسجَّل السبب وعدد المحاولات على البند ويُنتقل لما بعده؛ فشلان متتاليان = لا شبكة فعلاً فيتوقف الإرسال
+        if (e.net) { op.nerr = e.message; op.tries = (op.tries || 0) + 1; stuck++; try { await DB.qput(op); } catch (x) {} if (++nf >= 2 || !navigator.onLine) throw e; render(); continue; }
+        op.err = e.message; failed++; await DB.qput(op); }
     }
     await pull(); await loadProjects(); if (!S.noFull && (manual || !S.F || Date.now() - (S.F.got || 0) > 300000)) await pullFull(); S.msg = 'آخر مزامنة ' + now();
-    if (sent || failed) toast('أُرسل ' + sent + (failed ? ' — ' + failed + ' لم يُقبل (افتح «بانتظار الإرسال»)' : ''), failed ? 5000 : 2600);
+    if (stuck) S.msg += ' — ' + stuck + ' لم يصل بعد (يُعاد تلقائياً)';
+    if (sent || failed || stuck) toast('أُرسل ' + sent + (failed ? ' — ' + failed + ' لم يُقبل' : '') + (stuck ? ' — ' + stuck + ' لم يصل بعد' : '') + (failed || stuck ? ' (افتح «بانتظار الإرسال»)' : ''), failed || stuck ? 5000 : 2600);
   } catch (e) { S.msg = e.message; if (manual) toast(e.message, 4000); }
   S.Q.forEach(x => delete x.sending); S.syncing = false; render();
 }
@@ -193,7 +226,10 @@ function guessMw(t) { t = String(t || ''); if (/(mini ?pil|pillar|بيلر|بل�
 function typeOf(it, d) { const C = S.B.cat; if (!it.d9) return String(it.type); if (d && d.wt && C.mx[d.wt]) return d.wt; return kindOf(it.work_desc); }
 // تصنيف إشعار الصيانة من وصف العمل بقاموس الكلمات المرتّب من الخادم (المالك 11-11)؛ وإلا «أخرى» D9
 const sfKind = x => x.k === 'ph' || x.k === 'doc' ? x.k : (/^image\//i.test(x.mt || '') ? 'ph' : 'doc');
-function sfSplit(js) { let L = []; try { L = JSON.parse(js || '[]') || []; } catch (e) {} return { doc: L.filter(x => sfKind(x) === 'doc'), ph: L.filter(x => sfKind(x) === 'ph') }; }
+function sfSplit(js) { let L = []; try { L = JSON.parse(js || '[]') || []; } catch (e) {} return { all: L, doc: L.filter(x => sfKind(x) === 'doc'), ph: L.filter(x => sfKind(x) === 'ph') }; }
+const sfIsImg = x => /^image\//i.test(x.mt || '') || (!/pdf/i.test(x.mt || '') && /\.(jpe?g|png|webp|gif)$/i.test(x.name || ''));
+// مصغّرات ملف السلامة مع زر ⇄ لنقل الملف بين «مستند» و«صورة»؛ ما لم يُرسل بعد محاط بخط متقطع
+const sfTh = (L, Q, to) => L.length || Q.length ? `<div class="th">${L.map(x => `<span><img src="${phUrl(x.id, 160)}" alt="" title="${esc(x.src ? x.src + (x.pg ? ' — ص ' + x.pg + '/' + (x.n || x.pg) : '') : x.name || '')}"><b class="k" data-sfk="${esc(x.id)}" data-to="${to}" title="${to === 'doc' ? 'اجعلها مستنداً' : 'اجعلها صورة'}">⇄</b></span>`).join('')}${Q.map(q => `<span><img class="loc" src="${q.thumb || ''}" alt=""><b class="k" data-sfk="" data-q="${q.id}" data-to="${to}">⇄</b></span>`).join('')}</div>` : '';
 function kindOf(desc) { const C = S.B.cat, t = String(desc || '').toLowerCase(); for (const [k, re] of (C.mtKw || [])) { try { if (C.mx[k] && new RegExp(re, 'i').test(t)) return k; } catch (e) {} } return 'D9'; }
 function defOf(code, type) { const C = S.B.cat, F = C.forms[code]; if (!F || F.k !== 'chk') return null; const dd = (C.defT && C.defT[code] && C.defT[code][type]) || (C.def && C.def[code]); if (!dd) return null;
   const a = {}; F.items.forEach((x, i) => { if (!x.h && dd[i] && (dd[i] !== 'x' || F.ans === 'ynx')) a[i] = dd[i]; }); return a; }
@@ -241,8 +277,8 @@ async function stamp(cv, it, locP) {
 }
 const thumbOf = cv => { const s = Math.min(1, 200 / Math.max(cv.width, cv.height)), c = document.createElement('canvas'); c.width = Math.round(cv.width * s); c.height = Math.round(cv.height * s); c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.6); };
 async function takePhotos(files, it, cam) { const out = []; const locP = cam ? getLoc() : null; if (locP) locP.catch(() => {});
-  for (const f of files) { let cv = await shrink(f, 1600, 0.75), loc = ''; if (cam) { toast('جارٍ ختم الصورة بالموقع…'); const r = await stamp(cv, it, locP); cv = r.cv; loc = r.loc; }
-    const du = cv.toDataURL('image/jpeg', 0.78); out.push({ b64: du.split(',')[1], mime: 'image/jpeg', loc, thumb: thumbOf(cv) }); } return out; }
+  for (const f of files) { let cv = await shrink(f, 1600, 0.75), loc = ''; const isD = isDocCanvas(cv); if (cam) { toast('جارٍ ختم الصورة بالموقع…'); const r = await stamp(cv, it, locP); cv = r.cv; loc = r.loc; }
+    const du = cv.toDataURL('image/jpeg', 0.78); out.push({ b64: du.split(',')[1], mime: 'image/jpeg', loc, thumb: thumbOf(cv), doc: isD }); } return out; }
 const fileB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(r.error); r.readAsDataURL(f); });
 
 // ---------- screens ----------
@@ -368,13 +404,14 @@ function mtView(A) {
 }
 function queueView(A) {
   A.innerHTML = topBar('بانتظار الإرسال', 1) + `<div class="wrap">${S.Q.map(op => `<div class="card"><div class="row"><b>${esc(op.ref)}</b><span class="muted">${esc(op.at)}</span><span style="flex:1"></span><button data-dq="${op.id}" style="color:var(--dan)">حذف</button></div>
-    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'ci' ? 'صورة فاتورة المقاول' : op.t === 'sf' ? 'ملف السلامة' : op.t === 'att' ? 'مرفقات أخرى' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'mt' ? 'إشعار صيانة ' + esc(op.ref) + (op.photos && op.photos.length ? ' (' + op.photos.length + ' صور)' : '') : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
+    <div class="muted">${op.t === 'up' ? 'صورة / ملف' : op.t === 'ci' ? 'صورة فاتورة المقاول' : op.t === 'sfk' ? 'تغيير نوع ملف سلامة (' + (op.kind === 'doc' ? 'مستند' : 'صورة') + ')' : op.t === 'sf' ? (op.kind === 'ph' ? 'صورة سلامة' : 'ملف السلامة') + (op.meta && op.meta.src ? ': ' + esc(op.meta.src) + (op.meta.pg ? ' — ص ' + op.meta.pg + '/' + op.meta.n : ' (الأصل PDF)') : op.name && !/^صورة_سلامة/.test(op.name) ? ': ' + esc(op.name) : '') + (op.done && !op.meta ? ' — رُفعت ' + op.done + ' صفحة' : '') : op.t === 'att' ? 'مرفقات أخرى' : op.t === 'form' ? 'نموذج: ' + esc(op.kind) + ' (' + op.photos.length + ' صور)' : op.t === 'del' ? 'حذف صورة' : op.t === 'boq' ? 'المقايسة (' + op.lines.length + ' بنداً)' : op.t === 'mt' ? 'إشعار صيانة ' + esc(op.ref) + (op.photos && op.photos.length ? ' (' + op.photos.length + ' صور)' : '') : op.t === 'draw' ? 'مخطط الموقع' : op.op.form ? 'تعبئة نموذج ' + esc(op.op.form.code) : 'تعديل اختيارات'}</div>${op.err ? `<div class="err">لم يقبله البرنامج: ${esc(op.err)}</div>` : op.nerr ? `<div class="err">لم يصل إلى الخادم بعد (${op.tries || 1} محاولة): ${esc(op.nerr)} — يُعاد تلقائياً</div>` : ''}</div>`).join('') || '<div class="card muted">لا شيء.</div>'}
     <button class="pri big" id="sn" style="width:100%">إرسال الآن</button></div>`;
   wire(); $('#sn').onclick = () => sync(true);
   $$('[data-dq]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذا العمل من الجوال نهائياً؟')) return; await DB.qdel(+b.dataset.dq); S.Q = S.Q.filter(x => x.id !== +b.dataset.dq); render(); });
 }
 function itemView(A) {
   const key = S.r.key, it = itemOf(key); if (!it) { go({ v: 'home' }); return; }
+  const SF = sfSplit(it.sf_files), SFQ = S.Q.filter(q => q.t === 'sf' && q.ref === key);
   const C = S.B.cat, d = docOf(key), P = planOf(it, d), ST = stateOf(it, d, P), F = formsOf(key), rj = s => (d.rej || []).find(x => x.s === s);
   const K = { done: ['✓', 'k2'], def: ['✓', 'k2'], part: ['◐', 'k1'], need: ['!', 'k1'], none: ['○', 'k0'], auto: ['✓', 'k2'] };
   const thumbs = (L, slot) => `<div class="th">${(L || []).map(x => `<span><img class="${x.local ? 'loc' : ''}" src="${x.local ? x.thumb || '' : phUrl(x.id, 160)}" alt=""><b class="x" data-del="${esc(slot)}" data-id="${esc(x.id)}">✕</b></span>`).join('')}</div>`;
@@ -401,10 +438,12 @@ function itemView(A) {
     ${it.d9 ? '' : boqCard(key)}
     ${it.d9 ? '' : `<h3>فاتورة المقاول</h3><div class="card"><div class="muted">صوّر فاتورة المقاول (صفحة أو أكثر). تُحفظ مع آخر فاتورة لهذا الأمر في «مراجعة فواتير المقاول»، وتُرسل عند الاتصال.${S.Q.filter(q => q.t === 'ci' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'ci' && q.ref === key).length : ''}</div>
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-ci="0" hidden></label><label class="cam btn">🖼 من الجهاز<input type="file" accept="image/*,application/pdf" multiple data-ci="0" hidden></label><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cinew" style="width:auto"> فاتورة جديدة</label></div></div>`}
-    <h3>ملف السلامة</h3><div class="card"><div class="muted">مستندات السلامة لهذا ${it.d9 ? 'الإشعار' : 'الأمر'} (شهادات، تصاريح، تقييم مخاطر…): ${(() => { const n = sfSplit(it.sf_files).doc.length; return n ? n + ' مستنداً' : 'لا مستندات بعد'; })()}${S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind !== 'ph').length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind !== 'ph').length : ''}</div>
-      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير مستند<input type="file" accept="image/*" capture="environment" multiple data-sf="doc" hidden></label><label class="cam btn">📎 ملفات أو PDF<input type="file" accept="image/*,application/pdf" multiple data-sf="doc" hidden></label></div></div>
-    <h3>صور السلامة</h3><div class="card"><div class="muted">صور السلامة في الموقع (حواجز، معدات الوقاية، نقطة التجمع…) تُختم بالموقع والتاريخ وتُضاف إلى ملف الجودة 4 صور في الصفحة.${S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind === 'ph').length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind === 'ph').length : ''}</div>
-      ${(() => { const L = sfSplit(it.sf_files).ph.map(x => ({ id: x.id })).concat(S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind === 'ph').map(q => ({ id: '', local: 1, thumb: q.thumb || '' }))); return L.length ? `<div class="th">${L.map(x => `<span><img class="${x.local ? 'loc' : ''}" src="${x.local ? x.thumb : phUrl(x.id, 160)}" alt=""></span>`).join('')}</div>` : ''; })()}
+    <h3>ملف السلامة</h3><div class="card"><div class="muted">مستندات السلامة لهذا ${it.d9 ? 'الإشعار' : 'الأمر'} (شهادات، تصاريح، تقييم مخاطر…). ملف PDF يُحوَّل إلى صور صفحاته، وكل مستند يُطبع في صفحة كاملة في آخر ملف الجودة.${SFQ.filter(q => q.kind !== 'ph').length ? ' — <b>بانتظار الإرسال: ' + SFQ.filter(q => q.kind !== 'ph').length + '</b>' : ''}</div>
+      ${sfTh(SF.doc.filter(sfIsImg), SFQ.filter(q => q.kind !== 'ph' && !/pdf/i.test(q.mime || '')), 'ph')}
+      ${SF.doc.filter(x => !sfIsImg(x)).map(x => { const n = SF.all.filter(z => z.g && z.g === x.g && z.pg).length; return `<div class="muted" style="margin-top:4px">📄 ${esc(x.src || x.name)} — ${n ? n + ' صفحة في الملف' : 'لم يُحوَّل إلى صور (يُذكر في الملف برابط)'}</div>`; }).join('')}
+      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير مستند<input type="file" accept="image/*" capture="environment" multiple data-sf="doc" hidden></label><label class="cam btn">📎 ملفات أو PDF<input type="file" accept="image/*,application/pdf" multiple data-sf="doc" hidden></label></div><div id="sfmsg" class="muted" style="margin-top:6px"></div></div>
+    <h3>صور السلامة</h3><div class="card"><div class="muted">صور السلامة في الموقع (حواجز، معدات الوقاية، نقطة التجمع…) تُختم بالموقع والتاريخ وتُضاف إلى ملف الجودة 4 صور في الصفحة. الزر ⇄ ينقل بين «صورة» و«مستند».${SFQ.filter(q => q.kind === 'ph').length ? ' — <b>بانتظار الإرسال: ' + SFQ.filter(q => q.kind === 'ph').length + '</b>' : ''}</div>
+      ${sfTh(SF.ph.filter(sfIsImg), SFQ.filter(q => q.kind === 'ph'), 'doc')}
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-sf="ph" data-cam="1" hidden></label><label class="cam btn">🖼 من المعرض<input type="file" accept="image/*" multiple data-sf="ph" hidden></label></div></div>
     ${it.d9 ? '' : `<h3>مرفقات أخرى</h3><div class="card"><div class="muted">أي ملف عام لأمر العمل (رسائل، مخططات، مستندات). يظهر في البرنامج ضمن «مرفقات أمر العمل».${S.Q.filter(q => q.t === 'att' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'att' && q.ref === key).length : ''}</div>
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-at="1" hidden></label><label class="cam btn">📎 ملفات<input type="file" multiple data-at="1" hidden></label><a class="btn" href="./app.html?att=${encodeURIComponent(key)}">📎 مرفقات أمر العمل</a></div></div>`}
@@ -432,11 +471,22 @@ function itemView(A) {
   if ($('#bqo')) $('#bqo').onclick = () => go({ v: 'boq', key }); if ($('#bqd')) $('#bqd').onclick = () => openDraw(key);
   $$('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذه الصورة؟')) return; const id = b.dataset.id;
     if (/^L\d+$/.test(id)) { const qid = +id.slice(1); await DB.qdel(qid); S.Q = S.Q.filter(x => x.id !== qid); render(); } else enqueue({ t: 'del', ref: key, slot: b.dataset.del, fid: id }); });
-  $$('input[data-sf]').forEach(inp => inp.onchange = async () => { const files = [...inp.files], kind = inp.dataset.sf, cam = !!inp.dataset.cam; inp.value = ''; if (!files.length) return;
-    try { if (kind === 'ph') { const P = await takePhotos(files, it, cam); for (const x of P) await enqueue({ t: 'sf', ref: key, b64: x.b64, mime: 'image/jpeg', name: 'صورة_سلامة.jpg', loc: x.loc, kind: 'ph', thumb: x.thumb }); }
-      else for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'sf', ref: key, b64: await fileB64(f), mime: 'application/pdf', name: f.name, kind: 'doc' }); }
-        else { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'sf', ref: key, b64: b, mime: 'image/jpeg', name: f.name, kind: 'doc' }); } }
-      toast((kind === 'ph' ? 'حُفظت صور السلامة على الجوال' : 'حُفظ ملف السلامة على الجوال') + (navigator.onLine ? '' : ' — يُرسل عند الاتصال')); render(); } catch (e) { toast(e.message, 4000); } });
+  // المالك 11-11: كل ما يُرفع للسلامة يُميَّز تلقائياً — مستند (صفحة كاملة) أو صورة (4 في الصفحة) — وملف PDF يُحوَّل هنا إلى صور صفحاته بلا حدّ لعددها
+  $$('input[data-sf]').forEach(inp => inp.onchange = async () => { const files = [...inp.files], sec = inp.dataset.sf, cam = !!inp.dataset.cam; inp.value = ''; if (!files.length) return; let nd = 0, np = 0, warn = '';
+    const say = t => { toast(t, 60000); };
+    try { if (sec === 'ph') { const P = await takePhotos(files, it, cam); for (const x of P) { x.doc ? nd++ : np++; await enqueue({ t: 'sf', ref: key, b64: x.b64, mime: 'image/jpeg', name: 'صورة_سلامة.jpg', loc: x.loc, kind: x.doc ? 'doc' : 'ph', thumb: x.thumb }); } }
+      else for (const f of files) {
+        if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '')) { const g = gid(); let k = 0;
+          try { await pdfEach(new Uint8Array(await f.arrayBuffer()), async (cv, i, n, isDoc) => { isDoc ? nd++ : np++; await enqueue({ t: 'sf', ref: key, b64: cv.toDataURL('image/jpeg', 0.8).split(',')[1], mime: 'image/jpeg', name: f.name.replace(/\.pdf$/i, '') + '_p' + i + '.jpg', kind: isDoc ? 'doc' : 'ph', meta: { g, pg: i, n, src: f.name }, thumb: thumbOf(cv) }); k = i; }, (i, n) => say('تحويل «' + f.name + '» إلى صور… صفحة ' + i + ' من ' + n)); }
+          catch (e) { if (!k) warn = 'تعذّر تحويل «' + f.name + '» إلى صور (' + e.message + ')؛ رُفع الملف الأصلي فقط'; }
+          if (f.size <= 30e6) await enqueue(Object.assign({ t: 'sf', ref: key, b64: await fileB64(f), mime: 'application/pdf', name: f.name, kind: 'doc' }, k ? { meta: { g } } : { noconv: 1 }));
+          else if (!k) throw new Error('«' + f.name + '» أكبر من 30 ميغابايت وتعذّر تحويله إلى صور'); }
+        else { const c = await shrink(f, 2000, 0.85), isDoc = isDocCanvas(c); isDoc ? nd++ : np++; await enqueue({ t: 'sf', ref: key, b64: c.toDataURL('image/jpeg', 0.85).split(',')[1], mime: 'image/jpeg', name: f.name, kind: isDoc ? 'doc' : 'ph', thumb: thumbOf(c) }); } }
+      toast(warn || ('حُفظ على الجوال: ' + [nd ? nd + ' مستنداً (صفحة كاملة)' : '', np ? np + ' صورة (4 في الصفحة)' : ''].filter(Boolean).join(' و') + ' — الزر ⇄ يبدّل النوع' + (navigator.onLine ? '' : ' — يُرسل عند الاتصال')), 5000); render(); } catch (e) { toast(e.message, 5000); render(); } });
+  $$('[data-sfk]').forEach(b => b.onclick = async () => { const to = b.dataset.to, id = b.dataset.sfk; if (!confirm(to === 'doc' ? 'اعتبارها مستنداً؟ تُطبع في صفحة كاملة في ملف الجودة.' : 'اعتبارها صورة؟ تُطبع 4 صور في الصفحة.')) return;
+    if (b.dataset.q) { const op = S.Q.find(x => x.id === +b.dataset.q); if (op && !op.sending) { op.kind = to; await DB.qput(op); } return render(); }
+    [(S.B.notices || []).find(x => 'D9:' + (x.mref || x.d9) === key), (S.B.orders || []).find(x => x.key === key)].forEach(x => { if (!x) return; try { const L = JSON.parse(x.sf_files || '[]'), f = L.find(z => z.id === id); if (f) { f.k = to; x.sf_files = JSON.stringify(L); } } catch (e) {} });
+    try { await DB.set(bKey(), S.B); } catch (e) {} enqueue({ t: 'sfk', ref: key, fid: id, kind: to }); });
   $$('input[data-at]').forEach(inp => inp.onchange = async () => { const files = [...inp.files]; inp.value = ''; if (!files.length) return;
     try { for (const f of files) { if (/^image\//.test(f.type)) { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'att', ref: key, b64: b, mime: 'image/jpeg', name: f.name }); }
         else { if (f.size > 15e6) throw new Error(f.name + ': أكبر من 15 ميغابايت'); await enqueue({ t: 'att', ref: key, b64: await fileB64(f), mime: f.type || 'application/octet-stream', name: f.name }); } }
@@ -1020,6 +1070,8 @@ function boqView(A) {
   const qa = cleanApi(decodeURIComponent((location.search.match(/[?&]api=([^&]+)/) || [])[1] || '')); if (qa) { await DB.set('api', qa); history.replaceState(null, '', location.pathname); }
   S.api = qa || (await DB.get('api')) || API_DEFAULT; S.dev = (await DB.get('dev')) || ''; ajiKeep(); S.user = (await DB.get('user')) || null; S.pid = (await DB.get('pid')) || ''; S.PJ = (await DB.get('PJ')) || null; S.B = (await DB.get(bKey())) || (S.pid ? null : null) || (await DB.get('B')) || null; { const it = await DB.get('items'); if (it) { S.IT = it.m; S.itv = it.v; } } S.Q = (await DB.qall()) || []; S.F = (await DB.get('F')) || null; S.noFull = !!(await DB.get('nofull')); try { prepF(); } catch (e) { S.F = null; }
   history.replaceState(S.r, ''); render(); if (S.dev && navigator.onLine) sync();
+  // محوّل PDF يُجلب مرة في الخلفية ليعمل لاحقاً بلا شبكة
+  setTimeout(() => { if (navigator.onLine) ['./pdf.min.js', './pdf.worker.min.js'].forEach(u => fetch(u).catch(() => {})); }, 9000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
