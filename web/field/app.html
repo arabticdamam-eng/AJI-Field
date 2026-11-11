@@ -649,7 +649,7 @@ async function focusRun(){ const box=$('#fmain');
   if(FOCUS.t==='qd'){ box.innerHTML=`<div class="muted">أمر / إشعار: <b>${esc(String(FOCUS.ref).replace(/^D9:/,'D9 ').replace(/~.*$/,''))}</b></div><div class="bar" style="margin-top:8px"><button class="pri" id="fqd">📄 فتح ملف الجودة</button></div>`; $('#fqd').onclick=()=>qdModal(FOCUS.ref); qdModal(FOCUS.ref); return; }
   // عرض نموذج من ملف الجودة وطباعته PDF من التطبيق الميداني (المالك 10-11): ?qp=<الأمر>&code=<النموذج>
   if(FOCUS.t==='qp'){ box.innerHTML='<div class="loading">جارٍ تجهيز النموذج…</div>';
-    try{ const C=await qdCat(), F=FOCUS.code==='*'?{name:'ملف الجودة كاملاً'}:C.forms[FOCUS.code]; if(!F) throw new Error('النموذج غير موجود');
+    try{ const C=await qdCat(), F=FOCUS.code==='*'?{name:'ملف الجودة كاملاً'}:FOCUS.code==='SUM'?{name:'ملخص ملف الجودة'}:C.forms[FOCUS.code]; if(!F) throw new Error('النموذج غير موجود');
       const html=await qdServerHtml(FOCUS.ref,FOCUS.code,FOCUS.day||''); $('#ftitle').textContent=F.name;
       box.innerHTML=`<div class="bar"><button class="pri" id="fprint">🖨 طباعة / حفظ PDF</button><a class="btn" href="./app.html?qd=${encodeURIComponent(FOCUS.ref)}" style="text-decoration:none">📄 ملف الجودة</a><span class="muted">من شاشة الطباعة اختر «حفظ كـ PDF» أو شاركها</span></div><div id="fprev" style="overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff">${html}</div>`;
       $('#fprint').onclick=()=>qdPrintHtml(html); }
@@ -1507,7 +1507,7 @@ function qdDraw(C,V){ const X=V.ctx, o=X.o, d=V.d, P=V.plan, ed=X.canEdit, qs=QF
    ${ed&&addOpts.length?`<div class="bar" style="margin-top:6px"><select id="qdadd"><option value="">+ إضافة نموذج لهذا الأمر…</option>${addOpts.map(k=>`<option value="${k}">${P.sug.includes(k)?'★ ':''}${esc(C.forms[k].name)}</option>`).join('')}</select></div>`:''}
    <h3 style="margin:14px 0 4px">الصور المطلوبة</h3>${phSec||'<div class="muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
    <div class="card" style="margin-top:12px"><div class="bar" style="margin:0">${ed?`<button class="pri" id="qdbuild">📄 إنشاء ملف الجودة${missN?' (رغم النقص)':''}</button>`:''}${missN?`<span class="muted">ناقص ${missN} بنداً</span>`:'<span class="qdk qdk2">✓ مكتمل</span>'}
-     ${X.canReview&&V.qf&&V.qf.id?`<span class="sp"></span><button class="pri" id="qdok">✅ اعتماد</button><button id="qdno" style="color:var(--dan);border-color:var(--dan)">⛔ رفض بنود</button>`:''}</div>
+     ${X.canReview?`<button id="qdsum" title="الغلاف وجدول المحتويات والبنود الناقصة — لا يدخل في ملف PDF">📋 ملخص الملف</button>`:''}${X.canReview&&V.qf&&V.qf.id?`<span class="sp"></span><button class="pri" id="qdok">✅ اعتماد</button><button id="qdno" style="color:var(--dan);border-color:var(--dan)">⛔ رفض بنود</button>`:''}</div>
      ${X.old&&ed&&!X.d9?`<div class="muted" style="margin-top:8px">أمر قديم: يمكن أيضاً <a href="#" id="qdold">رفع ملف جودة جاهز (PDF)</a>.</div>`:''}${X.d9&&(ed||X.canReview)?`<div class="bar" style="margin-top:8px"><label class="upl">📤 رفع ملف جودة جاهز (PDF)<input type="file" id="qdready" accept="application/pdf,.pdf" style="display:none"></label><span class="muted">يحل محل الملف المنشأ ويُرسل للجودة</span></div>`:''}<div id="qdmsg" class="muted"></div><div class="err" id="qderr"></div></div></div>`);
   const err=m=>{ if($('#qderr')) $('#qderr').textContent=m; }, again=V2=>{ qdApply(V2); qdDraw(C,V2); };
   if($('#qdwt')) $('#qdwt').onchange=()=>api('qdSave',S.tok,ref,{wt:$('#qdwt').value}).then(again).catch(e=>err(e.message));
@@ -1522,6 +1522,7 @@ function qdDraw(C,V){ const X=V.ctx, o=X.o, d=V.d, P=V.plan, ed=X.canEdit, qs=QF
   document.querySelectorAll('[data-qpr]').forEach(b=>b.onclick=()=>qdPrintOne(C,V,b.dataset.qpr));
   document.querySelectorAll('[data-qgp]').forEach(b=>b.onclick=()=>qdPrintGen(C,V,b.dataset.qgp,b.dataset.day||''));
   document.querySelectorAll('[data-qmq]').forEach(b=>b.onclick=()=>qdMqModal(C,V,b.dataset.qmq));
+  if($('#qdsum')) $('#qdsum').onclick=async()=>{ const b=$('#qdsum'); b.disabled=true; try{ const h=await qdServerHtml(V.ctx.key,'SUM'); const w=document.createElement('div'); w.id='prtv'; w.innerHTML=`<div class="bar" style="position:sticky;top:0;background:var(--card);z-index:2;padding:6px 0"><b>ملخص ملف الجودة</b><span class="muted"> — للمراجعة فقط، لا يدخل في ملف PDF</span><span class="sp"></span><button class="pri" id="smp">🖨 طباعة</button><button id="smx">إغلاق</button></div>${h}`; document.body.appendChild(w); $('#smx').onclick=()=>w.remove(); $('#smp').onclick=()=>qdPrintHtml(h); }catch(e){ toast(e.message); } b.disabled=false; };
   document.querySelectorAll('[data-qlk]').forEach(b=>b.onclick=()=>formsModal(ref,b.dataset.qlk));
   document.querySelectorAll('[data-qdel]').forEach(b=>b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); if(!confirm('حذف هذا الملف؟')) return; api('qdRemove',S.tok,ref,b.dataset.qdel,b.dataset.id).then(again).catch(er=>err(er.message)); });
   document.querySelectorAll('input[data-qup]').forEach(inp=>inp.onchange=()=>qdUploadFiles(C,V,inp.dataset.qup,[...inp.files],!!inp.dataset.cam));
@@ -4800,10 +4801,12 @@ function cvSettings(C){ const F=[['vat_no','الرقم الضريبي'],['contra
 // the matching rows carrying the same PO, and the value with VAT is that × 1.15, so they can never drift from the records
 // the way the hand-kept workbook did. Only the dates, the approvals and the notes are stored (listPOs / savePOCells).
 const PO_VAT=1.15;
-const PO_COLS=['sec','po','office','contractor','orders','notice_no','n_wo','net','gross','tax_date','sap_date','appr_head','appr_mgr','appr_fin','notes'];
+const PO_COLS=['sec','po','office','contractor','orders','notice_no','n_wo','net','gross','tax_no','tax_date','sap_date','appr_head','appr_mgr','appr_fin','notes'];
 const PO_L={sec:'القسم',po:'رقم PO',office:'المكتب',contractor:'المقاول',orders:'أوامر العمل / الإشعارات',notice_no:'رقم الإشعار',n_wo:'عدد أوامر العمل',net:'القيمة بدون الضريبة',gross:'القيمة بالضريبة',
-  tax_date:'تاريخ إصدار الفاتورة الضريبية',sap_date:'موقف الارفاق على الساب',appr_head:'اعتماد رئيس القسم',appr_mgr:'اعتماد مدير الدائرة',appr_fin:'اعتماد المالية',notes:'ملاحظات'};
-const PO_ED=['notice_no','tax_date','sap_date','appr_head','appr_mgr','appr_fin','notes'];
+  tax_no:'رقم الفاتورة الضريبية',tax_date:'تاريخ إصدار الفاتورة الضريبية',sap_date:'موقف الارفاق على الساب',appr_head:'اعتماد رئيس القسم',appr_mgr:'اعتماد مدير الدائرة',appr_fin:'اعتماد المالية',notes:'ملاحظات'};
+const PO_ED=['notice_no','tax_no','tax_date','sap_date','appr_head','appr_mgr','appr_fin','notes'];
+// القيمة بدون الضريبة: مجموع السجلات تلقائياً، ويكتبها المدير ومسؤول المطابقة يدوياً إن لزم (net_man) — مسحها يعيد الحساب (المالك 11-11)
+const PO_STORE=PO_ED.concat(['net_man']);
 const PO_CALC=['n_wo','net','gross','office','contractor','orders'];   // المكتب والمقاول والأوامر من سجلات المطابقة نفسها (المالك 10-11)
 const PO_SECL={cons:'الإنشاءات',maint:'الصيانة والطوارئ'};
 const poSecOf=o=>mrInv(o)?'maint':'cons';
@@ -4820,7 +4823,8 @@ function poRows(){ const R=S.mr||{rows:[]}, P=S.po||{rows:[]}, M={};
   // a stored row whose PO no longer appears in the records still shows, so nothing typed is ever lost from sight
   Object.keys(M).forEach(k=>{ if(!G[k]){ const r=M[k]; G[k]={sec:r.sec,po:r.po,n_wo:0,net:0,bucket:!poIsNo(r.po),of:new Set(),ct:new Set(),od:[]}; } });
   return Object.keys(G).map(k=>{ const g=G[k], m=M[k]||{};
-    return Object.assign({key:k,n_wo:g.n_wo,net:poRound(g.net),gross:poRound(g.net*PO_VAT),bucket:g.bucket,office:[...g.of].join('، '),contractor:[...g.ct].join('، '),orders:g.od.join('، ')},
+    const man=m.net_man!==''&&m.net_man!=null&&!isNaN(+m.net_man), net=man?+m.net_man:g.net;
+    return Object.assign({key:k,n_wo:g.n_wo,net:poRound(net),net_auto:poRound(g.net),net_man:man?String(m.net_man):'',gross:poRound(net*PO_VAT),bucket:g.bucket,office:[...g.of].join('، '),contractor:[...g.ct].join('، '),orders:g.od.join('، ')},
       {sec:g.sec,po:g.po},PO_ED.reduce((a,c)=>(a[c]=m[c]||'',a),{}),{updated_at:m.updated_at||'',updated_by:m.updated_by||''}); })
     .sort((a,b)=>(a.sec===b.sec?0:a.sec==='cons'?-1:1)||(a.bucket-b.bucket)||String(a.po).localeCompare(String(b.po),'ar'));
 }
@@ -4836,20 +4840,22 @@ function vPO(top,wireTop){
   const lbl=k=>{ const n=PO_ED.indexOf(k)>=0&&/^appr_/.test(k)?poName(k):''; return PO_L[k]+(n?' ('+n+')':''); };
   const AD={ noImp:1, st:ST, unit:'أمر شراء', stk:'po', file:'أوامر_الشراء', sub:'po', subName:'أوامر الشراء والاعتمادات', orders:false,
     all:PO_COLS.concat(['updated_at','updated_by']), lbl, val:(o,k)=>k==='sec'?(PO_SECL[o.sec]||o.sec):(o[k]==null?'':o[k]),
-    can:(o,k)=>can&&PO_ED.includes(k), opts:(o,k)=>k==='sec'?Object.values(PO_SECL):k==='sap_date'||k==='appr_head'||k==='appr_mgr'||k==='appr_fin'?['تحت الاعتماد','تحت الاعتماد ع الساب']:undefined,
+    can:(o,k)=>can&&(PO_ED.includes(k)||k==='net'), opts:(o,k)=>k==='sec'?Object.values(PO_SECL):k==='sap_date'||k==='appr_head'||k==='appr_mgr'||k==='appr_fin'?['تحت الاعتماد','تحت الاعتماد ع الساب']:undefined,
     dates:['tax_date'], wrap:['notes','orders'], free:PO_ED,
     src:()=>'أوامر الشراء', clr:()=>tc, chip:()=>'',
     cls:(o,k)=>poRed(o)?'late':'',
     cell:(o,k,v)=>k==='po'&&o.bucket?`<span class="pill p-w" title="ليست أمر شراء — مجموعة أوامر بهذا الموقف">${esc(v)}</span>`
+      :k==='net'&&o.net_man?`<span title="معدّلة يدوياً — المجموع التلقائي من السجلات: ${esc(gFmt(o.net_auto))}. امسح الخانة لإعادة الحساب">✎ ${gFmt(+v)}</span>`
       :k==='net'||k==='gross'?(v===''||v==null?'':gFmt(+v))
       :k==='sap_date'&&poRed(o)?`<span class="pill p-d" title="صدرت الفاتورة الضريبية قبل اعتماد الساب">${esc(v||'لم يُرفع')}</span>`:esc(v==null?'':v),
     rowCls:o=>poRed(o)?'po-red':poGreen(o)?'po-green':'',
-    search:o=>[o.po,PO_SECL[o.sec],o.notice_no,o.office,o.contractor,o.orders,o.notes].join(' '),
-    norm:(o,k,v)=>v, put:(o,k,v)=>{ o[k]=v; return {sec:o.sec,po:o.po,k,v}; },
-    save:recs=>api('savePOCells',S.tok,recs).then(r=>{ (r.rows||[]).forEach(x=>{ const o=rows.find(y=>y.key===x.key); if(o) PO_ED.concat(['updated_at','updated_by']).forEach(k=>o[k]=x[k]||''); });
+    search:o=>[o.po,PO_SECL[o.sec],o.notice_no,o.tax_no,o.office,o.contractor,o.orders,o.notes].join(' '),
+    norm:(o,k,v)=>k==='net'?String(v==null?'':v).replace(/[,\s٬]/g,'').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace('٫','.'):v,
+    put:(o,k,v)=>{ if(k==='net'){ if(v!==''&&isNaN(+v)) return {sec:o.sec,po:o.po,k:'net_man',v}; o.net_man=v; o.net=v===''?o.net_auto:poRound(+v); o.gross=poRound(o.net*PO_VAT); return {sec:o.sec,po:o.po,k:'net_man',v}; } o[k]=v; return {sec:o.sec,po:o.po,k,v}; },
+    save:recs=>api('savePOCells',S.tok,recs).then(r=>{ (r.rows||[]).forEach(x=>{ const o=rows.find(y=>y.key===x.key); if(o){ PO_ED.concat(['updated_at','updated_by']).forEach(k=>o[k]=x[k]||''); o.net_man=x.net_man||''; o.net=o.net_man!==''?poRound(+o.net_man):o.net_auto; o.gross=poRound(o.net*PO_VAT); } });
       const P=S.po; (r.rows||[]).forEach(x=>{ const i=(P.rows||[]).findIndex(y=>y.key===x.key); if(i>=0) P.rows[i]=x; else (P.rows=P.rows||[]).push(x); }); }),
     bar:S.B.admin?'<button id="ponm">أسماء المعتمدين</button>':'',
-    help:'صف لكل أمر شراء في القسمين. «عدد أوامر العمل» و«القيمة بدون الضريبة» مجموعة تلقائياً من سجلات المطابقة التي تحمل نفس رقم PO، و«القيمة بالضريبة» = القيمة × 1.15 — لا تُكتب ولا تختلف عن السجلات. الباقي يُكتب هنا. الأحمر: صدرت الفاتورة الضريبية قبل اعتماد الساب. الأخضر: ما زال تحت الاعتماد على الساب. الصفوف المعلَّمة مثل «تحت الاعداد» ليست أوامر شراء بل مجموعات أوامر بهذا الموقف.',
+    help:'صف لكل أمر شراء في القسمين. «عدد أوامر العمل» و«القيمة بدون الضريبة» مجموعة تلقائياً من سجلات المطابقة التي تحمل نفس رقم PO، و«القيمة بالضريبة» = القيمة × 1.15. للمدير ومسؤول المطابقة تعديل «القيمة بدون الضريبة» يدوياً (تظهر بعلامة ✎)، ومسحها يعيد المجموع التلقائي. الباقي يُكتب هنا. الأحمر: صدرت الفاتورة الضريبية قبل اعتماد الساب. الأخضر: ما زال تحت الاعتماد على الساب. الصفوف المعلَّمة مثل «تحت الاعداد» ليست أوامر شراء بل مجموعات أوامر بهذا الموقف.',
     onDraw:l=>{ if(!$('#pok')) return; const red=l.filter(poRed).length, net=l.filter(o=>!o.bucket).reduce((s,o)=>s+(+o.net||0),0), done=l.filter(o=>poDate(o.appr_fin)).length;
       $('#pok').innerHTML=`<div class="kpi">أوامر الشراء<b>${l.filter(o=>!o.bucket).length}</b></div><div class="kpi">إجمالي بدون الضريبة<b>${gFmt(poRound(net))}</b></div><div class="kpi">إجمالي بالضريبة<b>${gFmt(poRound(net*PO_VAT))}</b></div><div class="kpi" data-kf="fin">معتمدة من المالية<b>${done}</b></div><div class="kpi" data-kf="red">فاتورة ضريبية قبل الساب<b class="${red?'late':''}">${red}</b></div>`; },
     wire:()=>{ if(!$('#ponm')) return; $('#ponm').onclick=()=>{ const P=S.po||{}, who=['head','mgr','fin'], L=['رئيس القسم','مدير الدائرة','المالية'], NM=PEOPLE();
