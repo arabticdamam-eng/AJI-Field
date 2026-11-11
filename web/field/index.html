@@ -551,9 +551,6 @@ function gVal(sec, x, k) { const v = x[k]; if (sec === 'forms' && k === 'kind') 
 function gState(sec) { S.gs = S.gs || {}; if (!S.gs[sec]) { let sv = null; try { sv = JSON.parse(localStorage.getItem('fg_st_' + sec) || 'null'); } catch (e) {} S.gs[sec] = Object.assign({ cf: {}, sort: null, q: '', fo: '', n: 150 }, sv && typeof sv === 'object' ? { cf: sv.cf || {}, sort: sv.sort || null } : {}); } return S.gs[sec]; }
 // الفلاتر والترتيب تبقى على الجهاز بعد إغلاق التطبيق (المالك 11-11)
 function gSave(sec) { const G = S.gs && S.gs[sec]; if (!G) return; try { localStorage.setItem('fg_st_' + sec, JSON.stringify({ cf: G.cf, sort: G.sort })); } catch (e) {} }
-// منفّذة بلا صور تنفيذ: إشعاراتي التي حالتها «تم التنفيذ» وخانة «ص التنفيذ» فارغة
-const mtDone = v => String(v || '').trim() === 'تم التنفيذ';
-const mtNoPhoto = x => mtDone(x.status) && !String(x.exec_p || '').trim() && (!me() || String(x.engineer || '').trim() === me().trim());
 function gRows(sec, all, G, skip) { const q = (G.q || '').trim(), cols = gAllCols(sec, all);
   return all.filter(x => (!q || cols.some(k => String(x[k] == null ? '' : x[k]).includes(q))) && Object.keys(G.cf).every(k => k === skip || !G.cf[k] || G.cf[k].includes(gVal(sec, x, k)))); }
 function gSort(sec, L, G) { if (!G.sort) return L; const [k, d] = G.sort; return L.slice().sort((a, b) => { const x = gVal(sec, a, k), y = gVal(sec, b, k), nx = +x, ny = +y; return ((x !== '' && y !== '' && !isNaN(nx) && !isNaN(ny)) ? nx - ny : x.localeCompare(y, 'ar')) * d; }); }
@@ -617,17 +614,13 @@ function fullView(A) {
     const O = F.O, offs = uq(O.map(o => o.office).filter(Boolean));
     A.innerHTML = topBar(secT, 1) + `<div class="wrap">${nav}${head}<div class="f" style="grid-template-columns:1fr 1fr">${Object.keys(KP).map(k => `<button class="card item" data-kp="${k}" style="margin:0"><div class="muted">${KP[k][0]}</div><div class="t" style="font-size:26px;${['late30', 'qfmiss', 'qfrej'].includes(k) ? 'color:var(--dan)' : ''}">${O.filter(KP[k][1]).length}</div></button>`).join('')}</div>
       <h3>حسب المكتب</h3><div class="card"><table style="width:100%;border-collapse:collapse;font-size:14px"><tr><th style="text-align:right">المكتب</th><th>الكل</th><th>مفتوحة</th><th>متأخرة +30</th><th>بلا ملف جودة</th></tr>${offs.map(of => { const L = O.filter(o => o.office === of); return `<tr style="border-top:1px solid var(--line)"><td>${esc(of)}</td><td style="text-align:center">${L.length}</td><td style="text-align:center">${L.filter(KP.open[1]).length}</td><td style="text-align:center;color:var(--dan)">${L.filter(KP.late30[1]).length}</td><td style="text-align:center">${L.filter(KP.qfmiss[1]).length}</td></tr>`; }).join('')}</table></div>
-      <h3>الصيانة والتصاريح</h3><div class="card"><div class="row"><span>إشعارات الصيانة: <b>${F.M.length}</b></span>${F.M.some(mtNoPhoto) ? `<button class="card item" id="dnp" style="margin:0;padding:4px 10px;color:var(--dan)">📷 منفّذة بلا صور تنفيذ: <b>${F.M.filter(mtNoPhoto).length}</b></button>` : ''}<span>طلبات التصاريح: <b>${F.P.length}</b></span><span>النماذج: <b>${F.FM.length}</b></span></div></div></div>`;
+      <h3>الصيانة والتصاريح</h3><div class="card"><div class="row"><span>إشعارات الصيانة: <b>${F.M.length}</b></span><span>طلبات التصاريح: <b>${F.P.length}</b></span><span>النماذج: <b>${F.FM.length}</b></span></div></div></div>`;
     wire(); $$('[data-sec]').forEach(b => b.onclick = () => { S.r = { v: 'full', sec: b.dataset.sec }; history.replaceState(S.r, ''); render(); });
-    $$('[data-kp]').forEach(b => b.onclick = () => go({ v: 'full', sec: 'orders', f: b.dataset.kp }));
-    if ($('#dnp')) $('#dnp').onclick = () => { const G = gState('maint'), st = uq(F.M.map(x => String(x.status || '')).filter(mtDone)); G.cf = { status: st.length ? st : ['تم التنفيذ'], exec_p: [''] }; if (me()) G.cf.engineer = [me()]; go({ v: 'full', sec: 'maint' }); }; return;
+    $$('[data-kp]').forEach(b => b.onclick = () => go({ v: 'full', sec: 'orders', f: b.dataset.kp })); return;
   }
   const all = secRows(sec, r.f), G = gState(sec + (r.f ? ':' + r.f : '')); gSave(sec + (r.f ? ':' + r.f : ''));
-  const npN = sec === 'maint' ? all.filter(mtNoPhoto).length : 0, npOn = sec === 'maint' && G.cf.engineer && G.cf.status && G.cf.exec_p && G.cf.exec_p.includes('');
-  const mtChips = sec === 'maint' ? `<div class="row" style="margin-bottom:8px"><button id="mtnp" class="${npOn ? 'pri' : ''}" title="حالة التنفيذ = تم التنفيذ، ص التنفيذ فارغة، مهندس التنفيذ = أنا">📷 منفّذة بلا صور تنفيذ (${npN})</button></div>` : '';
-  const chips = sec === 'quality' ? `<div class="row" style="margin-bottom:8px">${['', 'بانتظار الجودة', 'مرفوض', 'معتمد'].map(k => `<button data-qf="${k}" class="${(r.f || '') === k ? 'pri' : ''}">${k || 'الكل'}</button>`).join('')}</div>` : (sec === 'orders' && r.f && r.f !== 'all' ? `<div class="row" style="margin-bottom:8px"><span class="pill p-w">${esc(/^own:/.test(r.f) ? 'مع: ' + r.f.slice(4) : (KP[r.f] || [''])[0])}</span><button data-qf="">إلغاء</button></div>` : '');
-  A.innerHTML = topBar(secT, 1) + `<div class="wrap wide">${nav}${head}${chips}${mtChips}${gridHtml(sec, all, G)}</div>`;
-  wire(); if ($('#mtnp')) $('#mtnp').onclick = () => { if (npOn) { delete G.cf.engineer; delete G.cf.status; delete G.cf.exec_p; } else { const st = uq(all.map(x => String(x.status || '')).filter(mtDone)); G.cf = Object.assign({}, G.cf, { status: st.length ? st : ['تم التنفيذ'], exec_p: [''] }); if (me()) G.cf.engineer = [me()]; } G.n = 150; render(); };
+  A.innerHTML = topBar(secT, 1) + `<div class="wrap wide">${nav}${head}${chips}${gridHtml(sec, all, G)}</div>`;
+  wire();
   $$('[data-sec]').forEach(b => b.onclick = () => { S.r = { v: 'full', sec: b.dataset.sec }; history.replaceState(S.r, ''); render(); });
   $$('[data-qf]').forEach(b => b.onclick = () => { S.r = Object.assign({}, r, { f: b.dataset.qf }); history.replaceState(S.r, ''); render(); });
   gridWire(sec, all, G, i => go({ v: 'rec', sec, f: r.f, i }));
