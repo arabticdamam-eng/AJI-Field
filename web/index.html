@@ -396,10 +396,7 @@ async function myProfileModal(){
     if($('#sgdraw')) $('#sgdraw').onclick=()=>sigDrawModal(P,()=>reload('حُفظ توقيعك'));
 
     const upLic=async f=>{ if(!f) return; $('#lcp').textContent='جارٍ الرفع…';
-      try{ let b64,mime=(f.type||'').toLowerCase();
-        if(/pdf/.test(mime)){ if(f.size>10*1024*1024) throw new Error('الملف أكبر من 10 ميغابايت');
-          b64=await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=no; r.readAsDataURL(f); }); }
-        else { const im=await shrinkImg(f,1800,0.8); b64=im.b64; mime=im.mime; }
+      try{ const {b64,mime}=await licB64(f);
         await api('uploadLicense',S.tok,P.name,b64,mime); await reload('حُفظت إجازتك'); }
       catch(err){ $('#lcp').textContent=''; $('#mperr').textContent=err.message; } };
     if($('#lcup'))  $('#lcup').onchange =e=>{ const f=e.target.files[0]; e.target.value=''; upLic(f); };
@@ -1615,7 +1612,8 @@ async function qdPrintOne(C,V,code){ let M; try{ M=await fmMeta(); }catch(e){ re
   toast('جارٍ تجهيز الطباعة…'); let p=$('#prt'); if(!p){ p=document.createElement('div'); p.id='prt'; document.body.appendChild(p); } p.innerHTML=chkFit(qdChkHtml(C,V,code,M.logos||{},sg.sig));
   await Promise.all([...p.querySelectorAll('img')].map(im=>im.complete&&im.naturalWidth?1:new Promise(r=>{ im.onload=im.onerror=r; setTimeout(r,12000); }))); fitOnePage(p); window.print(); }
 const QD_LG={se:'qdlogo:se',pdc:'qdlogo:pdc',stamp:'qdlogo:stamp'};
-async function qdBuildHtml(C,V,msg){ const M=await fmMeta(), M2=Object.assign({},M,{logos:QD_LG}), o=V.ctx.o, d=V.d, P=V.plan, e=x=>esc(x==null?'':x), pg=[], sigT=n=>n?'qdsig:'+encodeURIComponent(n):'';
+async function qdBuildHtml(C,V,msg){ if(V.lic&&V.lic.has&&/pdf$/.test(V.lic.mime||'')&&/^p:/.test(mvId(V.lic.id))&&!V.licImg){ try{ const r=await fetch(phView(V.lic.id)); if(r.ok) V.licImg=await pdfToJpg(await r.arrayBuffer(),3); }catch(e){ console.warn('lic pdf',e); } }
+  const M=await fmMeta(), M2=Object.assign({},M,{logos:QD_LG}), o=V.ctx.o, d=V.d, P=V.plan, e=x=>esc(x==null?'':x), pg=[], sigT=n=>n?'qdsig:'+encodeURIComponent(n):'';
   const fid=h=>String(h).replace(new RegExp('src="https:\\/\\/drive\\.google\\.com\\/thumbnail\\?id=([\\w-]+)[^"]*"','g'),'data-fid="$1"');
   pg.push(`<div class="pf cov"><div class="logos"><img src="qdlogo:pdc"><img src="qdlogo:se"></div><h1>ملف الجودة</h1><h2>${V.ctx.d9?'إشعار الصيانة D9 '+e(o.wo):'أمر العمل '+e(o.wo)+(o.type?' - '+e(o.type):'')}</h2>
     <table><tr><td class="b">المكتب</td><td>${e(o.office)}</td><td class="b">المقاول</td><td>${e(FULLC(o.contractor||''))}</td></tr><tr><td class="b">${V.ctx.d9?'المحطة':'الحي'}</td><td>${e(o.district||o.station||'')}</td><td class="b">مهندس الموقع</td><td>${e(o.site_engineer||'')}</td></tr><tr><td class="b">تاريخ الإنشاء</td><td>${e(S.B.today)}</td><td class="b">أنشأه</td><td>${e(S.B.user.name)}</td></tr></table>
@@ -1631,7 +1629,7 @@ async function qdBuildHtml(C,V,msg){ const M=await fmMeta(), M2=Object.assign({}
       if(F.k==='day'){ const DD=(X2.days||[]).length?X2.days:[o.date||o.assign_date||S.B.today]; if(F.sub==='week') pg.push(chkFit(qdGenHtml(C,V,k,'',QD_LG,sg))); else DD.slice(0,6).forEach(dd=>pg.push(chkFit(qdGenHtml(C,V,k,dd,QD_LG,sg)))); }
       else if(F.k==='boq'&&qdBoqRows(V,F.sub).length) pg.push(chkFit(qdGenHtml(C,V,k,'',QD_LG,sigT(o.site_engineer))));
       ((d.up||{})[k]||[]).forEach(x=>pg.push(/pdf$/.test(x.mime||'')?`<div class="pf cov"><h3>${e(F.name)}</h3><p>مرفق بصيغة PDF: <a href="${e(phView(x.id))}">${e(x.n)}</a></p></div>`:`<div class="pf att"><h3>${e(F.name)}</h3><img data-fid="${e(x.id)}"></div>`)); }
-    else if(F.k==='lic'&&V.lic.has) pg.push(/pdf$/.test(V.lic.mime||'')?`<div class="pf cov"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><p><a href="https:\/\/drive.google.com\/file\/d\/${e(V.lic.id)}\/view">فتح الإجازة</a></p></div>`:`<div class="pf att"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><img data-fid="${e(V.lic.id)}"></div>`); }
+    else if(F.k==='lic'&&V.lic.has) pg.push(/pdf$/.test(V.lic.mime||'')?(V.licImg?`<div class="pf att"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><img src="${V.licImg}"></div>`:`<div class="pf cov"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><p>الإجازة مرفوعة بصيغة PDF على Drive ولا يمكن تضمينها؛ أعد رفعها من «ملفي» لتظهر هنا. <a href="${e(phView(V.lic.id))}">فتح الإجازة</a></p></div>`):`<div class="pf att"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><img data-fid="${e(V.lic.id)}"></div>`); }
   if(V.draw_id) pg.push(`<div class="pf att"><h3>مخطط الموقع</h3><img data-fid="${e(V.draw_id)}"></div>`);
   P.cats.forEach(g=>{ const G=C.ph[g]; if(!G) return; const L=[]; G.items.forEach((t,i)=>((d.ph||{})[g+':'+i]||[]).forEach(x=>L.push({t:(i+1)+'. '+t,id:x.id})));
     L.forEach(x=>pg.push(`<div class="pf ph1"><h3>الصور — ${e(G.name)}</h3><div class="cap1">${e(x.t)}</div><img data-fid="${e(x.id)}"></div>`)); });
@@ -1665,7 +1663,7 @@ async function licAdmin(){ let L; try{ L=await api('listLicenses',S.tok); }catch
    <div class="card" style="margin-bottom:8px"><b>رفع إجازة واحدة</b><div class="bar"><input id="lcn" list="lcdl" placeholder="اسم المهندس" style="min-width:220px"><input type="file" id="lc1" accept="application/pdf,image/jpeg,image/png"><button class="pri" id="lcup">رفع</button></div><datalist id="lcdl">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
    <div id="lcst" class="muted"></div><div class="err" id="lcerr"></div>
    <div class="tw"><table><thead><tr><th>المهندس</th><th>الملف</th><th>آخر تحديث</th><th></th></tr></thead><tbody>${L.map(x=>`<tr><td>${esc(x.name)}</td><td>${/pdf$/.test(x.mime||'')?'PDF':'صورة'}</td><td>${esc(String(x.updated_at||'').slice(0,16))}</td><td><button data-lcd="${esc(x.name)}">حذف</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">لا توجد إجازات بعد</td></tr>'}</tbody></table></div>`);
-  const one=async(name,f)=>{ let b64, mime=f.type||''; if(mime==='application/pdf') b64=await pdfB64(f); else { const im=await shrinkImg(f,2000,0.85); b64=im.b64; mime=im.mime; } return api('uploadLicense',S.tok,name,b64,mime); };
+  const one=async(name,f)=>{ const {b64,mime}=await licB64(f); return api('uploadLicense',S.tok,name,b64,mime); };
   $('#lcup').onclick=async()=>{ const n=$('#lcn').value.trim(), f=$('#lc1').files[0]; if(!n||!f) return $('#lcerr').textContent='اكتب الاسم واختر الملف'; try{ await one(n,f); toast('رُفعت الإجازة'); licAdmin(); }catch(e){ $('#lcerr').textContent=e.message; } };
   $('#lcb').onchange=async()=>{ const fs=[...$('#lcb').files]; let k=0, bad=[]; for(const f of fs){ k++; $('#lcst').textContent='جارٍ الرفع '+k+' من '+fs.length+'…'; const n=f.name.replace(/\.[^.]+$/,'').replace(/^\d+\s{0,9}-\s{0,9}/,'').trim(); try{ await one(n,f); }catch(e){ bad.push(f.name+': '+e.message); } }
     toast('اكتمل الرفع'); await licAdmin(); if(bad.length&&$('#lcerr')) $('#lcerr').textContent=bad.join(' | '); };
@@ -2271,6 +2269,14 @@ async function formsModal(wo,g){
 function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('تعذّر تحميل '+src)); document.head.appendChild(s); }); }
 async function pdfLibs(){ if(!window.pdfjsLib){ await loadScript('https:\/\/cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'); pdfjsLib.GlobalWorkerOptions.workerSrc='https:\/\/cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; } if(!window.jspdf) await loadScript('https:\/\/cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'); }
 // الملف الصغير يبقى كما هو (نصّه قابل للنسخ)؛ الكبير — مسح ضوئي غالباً — يُعاد بناؤه صفحةً صفحة كصور JPEG. إن فشلت المكتبات أو لم يصغر، يُرفع الأصل.
+// الإجازة بصيغة PDF تتحول عند الرفع إلى صورة (صفحاتها مكدّسة) حتى تظهر داخل ملف الجودة بدل رابط (المالك 11-11)
+async function pdfToJpg(buf,maxPages){ await pdfLibs(); const doc=await pdfjsLib.getDocument({data:buf}).promise; const n=Math.min(doc.numPages,maxPages||3), pages=[]; let W=0,H=0;
+  for(let i=1;i<=n;i++){ const pg=await doc.getPage(i); const v=pg.getViewport({scale:1600/pg.getViewport({scale:1}).width}); const c=document.createElement('canvas'); c.width=Math.round(v.width); c.height=Math.round(v.height); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); await pg.render({canvasContext:x,viewport:v}).promise; pages.push(c); W=Math.max(W,c.width); H+=c.height; }
+  const out=document.createElement('canvas'); out.width=W; out.height=H; const o=out.getContext('2d'); o.fillStyle='#fff'; o.fillRect(0,0,W,H); let y=0; pages.forEach(c=>{ o.drawImage(c,0,y); y+=c.height; });
+  return out.toDataURL('image/jpeg',0.85); }
+async function licB64(f){ const mime=(f.type||'').toLowerCase(); if(/pdf/.test(mime)||/\.pdf$/i.test(f.name||'')){ try{ const u=await pdfToJpg(await f.arrayBuffer(),3); return {b64:u.split(',')[1],mime:'image/jpeg'}; }catch(e){ console.warn('pdf→jpg',e); } }
+  if(/pdf/.test(mime)){ if(f.size>10*1024*1024) throw new Error('الملف أكبر من 10 ميغابايت'); return {b64:await fileB64(f),mime:'application/pdf'}; }
+  const im=await shrinkImg(f,2000,0.85); return {b64:im.b64,mime:im.mime}; }
 async function pdfB64(f,prog){ const isPdf=/pdf/i.test(f.type||'')||/\.pdf$/i.test(f.name||''); if(!isPdf||f.size<=CMP.PDF_MIN||window.CMP_OFF) return fileB64(f);
   try{ await pdfLibs(); const doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise; const n=doc.numPages; let out=null;
     for(let i=1;i<=n;i++){ if(prog) prog('ضغط PDF… صفحة '+i+'/'+n); const pg=await doc.getPage(i); const v0=pg.getViewport({scale:1}); const sc=CMP.PDF_DPI/72; const v=pg.getViewport({scale:sc});
