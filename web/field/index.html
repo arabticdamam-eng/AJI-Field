@@ -84,7 +84,7 @@ async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op
 // الخادم الجديد بجانب القاعدة (Supabase Edge «aji») على الموقع الجديد فقط: كل الطلبات إليه أولاً عدا رفع الملفات.
 // ردّه {google} ← خادم Google كما كان (لم يُكتب شيء). الحفظ يحمل رقماً ثابتاً لكل عمل في قائمة الإرسال، فإعادته بعد انقطاع لا تكرره.
 const EDGE_URL = 'https://cnauqprdllsboiayfrgn.supabase.co/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_RD = /^(fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdHtml|sfList|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet)$/;
+const EDGE_RD = /^(fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdHtml|sfList|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet|orderFiles)$/;
 const EDGE_NO = /^(qdBuild|uploadSignature|deleteSignature)$/;   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
 let RID = null; const BIG_ARG = 1400000, EDGE_UP = /^(sfUpload|qdUpload|uploadAttachment|uploadFormPhoto|uploadFormScan|fieldCInvPhoto|fieldMaintPhoto|uploadLicense)$/;
 async function edgeTry(fn, args) {
@@ -284,8 +284,10 @@ const fileB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onl
 // ---------- screens ----------
 function go(r) { S.rv = null; S.r = r; history.pushState(r, ''); render(); scrollTo(0, 0); }
 addEventListener('popstate', e => { menu(false); S.r = e.state || { v: 'home' }; render(); });
+// المالك 11-11: مهندس الموقع (إنشاءات أو صيانة) يعمل من هنا وحده — لا زر ولا رابط للبرنامج الكامل
+const FO = () => !!((S.B && S.B.fo) || (S.B && S.B.user && S.B.user.fo) || (S.user && S.user.fo));
 function topBar(title, back) { const on = navigator.onLine, n = S.Q.length;
-  return `<div class="top"><button id="mb" class="mb" title="القائمة" aria-label="القائمة">☰</button>${back ? '<button id="bk">→</button>' : ''}<b>${esc(title)}</b><span class="sp"></span>${S.api ? `<a id="web" class="webb" href="./app.html" title="البرنامج الكامل">🖥 البرنامج</a>` : ''}<span class="dot ${on ? 'on' : 'off'}" title="${on ? 'متصل' : 'بدون إنترنت'}"></span>
+  return `<div class="top"><button id="mb" class="mb" title="القائمة" aria-label="القائمة">☰</button>${back ? '<button id="bk">→</button>' : ''}<b>${esc(title)}</b><span class="sp"></span>${S.api && !FO() ? `<a id="web" class="webb" href="./app.html" title="البرنامج الكامل">🖥 البرنامج</a>` : ''}<span class="dot ${on ? 'on' : 'off'}" title="${on ? 'متصل' : 'بدون إنترنت'}"></span>
     <button id="sy">${S.syncing ? '⏳ جارٍ الإرسال' : '⟳'}${n ? ' ' + n : ''}</button></div>`; }
 // ---------- side menu (☰ at the top right): my work, then the whole program by section, then the account ----------
 const SICO = { where: '📍', dash: '📊', orders: '📋', quality: '✅', maint: '🛠', permits: '📄', olap: '🔎', forms: '⚠️' };
@@ -299,9 +301,10 @@ function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div
     <a data-go="home:n" class="${on('home', () => S.tab === 'n')}">🔧 إشعارات الصيانة<span class="n">${B.notices.length}</span></a>
     <a data-go="queue" class="${on('queue')}">⏳ بانتظار الإرسال<span class="n">${S.Q.length}</span></a>
     ${(S.PJ && S.PJ.sup && S.PJ.list && S.PJ.list.length > 1) ? `<div class="grp">المشروع</div>${S.PJ.list.map(p => `<a data-pj="${esc(p.id)}" class="${String(p.id) === String(S.pid || '') ? 'on' : ''}">🏗 ${esc(p.name)}${String(p.id) === String(S.pid || '') ? '<span class="n">الحالي</span>' : ''}</a>`).join('')}` : ''}
-    <div class="grp">البرنامج</div><a href="./app.html" id="mapp" style="background:#FFF6CC;font-weight:700">🖥 البرنامج الكامل<span class="n">كل التبويبات</span></a>
+    ${FO() ? '' : `<div class="grp">البرنامج</div><a href="./app.html" id="mapp" style="background:#FFF6CC;font-weight:700">🖥 البرنامج الكامل<span class="n">كل التبويبات</span></a>`}
+    <div class="grp">حسابي</div><a data-go="me" class="${on('me')}">👤 ملفي<span class="n">التوقيع والإجازة</span></a><a data-go="pw" class="${on('pw')}">🔑 تغيير كلمة السر</a>
     <div class="grp">أخرى</div>
-    ${ON_NEW ? '' : `<a href="https://aji-energy.pages.dev/" target="_blank" rel="noopener" id="mweb">🌐 الموقع الجديد aji-energy</a>`}<a data-go="sync">⟳ مزامنة الآن</a></div>
+    ${ON_NEW || FO() ? '' : `<a href="https://aji-energy.pages.dev/" target="_blank" rel="noopener" id="mweb">🌐 الموقع الجديد aji-energy</a>`}<a data-go="sync">⟳ مزامنة الآن</a></div>
     <div class="df"><span>${navigator.onLine ? 'متصل' : 'بدون إنترنت'}</span><button id="mlo" style="color:var(--dan)">تسجيل الخروج</button></div></aside>`;
   $('#mscr').onclick = $('#mcl').onclick = () => menu(false);
   if ($('#mapp')) $('#mapp').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الكامل يحتاج اتصالاً بالإنترنت أول مرة'); } };
@@ -311,16 +314,58 @@ function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div
     if (String(pid) === String(S.pid || '')) return; switchProj(pid, a.textContent.replace(/^🏗\s*/, '')); });
   d.querySelectorAll('[data-go]').forEach(a => a.onclick = () => { menu(false); const [v, x] = a.dataset.go.split(':');
     if (v === 'sync') return sync(true); if (v === 'home') { S.tab = x; S.q = ''; return S.r.v === 'home' ? render() : go({ v: 'home' }); }
-    if (v === 'queue') return go({ v: 'queue' }); if (v === 'full') return S.r.v === 'full' ? (S.r = { v: 'full', sec: x }, history.replaceState(S.r, ''), render(), scrollTo(0, 0)) : go({ v: 'full', sec: x }); });
+    if (v === 'queue') return go({ v: 'queue' }); if (v === 'me' || v === 'pw') return go({ v }); if (v === 'full') return S.r.v === 'full' ? (S.r = { v: 'full', sec: x }, history.replaceState(S.r, ''), render(), scrollTo(0, 0)) : go({ v: 'full', sec: x }); });
 }
-async function logoutField() { if (S.Q.length && !confirm('لديك ' + S.Q.length + ' عملاً لم يُرسل وسيُحذف من الجوال. تسجيل الخروج؟')) return; try { if (navigator.onLine) await call('fieldLogout', S.dev); } catch (e) {} for (const op of S.Q) await DB.qdel(op.id); S.Q = []; S.dev = ''; S.B = null; S.F = null; S.noFull = false; ajiKeep(); try { localStorage.removeItem('wo_tok'); } catch (e) {} await DB.delk('dev'); await DB.delk('B'); await DB.delk('F'); await DB.delk('nofull'); render(); }
+async function logoutField() { if (S.Q.length && !confirm('لديك ' + S.Q.length + ' عملاً لم يُرسل وسيُحذف من الجوال. تسجيل الخروج؟')) return; try { if (navigator.onLine) await call('fieldLogout', S.dev); } catch (e) {} for (const op of S.Q) await DB.qdel(op.id); S.Q = []; S.dev = ''; S.B = null; S.F = null; S.ME = null; S.ATT = null; S.noFull = false; ajiKeep(); try { localStorage.removeItem('wo_tok'); } catch (e) {} await DB.delk('dev'); await DB.delk('B'); await DB.delk('F'); await DB.delk('nofull'); render(); }
 function wire() { if ($('#mb')) { drawer(); $('#mb').onclick = () => { drawer(); menu(true); }; } else { const d = $('#drw'); if (d) d.innerHTML = ''; menu(false); } if ($('#web')) $('#web').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الكامل يحتاج اتصالاً بالإنترنت أول مرة'); } }; if ($('#bk')) $('#bk').onclick = () => history.back(); if ($('#sy')) $('#sy').onclick = () => sync(true); }
 function render() {
   const A = $('#app');
   if (!S.api) return setupView(A);
   if (!S.dev || !S.B) return loginView(A);
   // لا يُعاد رسم شاشة تعبئة مفتوحة عند انتهاء مزامنة في الخلفية، فلا يضيع ما يكتبه المهندس (المالك 11-11)
-  const v = S.r.v, sig = JSON.stringify(S.r); if ((v === 'chk' || v === 'mq') && S.rv === sig && A.firstChild) return; S.rv = sig; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'mq') return mqView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); homeView(A);
+  // أول دخول: تغيير كلمة السر هنا قبل أي شيء (كان يُحوَّل إلى البرنامج الكامل)
+  if (S.B.user && S.B.user.must_change && S.r.v !== 'pw') S.r = { v: 'pw', force: 1 };
+  const v = S.r.v, sig = JSON.stringify(S.r); if ((v === 'chk' || v === 'mq' || v === 'pw' || v === 'me') && S.rv === sig && A.firstChild) return; S.rv = sig; if (v === 'pw') return pwView(A); if (v === 'me') return meView(A); if (v === 'att') return attView(A); if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'mq') return mqView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); homeView(A);
+}
+// ---------- حسابي: كلمة السر و«ملفي» (التوقيع والإجازة) — نُقلت من البرنامج الكامل (المالك 11-11) ----------
+function pwView(A) { const force = !!(S.B.user && S.B.user.must_change);
+  A.innerHTML = (force ? '<div class="top"><b>تغيير كلمة السر</b></div>' : topBar('تغيير كلمة السر', 1)) + `<div class="wrap"><div class="card">${force ? '<div class="muted" style="margin-bottom:8px">هذا أول دخول لك: اختر كلمة سر خاصة بك لتكمل.</div>' : ''}
+    <label>كلمة السر الحالية<input id="p0" type="password" autocomplete="current-password"></label><label>كلمة السر الجديدة (6 أحرف على الأقل)<input id="p1" type="password" autocomplete="new-password"></label><label>تأكيد الجديدة<input id="p2" type="password" autocomplete="new-password"></label>
+    <div class="err" id="pe"></div><button class="pri big" id="pok" style="width:100%;margin-top:10px">حفظ كلمة السر</button>${force ? '<button id="plo" style="width:100%;margin-top:8px;color:var(--dan)">تسجيل الخروج</button>' : ''}</div></div>`;
+  if (!force) wire(); else if ($('#plo')) $('#plo').onclick = logoutField;
+  $('#pok').onclick = async () => { const E = $('#pe'), a = $('#p0').value, b = $('#p1').value; E.textContent = '';
+    if (!navigator.onLine) return E.textContent = 'تغيير كلمة السر يحتاج اتصالاً بالإنترنت'; if (b.length < 6) return E.textContent = 'كلمة السر الجديدة 6 أحرف على الأقل'; if (b !== $('#p2').value) return E.textContent = 'التأكيد لا يطابق كلمة السر الجديدة'; if (a === b) return E.textContent = 'اختر كلمة سر مختلفة عن الحالية';
+    $('#pok').disabled = true;
+    try { await call('changePassword', a, b); if (S.B.user) S.B.user.must_change = false; if (S.user) S.user.must_change = false; try { await DB.set(bKey(), S.B); await DB.set('user', S.user); } catch (e) {} toast('تم تغيير كلمة السر'); S.r = { v: 'home' }; history.replaceState(S.r, ''); S.rv = null; render(); }
+    catch (e) { E.textContent = e.message; $('#pok').disabled = false; } };
+}
+// صفحات PDF (حتى 3) مكدّسة في صورة واحدة — للإجازة حتى تظهر داخل ملف الجودة
+async function pdfStack(buf, max) { const cs = []; let W = 0, H = 0; try { await pdfEach(buf, async (c, i) => { if (i > (max || 3)) { const e = new Error('x'); e.stop = 1; throw e; } const k = document.createElement('canvas'); k.width = c.width; k.height = c.height; k.getContext('2d').drawImage(c, 0, 0); cs.push(k); W = Math.max(W, k.width); H += k.height; }); } catch (e) { if (!e.stop) throw e; }
+  const o = document.createElement('canvas'); o.width = W; o.height = H; const g = o.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); let y = 0; cs.forEach(c => { g.drawImage(c, 0, y); y += c.height; }); return o.toDataURL('image/jpeg', 0.85).split(',')[1]; }
+function meView(A) { const P = S.ME;
+  A.innerHTML = topBar('ملفي', 1) + `<div class="wrap">${!P ? `<div class="card muted" id="mel">${navigator.onLine ? 'جارٍ فتح ملفك…' : '«ملفي» يحتاج اتصالاً بالإنترنت'}</div>` : `
+    <div class="card"><b>${esc(P.name)}</b><div class="muted">${esc(P.job || '')}${P.offices && P.offices.length ? ' · المكاتب: ' + esc(P.offices.join('، ')) : ''}</div></div>
+    <h3>توقيعي</h3><div class="card"><div class="muted">يظهر في خانة توقيع الاستشاري في النماذج والمخالفات. صورة واضحة على خلفية بيضاء.</div>
+      ${P.sig && P.sig.has ? `<div style="margin:8px 0;text-align:center"><img src="${esc(P.sig.url)}" alt="" style="max-width:220px;max-height:110px;border:1px solid var(--line);border-radius:8px;background:#fff"></div><div class="muted">آخر تحديث: ${esc(P.sig.at || '')}</div>` : '<div class="err" style="margin:6px 0">لا يوجد توقيع بعد</div>'}
+      <label>الرقم الوظيفي<input id="mno" inputmode="numeric" value="${esc(P.emp_no || '')}"></label>
+      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير التوقيع<input type="file" accept="image/*" capture="environment" data-me="sig" hidden></label><label class="cam btn">🖼 من المعرض<input type="file" accept="image/*" data-me="sig" hidden></label></div></div>
+    <h3>إجازة الاستشاري</h3><div class="card"><div class="muted">تُضاف إلى ملف الجودة. صورة أو PDF (يُحوَّل إلى صورة).</div>
+      ${P.lic && P.lic.has ? `<div style="margin:8px 0"><a class="btn" href="${esc(P.lic.url)}" target="_blank" rel="noopener">👁 عرض الإجازة</a> <span class="muted">آخر تحديث: ${esc(P.lic.at || '')}${/pdf/.test(P.lic.mime || '') ? ' — مرفوعة PDF: أعد رفعها لتظهر داخل ملف الجودة' : ''}</span></div>` : '<div class="err" style="margin:6px 0">لا توجد إجازة بعد</div>'}
+      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير الإجازة<input type="file" accept="image/*" capture="environment" data-me="lic" hidden></label><label class="cam btn">📎 صورة أو PDF<input type="file" accept="image/*,application/pdf" data-me="lic" hidden></label></div></div>
+    <div class="err" id="mee"></div>`}</div>`;
+  wire(); const load = async () => { try { S.ME = await call('myProfile'); S.rv = null; if (S.r.v === 'me') render(); } catch (e) { const el = $('#mel') || $('#mee'); if (el) el.textContent = e.message; } };
+  if (!P && navigator.onLine) load();
+  $$('input[data-me]').forEach(inp => inp.onchange = async () => { const f = inp.files[0], k = inp.dataset.me, E = $('#mee'); inp.value = ''; if (!f) return; E.textContent = ''; if (!navigator.onLine) return E.textContent = 'الرفع يحتاج اتصالاً بالإنترنت';
+    try { toast('جارٍ الرفع…', 30000);
+      if (k === 'sig') { const c = await shrink(f, 900, 0.85); await call('uploadSignature', P.name, $('#mno').value.trim(), c.toDataURL('image/jpeg', 0.85).split(',')[1], 'image/jpeg'); }
+      else { const pdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || ''); let b64; if (pdf) b64 = await pdfStack(new Uint8Array(await f.arrayBuffer()), 3); else b64 = (await shrink(f, 2000, 0.85)).toDataURL('image/jpeg', 0.85).split(',')[1]; await call('uploadLicense', P.name, b64, 'image/jpeg'); }
+      toast(k === 'sig' ? 'حُفظ التوقيع' : 'حُفظت الإجازة'); await load(); pull().catch(() => {}); }
+    catch (e) { toast('تعذّر الرفع'); E.textContent = e.message; } });
+}
+// ---------- مرفقات أمر العمل داخل التطبيق (كانت تفتح البرنامج الكامل) ----------
+function attView(A) { const key = S.r.key, X = S.ATT && S.ATT.key === key ? S.ATT : null, sz = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' م.ب' : n ? Math.max(1, Math.round(n / 1024)) + ' ك.ب' : '';
+  A.innerHTML = topBar('مرفقات ' + String(key).replace(/^D9:/, 'D9 ').replace(/~.*$/, ''), 1) + `<div class="wrap">${!X ? `<div class="card muted" id="atl">${navigator.onLine ? 'جارٍ جلب المرفقات…' : 'عرض المرفقات يحتاج اتصالاً بالإنترنت'}</div>` : (X.files.length ? X.files.map(f => `<a class="card item" href="${esc(f.url || '')}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit"><div class="row"><span class="t" style="word-break:break-all">${/pdf/i.test((f.mime || '') + f.name) ? '📄' : /^image/i.test(f.mime || '') ? '🖼' : '📎'} ${esc(f.name)}</span></div><div class="muted">${esc(String(f.at || '').slice(0, 16))}${f.size ? ' · ' + sz(+f.size) : ''}${f.by ? ' · ' + esc(f.by) : ''}</div></a>`).join('') : '<div class="card muted">لا مرفقات على هذا الأمر بعد.</div>')}</div>`;
+  wire(); if (!X && navigator.onLine) call('orderFiles', key).then(r => { S.ATT = { key, files: r.files || [] }; if (S.r.v === 'att' && S.r.key === key) render(); }).catch(e => { const el = $('#atl'); if (el) el.textContent = e.message; });
 }
 function cleanApi(t) { const m = String(t || '').replace(/\s+/g, '').match(/https:\/\/script\.google(?:usercontent)?\.com\/[^?#]*?\/(?:exec|dev)\b/); return m ? m[0].replace(/\/dev$/, '/exec') : ''; }
 function setupView(A) {
@@ -335,7 +380,7 @@ function loginView(A) {
     <div style="margin-top:14px"><a href="#" id="chg" class="muted">تغيير رابط البرنامج</a></div></div></div>`;
   $('#chg').onclick = async e => { e.preventDefault(); S.api = ''; await DB.delk('api'); render(); };
   $('#go').onclick = async () => { $('#go').disabled = true; $('#er').textContent = '';
-    try { const r = await call('fieldLogin', $('#u').value.trim(), $('#p').value, navigator.userAgent.slice(0, 100)); S.dev = r.dev; S.user = r.user; await DB.set('dev', r.dev); ajiKeep(); await DB.set('user', r.user); await pull(); go({ v: 'home' }); pullFull().then(render).catch(() => {}); }
+    try { const r = await call('fieldLogin', $('#u').value.trim(), $('#p').value, navigator.userAgent.slice(0, 100)); S.dev = r.dev; S.user = r.user; S.ME = null; S.ATT = null; await DB.set('dev', r.dev); ajiKeep(); await DB.set('user', r.user); await pull(); go({ v: 'home' }); pullFull().then(render).catch(() => {}); }
     catch (e) { $('#er').textContent = e.message; $('#go').disabled = false; } };
   if (S.dev && !S.B && navigator.onLine) pull().then(render).catch(e => { if ($('#er')) $('#er').textContent = e.message; });
 }
@@ -357,13 +402,13 @@ function homeView(A) {
   wire(); $$('[data-t]').forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); });
   if ($('#mtadd')) $('#mtadd').onclick = () => go({ v: 'mt', id: '' });
   $('#q').oninput = e => { S.q = e.target.value; const p = e.target.selectionStart; render(); const i = $('#q'); i.focus(); i.setSelectionRange(p, p); };
-  $$('[data-k]').forEach(b => b.onclick = () => go({ v: 'item', key: b.dataset.k })); if ($('#qv')) $('#qv').onclick = () => go({ v: 'queue' }); if ($('#full')) $('#full').onclick = () => { location.href = './app.html'; };
+  $$('[data-k]').forEach(b => b.onclick = () => go({ v: 'item', key: b.dataset.k })); if ($('#qv')) $('#qv').onclick = () => go({ v: 'queue' }); if ($('#full')) { if (FO()) $('#full').remove(); else $('#full').onclick = () => { location.href = './app.html'; }; }
   $('#lo').onclick = logoutField;
 }
 // ---------- a maintenance notice raised here (the owner, 31/10) ----------
 // The engineer fills it in the field and it goes out with everything else in the queue, so it works with no network.
 // D9 is required. «مهندس التنفيذ» is always him — the server writes his name and ignores anything sent for it.
-const MT_F = [['d9', 'رقم الإشعار D9', 'req'], ['date', 'التاريخ', 'date'], ['office', 'المكتب', 'office'],
+const MT_F = [['d9', 'رقم الإشعار D9', 'req'], ['d1', 'رقم الإشعار D1', 'num'], ['date', 'التاريخ', 'date'], ['office', 'المكتب', 'office'],
   ['contractor', 'المقاول', 'contractor'], ['station', 'المحطة', ''], ['work_type', 'نوع العمل', 'wtype'],
   ['work_desc', 'وصف العمل', 'area'], ['reason', 'السبب', ''], ['notes', 'ملاحظات', 'area']];
 const MT_WT = ['مجدول', 'طوارئ'];
@@ -375,7 +420,7 @@ function mtView(A) {
     if (t === 'office' || t === 'contractor' || t === 'wtype') { const L = t === 'office' ? offs : t === 'contractor' ? ctrs : MT_WT;
       return `<label>${esc(lb)}<select data-m="${k}"><option value=""></option>${L.map(x => `<option ${d[k] === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>`; }
     if (t === 'area') return `<label>${esc(lb)}<textarea data-m="${k}" rows="3">${esc(d[k] || '')}</textarea></label>`;
-    return `<label>${esc(lb)}${t === 'req' ? ' *' : ''}<input data-m="${k}" ${t === 'date' ? 'type="date"' : t === 'req' ? 'inputmode="numeric"' : ''} value="${esc(d[k] || '')}"></label>`; };
+    return `<label>${esc(lb)}${t === 'req' ? ' *' : ''}<input data-m="${k}" ${t === 'date' ? 'type="date"' : t === 'req' || t === 'num' ? 'inputmode="numeric"' : ''} value="${esc(d[k] || '')}"></label>`; };
   A.innerHTML = topBar('إشعار صيانة جديد', 1) + `<div class="wrap">
     <div class="card"><div class="muted" style="margin-bottom:8px">يُسجَّل باسمك (${esc(me())}). رقم الإشعار D9 مطلوب. يعمل بلا إنترنت ويُرسل عند عودة الشبكة، ولن ترى إلا إشعاراتك أنت.</div>
       ${MT_F.map(fld).join('')}
@@ -446,10 +491,10 @@ function itemView(A) {
       ${sfTh(SF.ph.filter(sfIsImg), SFQ.filter(q => q.kind === 'ph'), 'doc')}
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-sf="ph" data-cam="1" hidden></label><label class="cam btn">🖼 من المعرض<input type="file" accept="image/*" multiple data-sf="ph" hidden></label></div></div>
     ${it.d9 ? '' : `<h3>مرفقات أخرى</h3><div class="card"><div class="muted">أي ملف عام لأمر العمل (رسائل، مخططات، مستندات). يظهر في البرنامج ضمن «مرفقات أمر العمل».${S.Q.filter(q => q.t === 'att' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'att' && q.ref === key).length : ''}</div>
-      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-at="1" hidden></label><label class="cam btn">📎 ملفات<input type="file" multiple data-at="1" hidden></label><a class="btn" href="./app.html?att=${encodeURIComponent(key)}">📎 مرفقات أمر العمل</a></div></div>`}
+      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-at="1" hidden></label><label class="cam btn">📎 ملفات<input type="file" multiple data-at="1" hidden></label><button id="attv">📎 مرفقات أمر العمل</button></div></div>`}
     <h3>الصور المطلوبة</h3>${ph || '<div class="card muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
     <h3>ملف الجودة</h3><div class="card"><div class="muted">بعد إرسال كل الصور والنماذج (يحتاج اتصالاً)${S.Q.some(q => q.ref === key) ? ' — <b>ما زال عندك ' + S.Q.filter(q => q.ref === key).length + ' بانتظار الإرسال</b>' : ''}</div>
-      <div class="row" style="margin-top:8px"><button class="pri" id="qbuild">📄 ${it.qf_url ? 'تحديث ملف الجودة' : 'إنشاء ملف الجودة'}</button>${it.qf_url ? `<a class="btn" href="${esc(it.qf_url)}" target="_blank" rel="noopener">👁 عرض ملف الجودة${it.qf_status ? ' (' + esc(it.qf_status) + ')' : ''}</a>` : ''}<a class="btn" href="./app.html?qp=${encodeURIComponent(key)}&code=*" title="معاينة الملف كاملاً وطباعته">🖨 معاينة / PDF</a>${S.B.qe || S.B.admin ? `<a class="btn" href="./app.html?qp=${encodeURIComponent(key)}&code=SUM" title="المحتويات والبنود الناقصة — لا يدخل في الملف">📋 ملخص الملف</a>` : ''}<a class="btn" href="./app.html?qd=${encodeURIComponent(key)}" style="font-size:12px">رفع ملف جاهز</a></div><div id="qbmsg" class="muted" style="margin-top:6px"></div></div></div>`;
+      <div class="row" style="margin-top:8px"><button class="pri" id="qbuild">📄 ${it.qf_url ? 'تحديث ملف الجودة' : 'إنشاء ملف الجودة'}</button>${it.qf_url ? `<a class="btn" href="${esc(it.qf_url)}" target="_blank" rel="noopener">👁 عرض ملف الجودة${it.qf_status ? ' (' + esc(it.qf_status) + ')' : ''}</a>` : ''}<a class="btn" href="./app.html?qp=${encodeURIComponent(key)}&code=*" title="معاينة الملف كاملاً وطباعته">🖨 معاينة / PDF</a>${S.B.qe || S.B.admin ? `<a class="btn" href="./app.html?qp=${encodeURIComponent(key)}&code=SUM" title="المحتويات والبنود الناقصة — لا يدخل في الملف">📋 ملخص الملف</a>` : ''}<label class="cam btn" style="font-size:12px" title="ملف جودة PDF جاهز يُرفع كما هو ويُرسل لمهندس الجودة">رفع ملف جاهز<input type="file" accept="application/pdf" id="qready" hidden></label></div><div id="qbmsg" class="muted" style="margin-top:6px"></div></div></div>`;
   wire();
   // إنشاء ملف الجودة مباشرة من الميداني (المالك 11-11): يُبنى على الخادم بقوالب الشركة، بلا الانتقال إلى البرنامج الرئيسي
   if ($('#qbuild')) $('#qbuild').onclick = async () => { const M = $('#qbmsg'), B = $('#qbuild'); if (!navigator.onLine) return toast('إنشاء الملف يحتاج اتصالاً بالإنترنت', 4000);
@@ -460,6 +505,12 @@ function itemView(A) {
       const n = (S.B.notices || []).find(x => 'D9:' + (x.mref || x.d9) === key), o = (S.B.orders || []).find(x => x.key === key), qf = r.qf || {}; [n, o].forEach(x => { if (x) { x.qf_url = qf.url || x.qf_url; x.qf_status = qf.status || x.qf_status; x.qf_id = qf.id || x.qf_id; } }); try { await DB.set(bKey(), S.B); } catch (e) {}
       toast('أُنشئ ملف الجودة وأُرسل لمهندس الجودة'); render(); }
     catch (e) { M.textContent = e.message; B.disabled = false; } };
+  if ($('#attv')) $('#attv').onclick = () => { S.ATT = null; go({ v: 'att', key }); };
+  if ($('#qready')) $('#qready').onchange = async e => { const f = e.target.files[0], M = $('#qbmsg'); e.target.value = ''; if (!f) return; if (!navigator.onLine) return toast('رفع الملف يحتاج اتصالاً بالإنترنت', 4000);
+    if (!/pdf/i.test(f.type || f.name)) return toast('الملف الجاهز بصيغة PDF', 4000); if (f.size > 30e6) return toast('الملف أكبر من 30 ميغابايت', 4000); if (!confirm('رفع «' + f.name + '» كملف الجودة لهذا ' + (it.d9 ? 'الإشعار' : 'الأمر') + ' وإرساله لمهندس الجودة؟')) return;
+    M.textContent = 'جارٍ رفع الملف الجاهز… لا تغلق الصفحة';
+    try { await call('qdReady', key, await fileB64(f), 'application/pdf', f.name); M.textContent = 'رُفع الملف وأُرسل لمهندس الجودة'; toast('رُفع ملف الجودة الجاهز'); try { await pull(); } catch (x) {} render(); }
+    catch (x) { M.textContent = x.message; } };
   const save = op => enqueue({ t: 'qd', ref: key, op });
   if ($('#net')) $('#net').onchange = e => save({ net: e.target.value }); if ($('#mw')) $('#mw').onchange = e => save({ mw: e.target.value }); if ($('#wt')) $('#wt').onchange = e => save({ wt: e.target.value });
   if ($('#hdsave')) $('#hdsave').onclick = () => { const hdr = {}; $$('[data-hd]').forEach(e => hdr[e.dataset.hd] = e.value.trim()); save({ hdr }); toast('حُفظت البيانات' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); };

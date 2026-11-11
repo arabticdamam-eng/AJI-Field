@@ -514,7 +514,7 @@ const busyUI=()=>!!($('#mdl')||document.querySelector('.edbox')||(document.activ
 async function start(useCache){
   if (!S.tok) return renderLogin();
   let shown=false;
-  if(useCache){ const c=await BC.get('boot'); if(c&&c.tok===S.tok&&c.b&&c.b.orders){ try{ applyBoot(c.b); S.syncing=true; shell(); shown=true; if (S.B.user.must_change) renderChangePw(true); }catch(e){ shown=false; } } }
+  if(useCache){ const c=await BC.get('boot'); if(c&&c.tok===S.tok&&c.b&&c.b.orders){ try{ applyBoot(c.b); S.syncing=true; shell(); shown=true; if (S.B.user.must_change&&!S.B.fo) renderChangePw(true); }catch(e){ shown=false; } } }
   if(!shown) $('#app').innerHTML='<div class="loading" style="padding:40px;text-align:center">جارٍ فتح البرنامج…</div>';
   const slow=shown?0:setTimeout(()=>{ const a=$('#app'); if(a&&!S.B) a.innerHTML='<div class="card" style="max-width:520px;margin:40px auto;text-align:center">البرنامج يتأخر في الرد من الخادم.<br><br><button onclick="location.reload()">إعادة المحاولة</button> <button onclick="logout()">تسجيل الخروج</button></div>'; },45000);
   let raw, tries=0;
@@ -524,7 +524,7 @@ async function start(useCache){
     if(shown&&(S.wseq||0)!==w0&&++tries<3) continue; break; }
   clearTimeout(slow); S.syncing=false; if(!S.tok) return;
   BC.set('boot',{tok:S.tok,at:Date.now(),b:raw});
-  if(!shown){ applyBoot(raw); shell(); if (S.B.user.must_change) renderChangePw(true); return; }
+  if(!shown){ applyBoot(raw); shell(); if (S.B.user.must_change&&!S.B.fo) renderChangePw(true); return; }
   if(tries>=3) { const m=$('#syncm'); if(m) m.classList.remove('on'); return; }
   S.pendB=raw; if(busyUI()){ const m=$('#syncm'); if(m) m.textContent='✓ بيانات جديدة تظهر بعد إغلاق النافذة'; return; } applyFresh();
 }
@@ -651,7 +651,7 @@ async function focusRun(){ const box=$('#fmain');
   if(FOCUS.t==='qp'){ box.innerHTML='<div class="loading">جارٍ تجهيز النموذج…</div>';
     try{ const C=await qdCat(), F=FOCUS.code==='*'?{name:'ملف الجودة كاملاً'}:FOCUS.code==='SUM'?{name:'ملخص ملف الجودة'}:C.forms[FOCUS.code]; if(!F) throw new Error('النموذج غير موجود');
       const html=await qdServerHtml(FOCUS.ref,FOCUS.code,FOCUS.day||''); $('#ftitle').textContent=F.name;
-      box.innerHTML=`<div class="bar"><button class="pri" id="fprint">🖨 طباعة / حفظ PDF</button><a class="btn" href="./app.html?qd=${encodeURIComponent(FOCUS.ref)}" style="text-decoration:none">📄 ملف الجودة</a><span class="muted">من شاشة الطباعة اختر «حفظ كـ PDF» أو شاركها</span></div><div id="fprev" style="overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff">${html}</div>`;
+      box.innerHTML=`<div class="bar"><button class="pri" id="fprint">🖨 طباعة / حفظ PDF</button>${S.B&&S.B.fo?'':`<a class="btn" href="./app.html?qd=${encodeURIComponent(FOCUS.ref)}" style="text-decoration:none">📄 ملف الجودة</a>`}<span class="muted">من شاشة الطباعة اختر «حفظ كـ PDF» أو شاركها</span></div><div id="fprev" style="overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff">${html}</div>`;
       $('#fprint').onclick=()=>qdPrintHtml(html); }
     catch(e){ box.innerHTML=`<div class="err">${esc(e.message)}</div>`; } return; }
   if(FOCUS.t==='att'){ box.innerHTML=`<div class="muted">أمر العمل: <b>${esc(FOCUS.ref)}</b></div><div class="bar" style="margin-top:8px"><button class="pri" id="fat">📎 مرفقات أمر العمل</button><button id="fatf">📁 ملف أمر العمل كاملاً</button></div>`; $('#fat').onclick=()=>woFilesModal(FOCUS.ref); $('#fatf').onclick=()=>attModal(FOCUS.ref); woFilesModal(FOCUS.ref); return; }
@@ -662,7 +662,11 @@ async function focusRun(){ const box=$('#fmain');
     box.innerHTML=`<div class="bar"><button class="pri" id="fprint">🖨 طباعة / حفظ PDF</button><span class="muted">من شاشة الطباعة اختر «حفظ كـ PDF» أو شاركها</span></div><div id="fprev" style="overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff">${(f.data||{}).src==='upload'?fmCoverHtml(f,o,M):fmPrintHtml(f,o,M,sg)}</div>`;
     $('#fprint').onclick=()=>printForm(f,o); }
   catch(e){ box.innerHTML=`<div class="err">${esc(e.message)}</div>`; } }
-function shell(){ if(FOCUS) return focusPage();
+// المالك 11-11: مهندس الموقع يعمل من التطبيق الميداني وحده — لا يُفتح له البرنامج الكامل؛ تبقى له صفحات الطباعة المفتوحة من الميداني فقط
+const FO_FOCUS=()=>!!(FOCUS&&(FOCUS.t==='pf'||FOCUS.t==='qp'));
+const foUser=x=>{ const m=String(x.modules||'').split(',').map(t=>t.trim()); return x.role==='مشاهد'&&!['الجودة','الكل','المطابقة','حالة الإرفاق','التصاريح','المتعثرات','البرنامج الكامل'].some(k=>m.includes(k)); };
+function foBlock(){ const fld=/app\.html$/.test(location.pathname)?'./index.html':'./field/'; $('#app').innerHTML=`<div class="card" style="max-width:520px;margin:40px auto;text-align:center;line-height:1.9"><div style="font-size:40px">📱</div><b>حسابك يعمل من التطبيق الميداني</b><div class="muted">كل ما يخصّك — الأوامر والإشعارات والنماذج والصور وملف الجودة وملفك وكلمة السر — موجود في التطبيق الميداني.</div><div style="margin-top:14px"><a class="btn pri" href="${fld}" style="text-decoration:none;display:inline-block;padding:10px 18px;border-radius:10px;background:var(--pri,#0E7C86);color:#fff">فتح التطبيق الميداني</a></div><div style="margin-top:10px"><button onclick="logout()">تسجيل الخروج</button></div></div>`; }
+function shell(){ if(S.B&&S.B.fo&&!FO_FOCUS()) return foBlock(); if(FOCUS) return focusPage();
   if(S.pendB&&!$('#mdl')) return applyFresh();
   const u = S.B.user, ORD=['where','inbox','orders','mine','daily','forms','boq','stalled','matching','maint','permits','quality','users','import','report','olap','dash'];
   const tl=(S.B.tabs||{}).list, auto=(S.B.tabs||{}).auto||autoTabs(u.role,u.modules.join(',')); const keys=(tl&&tl.length?tl:auto).concat(S.B.admin?['users','import']:[]).concat(!S.B.admin&&(S.B.maint||S.B.permits)?['import']:[]).concat(ibOk()?['inbox']:[]);
@@ -2184,7 +2188,7 @@ async function vUsersList(){
   if(S.view!=='users'||(S.usub||'users')!=='users'||!$('#usub')) return;
   $('#usub').innerHTML=`<div class="bar"><span class="muted">${us.length} مستخدماً. الدور يحدد الصلاحيات، والمكاتب تحدد الأوامر التي يراها.</span><span class="sp"></span>${impBtn('users')}<button id="ustor" title="المستخدَم من Google Drive وأكبر مجلدات المرفقات وملفاتها">💾 المساحة</button><button id="ujobs">🧩 الوظائف</button><button id="ulic">📜 إجازات المهندسين</button><button id="usig">✍️ توقيعات المهندسين</button><button class="pri" id="uadd">مستخدم جديد</button></div>
    <div class="tw"><table><thead><tr><th>رقم الدخول</th><th>الاسم</th><th>الوظيفة</th><th>الدور</th><th>المكاتب</th><th>الوحدات</th><th>التبويبات التي يراها</th><th>مفعّل</th><th></th></tr></thead><tbody>
-   ${us.map(x=>`<tr data-id="${x.id}"><td>${x.id}</td><td>${esc(x.name)}</td><td>${esc(x.job)}</td><td>${esc(x.role)}</td><td>${esc(x.offices)}</td><td>${esc(x.modules)}</td><td class="wrap" style="max-width:330px;font-size:12px">${x.tabs?'<span class="pill p-w">مخصّص</span> ':''}<span>${esc((x.tabs||x.auto||'').split(',').filter(Boolean).map(k=>TABL[k]||k).concat(x.role==='مدير'||String(x.modules).split(',').includes('الكل')?['المستخدمون','الاستيراد']:[]).join('، '))}</span></td><td>${esc(x.active)}</td><td>${x.id===String(S.B.user.id)?'':`<button data-del="${x.id}" style="color:var(--dan);border-color:var(--dan)">حذف</button>`}</td></tr>`).join('')}</tbody></table></div>`;
+   ${us.map(x=>`<tr data-id="${x.id}"><td>${x.id}</td><td>${esc(x.name)}</td><td>${esc(x.job)}</td><td>${esc(x.role)}${foUser(x)?' <span class="pill p-w" title="يعمل من التطبيق الميداني وحده ولا يُفتح له البرنامج الكامل. لاستثنائه: عدّله واختر وحدة «البرنامج الكامل»">📱 ميداني فقط</span>':''}</td><td>${esc(x.offices)}</td><td>${esc(x.modules)}</td><td class="wrap" style="max-width:330px;font-size:12px">${x.tabs?'<span class="pill p-w">مخصّص</span> ':''}<span>${esc((x.tabs||x.auto||'').split(',').filter(Boolean).map(k=>TABL[k]||k).concat(x.role==='مدير'||String(x.modules).split(',').includes('الكل')?['المستخدمون','الاستيراد']:[]).join('، '))}</span></td><td>${esc(x.active)}</td><td>${x.id===String(S.B.user.id)?'':`<button data-del="${x.id}" style="color:var(--dan);border-color:var(--dan)">حذف</button>`}</td></tr>`).join('')}</tbody></table></div>`;
   const edit=x=>{ x=x||{id:'',name:'',job:'',role:'مشاهد',offices:'',modules:'أوامر العمل',active:'نعم'}; const L=S.B.lists;
     const chk=(name,opts,val)=>opts.map(o=>`<label style="flex-direction:row;gap:4px"><input type="checkbox" name="${name}" value="${o}" ${val.split(',').includes(o)?'checked':''}>${o}</label>`).join('');
     modal(`<h3 style="margin-top:0">${x.id?'تعديل مستخدم':'مستخدم جديد'}</h3><div class="f">
@@ -2193,7 +2197,7 @@ async function vUsersList(){
      <label>مفعّل<select id="u_active"><option ${x.active==='نعم'?'selected':''}>نعم</option><option ${x.active==='لا'?'selected':''}>لا</option></select></label>
      <label>${x.id?'إعادة تعيين كلمة السر (اتركه فارغاً للإبقاء)':'كلمة سر مؤقتة'}<input id="u_pw"></label></div>
      <div class="card" style="margin-top:10px"><div class="muted">وظائفه في رحلة أمر العمل (يذهب إليه الأمر في مكاتبه المحددة أدناه)</div><div class="bar" id="ujl">${jobsList().map(j=>`<label style="flex-direction:row;gap:4px"><input type="checkbox" name="ujob" value="${esc(j)}" ${jobSplit(x.job).includes(j)?'checked':''}>${esc(j)}</label>`).join('')||'<span class="muted">لا وظائف بعد — أضفها من زر «الوظائف»</span>'}</div>
-     <div class="muted">المكاتب</div><div class="bar">${chk('off',L.office,x.offices)}</div><div class="muted">الوحدات التي يعدّلها</div><div class="bar">${chk('mod',L.module,x.modules)}</div></div>
+     <div class="muted">المكاتب</div><div class="bar">${chk('off',L.office,x.offices)}</div><div class="muted">الوحدات التي يعدّلها <span style="font-weight:400">— «مشاهد» بلا وحدة مكتبية = مهندس موقع يعمل من الميداني فقط؛ اختر «البرنامج الكامل» لاستثنائه</span></div><div class="bar">${chk('mod',(L.module||[]).concat((L.module||[]).includes('البرنامج الكامل')?[]:['البرنامج الكامل']),x.modules)}</div></div>
      <div class="card" style="margin-top:10px"><div class="bar" style="margin:0"><span class="muted">التبويبات التي يراها</span><span id="utm" class="pill"></span><span class="sp"></span><button id="utauto" type="button">إرجاع إلى التلقائي حسب الدور</button></div>
       <div class="bar" id="utabs" style="margin-top:6px">${TABK.map(k=>`<label style="flex-direction:row;gap:4px"><input type="checkbox" name="tab" value="${k}">${TABL[k]}<small data-tro="${k}" style="color:var(--mut)"></small></label>`).join('')}</div>
       <div class="muted" style="font-size:12px">المؤشَّر عليه في الوضع التلقائي هو ما يمنحه دوره ووحداته. أضف أو احجب ما تشاء. ما تمنحه خارج دوره يُفتح له للقراءة فقط، ويرى فيه الأوامر التي يسمح بها دوره ومكاتبه. «المستخدمون» و«الاستيراد» للمدير دائماً.</div></div>
