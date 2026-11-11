@@ -75,7 +75,7 @@ const DB = { db: null,
   qall() { return this.tx('q', 'readonly', s => s.getAll()); }, qadd(o) { return this.tx('q', 'readwrite', s => s.add(o)); }, qput(o) { return this.tx('q', 'readwrite', s => s.put(o)); }, qdel(id) { return this.tx('q', 'readwrite', s => s.delete(id)); }
 };
 // a new choice (network / equipment / work kind) replaces the same unsent choice, so ticking many boxes stays one item
-const SAME = (a, b) => (a.t === 'boq' || a.t === 'draw') ? a.t === b.t && a.ref === b.ref && !a.sending : a.t === 'qd' && b.t === 'qd' && a.ref === b.ref && !a.sending && ['net', 'eq', 'mw', 'wt'].some(k => a.op[k] !== undefined && b.op[k] !== undefined) && Object.keys(a.op).length === 1 && Object.keys(b.op).length === 1;
+const SAME = (a, b) => (a.t === 'boq' || a.t === 'draw') ? a.t === b.t && a.ref === b.ref && !a.sending : a.t === 'qd' && b.t === 'qd' && a.ref === b.ref && !a.sending && ['net', 'eq', 'mw', 'wt', 'qty', 'meas'].some(k => a.op[k] !== undefined && b.op[k] !== undefined) && Object.keys(a.op).length === 1 && Object.keys(b.op).length === 1;
 async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op));
   if (old) { Object.assign(old, op, { id: old.id }); delete old.err; await DB.qput(old); } else { op.id = await DB.qadd(op); S.Q.push(op); }
   render(); clearTimeout(enqueue.h); enqueue.h = setTimeout(sync, 1500); }
@@ -84,7 +84,7 @@ async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op
 // الخادم الجديد بجانب القاعدة (Supabase Edge «aji») على الموقع الجديد فقط: كل الطلبات إليه أولاً عدا رفع الملفات.
 // ردّه {google} ← خادم Google كما كان (لم يُكتب شيء). الحفظ يحمل رقماً ثابتاً لكل عمل في قائمة الإرسال، فإعادته بعد انقطاع لا تكرره.
 const EDGE_URL = 'https://cnauqprdllsboiayfrgn.supabase.co/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_RD = /^(fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet)$/;
+const EDGE_RD = /^(fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdHtml|sfList|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet)$/;
 const EDGE_NO = /^(qdBuild|uploadSignature|deleteSignature)$/;   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
 let RID = null;
 async function edgeTry(fn, args) {
@@ -131,7 +131,7 @@ async function runOp(op) {
   if (op.t === 'up') return call('qdUpload', op.ref, op.slot, op.b64, op.mime, op.loc || '');
   if (op.t === 'del') return call('qdRemove', op.ref, op.slot, op.fid);
   if (op.t === 'ci') return call('fieldCInvPhoto', op.ref, op.b64, op.mime, !!op.isNew);
-  if (op.t === 'sf') return call('sfUpload', op.ref, op.b64, op.mime, op.name || '', op.loc || '');
+  if (op.t === 'sf') { const r = await call('sfUpload', op.ref, op.b64, op.mime, op.name || '', op.loc || '', op.kind || ''); try { const js = JSON.stringify((r.files || []).map(f => ({ id: f.id, name: f.name, mt: f.mt, at: f.at, by: f.by, k: f.k }))); const n = (S.B.notices || []).find(x => 'D9:' + (x.mref || x.d9) === op.ref); if (n) n.sf_files = js; const o = (S.B.orders || []).find(x => x.key === op.ref); if (o) o.sf_files = js; await DB.set(bKey(), S.B); } catch (e) {} return r; }
   if (op.t === 'att') return call('uploadAttachment', op.ref, op.b64, op.mime, op.name || '', op.loc || '');
   if (op.t === 'boq') return call('boqSave', op.ref, { lines: op.lines });
   if (op.t === 'draw') return call('boqDraw', op.ref, op.draw, op.png || '');
@@ -175,7 +175,7 @@ function itemOf(key) {
 function applyOp(d, op) {
   const C = S.B.cat;
   if (op.t === 'qd') { const o = op.op;
-    if (o.net !== undefined) d.net = o.net; if (o.eq) d.eq = o.eq; if (o.mw) d.mw = o.mw; if (o.wt !== undefined) d.wt = o.wt;
+    if (o.net !== undefined) d.net = o.net; if (o.eq) d.eq = o.eq; if (o.mw) d.mw = o.mw; if (o.wt !== undefined) d.wt = o.wt; if (o.qty !== undefined) d.qty = o.qty; if (o.meas !== undefined) d.meas = o.meas;
     if (o.hdr) { d.hdr = d.hdr || {}; Object.keys(o.hdr).forEach(h => { if (o.hdr[h]) d.hdr[h] = o.hdr[h]; else delete d.hdr[h]; }); }
     if (o.add) { d.add = [...new Set((d.add || []).concat([o.add]))]; d.drop = (d.drop || []).filter(k => k !== o.add); }
     if (o.drop) { d.drop = [...new Set((d.drop || []).concat([o.drop]))]; d.add = (d.add || []).filter(k => k !== o.drop); }
@@ -192,6 +192,8 @@ function guessMw(t) { t = String(t || ''); if (/(mini ?pil|pillar|بيلر|بل�
 // التعبئة الافتراضية (المالك 10-11) كما في البرنامج: الإجابات من ملفاته حسب نوع الأمر أو نوع عمل الصيانة، والمحفوظ يغلب
 function typeOf(it, d) { const C = S.B.cat; if (!it.d9) return String(it.type); if (d && d.wt && C.mx[d.wt]) return d.wt; return kindOf(it.work_desc); }
 // تصنيف إشعار الصيانة من وصف العمل بقاموس الكلمات المرتّب من الخادم (المالك 11-11)؛ وإلا «أخرى» D9
+const sfKind = x => x.k === 'ph' || x.k === 'doc' ? x.k : (/^image\//i.test(x.mt || '') ? 'ph' : 'doc');
+function sfSplit(js) { let L = []; try { L = JSON.parse(js || '[]') || []; } catch (e) {} return { doc: L.filter(x => sfKind(x) === 'doc'), ph: L.filter(x => sfKind(x) === 'ph') }; }
 function kindOf(desc) { const C = S.B.cat, t = String(desc || '').toLowerCase(); for (const [k, re] of (C.mtKw || [])) { try { if (C.mx[k] && new RegExp(re, 'i').test(t)) return k; } catch (e) {} } return 'D9'; }
 function defOf(code, type) { const C = S.B.cat, F = C.forms[code]; if (!F || F.k !== 'chk') return null; const dd = (C.defT && C.defT[code] && C.defT[code][type]) || (C.def && C.def[code]); if (!dd) return null;
   const a = {}; F.items.forEach((x, i) => { if (!x.h && dd[i] && (dd[i] !== 'x' || F.ans === 'ynx')) a[i] = dd[i]; }); return a; }
@@ -213,6 +215,7 @@ function stateOf(it, d, P) {
     if (f.k === 'chk') { const a = ((d.f || {})[k] || {}).a || {}, n = f.items.filter(x => !x.h).length, m = Object.keys(a).filter(i => a[i]).length; s = m >= n ? 'done' : m ? 'part' : (defOf(k, P.type) ? 'def' : 'none');
       const ms = (f.hdr || []).filter(h => !hdrVal(it, d, (d.f || {})[k], h)); if (ms.length && s !== 'none') { s = 'need'; ms.forEach(h => { if (!need.includes(h)) need.push(h); }); } }
     else if (f.k === 'up') s = ((d.up || {})[k] || []).length ? 'done' : 'none';
+    else if (f.k === 'boq' && it.d9) s = (((k === 'QTY' ? (d.qty && d.qty.act) : (d.meas && d.meas.rows)) || []).length || ((d.up || {})[k] || []).length) ? 'done' : 'none';   // الصيانة: إدخال مباشر (المالك 11-11)
     else if (f.k === 'day' || f.k === 'boq') s = ((d.up || {})[k] || []).length ? 'done' : 'auto';   // built in the program from the daily schedule / the BOQ
     else if (f.k === 'site' || f.k === 'meeting') s = F.some(x => x.kind === f.k) ? 'done' : 'none';   // يُحرَّران يدوياً فقط (المالك 10-11)
     else if (f.k === 'lic') s = lic.has ? 'done' : 'none';
@@ -280,7 +283,7 @@ function render() {
   const A = $('#app');
   if (!S.api) return setupView(A);
   if (!S.dev || !S.B) return loginView(A);
-  const v = S.r.v; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); homeView(A);
+  const v = S.r.v; if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'mq') return mqView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); homeView(A);
 }
 function cleanApi(t) { const m = String(t || '').replace(/\s+/g, '').match(/https:\/\/script\.google(?:usercontent)?\.com\/[^?#]*?\/(?:exec|dev)\b/); return m ? m[0].replace(/\/dev$/, '/exec') : ''; }
 function setupView(A) {
@@ -378,6 +381,7 @@ function itemView(A) {
     if (f.k === 'chk') { const x = (d.f || {})[k], df = !x && !!defOf(k, P.type); info = x ? esc(x.by) + (x.local ? ' · بانتظار الإرسال' : '') : df ? 'معبّأ تلقائياً' + (s === 'need' ? ' — <span class="err">بيانات ناقصة</span>' : '') : ''; act = `<button data-chk="${k}">${x || df ? 'تعديل' : 'تعبئة'}</button>${x || df ? `<a class="cam" href="./app.html?qp=${encodeURIComponent(key)}&code=${k}" title="عرض وطباعة PDF">🖨</a>` : ''}`; }
     else if (f.k === 'up') { info = thumbs((d.up || {})[k], 'u:' + k); act = `<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
     else if (f.k === 'site' || f.k === 'meeting') { const L = F.filter(x => x.kind === f.k); info = L.map(x => x.local ? '⏳ ' + esc(x.seq) : `<a href="./app.html?pf=${encodeURIComponent(x.id)}&ref=${encodeURIComponent(key)}" title="عرض وطباعة PDF">🖨 ${esc(x.seq)}</a>`).join('، '); act = `<button data-nf="${f.k}">+ جديد</button>`; }
+    else if (f.k === 'boq' && it.d9) { const n = ((k === 'QTY' ? (d.qty && d.qty.act) : (d.meas && d.meas.rows)) || []).length; info = (n ? 'مُدخل: ' + n + ' سطراً' : '<span class="err">لم يُدخل بعد — يُعبّأ من الموقع</span>') + thumbs((d.up || {})[k], 'u:' + k); act = `<button data-mq="${k}">${n ? 'تعديل' : 'تعبئة'}</button>${n ? `<a class="cam" href="./app.html?qp=${encodeURIComponent(key)}&code=${k}" title="عرض وطباعة PDF">🖨</a>` : ''}<label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
     else if (f.k === 'day' || f.k === 'boq') { info = (f.k === 'day' ? 'يُعبّأ تلقائياً بتاريخ الأمر، ومن الجدول اليومي إن وُجد' : 'يُعبّأ تلقائياً من المقايسة') + thumbs((d.up || {})[k], 'u:' + k); act = `${f.k === 'day' ? `<a class="cam" href="./app.html?qp=${encodeURIComponent(key)}&code=${k}" title="عرض وطباعة PDF">🖨</a>` : ''}<label class="cam">📷<input type="file" accept="image/*" capture="environment" data-up="u:${k}" hidden></label><label class="cam">📎<input type="file" accept="image/*,application/pdf" data-up="u:${k}" multiple hidden></label>`; }
     else if (f.k === 'lic') info = ST.lic.has ? 'مرفقة تلقائياً' : '<span class="err">لا توجد إجازة لـ ' + esc(ST.lic.name) + '</span>';
     return `<div class="fl ${rj('f:' + k) || rj('u:' + k) ? 'rj' : ''}"><span class="k ${K[s][1]}">${K[s][0]}</span><div class="n"><b>${esc(f.name)}</b>${f.no ? ' <span class="muted">' + esc(f.no) + '</span>' : ''}<div class="muted">${info}${rj('f:' + k) ? ' ⛔ مرفوض' : ''}</div></div>${act}${f.k !== 'lic' ? `<b class="x" data-drop="${k}" style="color:var(--mut);cursor:pointer;padding:4px">✕</b>` : ''}</div>`; };
@@ -396,29 +400,42 @@ function itemView(A) {
     ${it.d9 ? '' : boqCard(key)}
     ${it.d9 ? '' : `<h3>فاتورة المقاول</h3><div class="card"><div class="muted">صوّر فاتورة المقاول (صفحة أو أكثر). تُحفظ مع آخر فاتورة لهذا الأمر في «مراجعة فواتير المقاول»، وتُرسل عند الاتصال.${S.Q.filter(q => q.t === 'ci' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'ci' && q.ref === key).length : ''}</div>
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-ci="0" hidden></label><label class="cam btn">🖼 من الجهاز<input type="file" accept="image/*,application/pdf" multiple data-ci="0" hidden></label><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="cinew" style="width:auto"> فاتورة جديدة</label></div></div>`}
-    <h3>ملف السلامة</h3><div class="card"><div class="muted">مستندات وصور السلامة لهذا ${it.d9 ? 'الإشعار' : 'الأمر'}: ${(() => { let n = 0; try { n = JSON.parse(it.sf_files || '[]').length; } catch (e) {} return n ? n + ' ملفاً مرفوعاً' : 'لا ملفات بعد'; })()}${S.Q.filter(q => q.t === 'sf' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'sf' && q.ref === key).length : ''}</div>
-      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-sf="1" hidden></label><label class="cam btn">🖼 صور أو PDF<input type="file" accept="image/*,application/pdf" multiple data-sf="1" hidden></label></div></div>
+    <h3>ملف السلامة</h3><div class="card"><div class="muted">مستندات السلامة لهذا ${it.d9 ? 'الإشعار' : 'الأمر'} (شهادات، تصاريح، تقييم مخاطر…): ${(() => { const n = sfSplit(it.sf_files).doc.length; return n ? n + ' مستنداً' : 'لا مستندات بعد'; })()}${S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind !== 'ph').length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind !== 'ph').length : ''}</div>
+      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير مستند<input type="file" accept="image/*" capture="environment" multiple data-sf="doc" hidden></label><label class="cam btn">📎 ملفات أو PDF<input type="file" accept="image/*,application/pdf" multiple data-sf="doc" hidden></label></div></div>
+    <h3>صور السلامة</h3><div class="card"><div class="muted">صور السلامة في الموقع (حواجز، معدات الوقاية، نقطة التجمع…) تُختم بالموقع والتاريخ وتُضاف إلى ملف الجودة 4 صور في الصفحة.${S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind === 'ph').length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind === 'ph').length : ''}</div>
+      ${(() => { const L = sfSplit(it.sf_files).ph.map(x => ({ id: x.id })).concat(S.Q.filter(q => q.t === 'sf' && q.ref === key && q.kind === 'ph').map(q => ({ id: '', local: 1, thumb: q.thumb || '' }))); return L.length ? `<div class="th">${L.map(x => `<span><img class="${x.local ? 'loc' : ''}" src="${x.local ? x.thumb : phUrl(x.id, 160)}" alt=""></span>`).join('')}</div>` : ''; })()}
+      <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-sf="ph" data-cam="1" hidden></label><label class="cam btn">🖼 من المعرض<input type="file" accept="image/*" multiple data-sf="ph" hidden></label></div></div>
     ${it.d9 ? '' : `<h3>مرفقات أخرى</h3><div class="card"><div class="muted">أي ملف عام لأمر العمل (رسائل، مخططات، مستندات). يظهر في البرنامج ضمن «مرفقات أمر العمل».${S.Q.filter(q => q.t === 'att' && q.ref === key).length ? ' — بانتظار الإرسال: ' + S.Q.filter(q => q.t === 'att' && q.ref === key).length : ''}</div>
       <div class="row" style="margin-top:8px"><label class="cam btn">📷 تصوير<input type="file" accept="image/*" capture="environment" multiple data-at="1" hidden></label><label class="cam btn">📎 ملفات<input type="file" multiple data-at="1" hidden></label><a class="btn" href="./app.html?att=${encodeURIComponent(key)}">📎 مرفقات أمر العمل</a></div></div>`}
     <h3>الصور المطلوبة</h3>${ph || '<div class="card muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
     <h3>ملف الجودة</h3><div class="card"><div class="muted">بعد إرسال كل الصور والنماذج (يحتاج اتصالاً)${S.Q.some(q => q.ref === key) ? ' — <b>ما زال عندك ' + S.Q.filter(q => q.ref === key).length + ' بانتظار الإرسال</b>' : ''}</div>
-      <div class="row" style="margin-top:8px"><a class="btn" href="./app.html?qd=${encodeURIComponent(key)}">📄 إنشاء / تحديث / رفع ملف جاهز</a>${it.qf_url ? `<a class="btn" href="${esc(it.qf_url)}" target="_blank" rel="noopener">👁 عرض ملف الجودة${it.qf_status ? ' (' + esc(it.qf_status) + ')' : ''}</a>` : ''}</div></div></div>`;
+      <div class="row" style="margin-top:8px"><button class="pri" id="qbuild">📄 ${it.qf_url ? 'تحديث ملف الجودة' : 'إنشاء ملف الجودة'}</button>${it.qf_url ? `<a class="btn" href="${esc(it.qf_url)}" target="_blank" rel="noopener">👁 عرض ملف الجودة${it.qf_status ? ' (' + esc(it.qf_status) + ')' : ''}</a>` : ''}<a class="btn" href="./app.html?qp=${encodeURIComponent(key)}&code=*" title="معاينة الملف كاملاً وطباعته">🖨 معاينة / PDF</a><a class="btn" href="./app.html?qd=${encodeURIComponent(key)}" style="font-size:12px">رفع ملف جاهز</a></div><div id="qbmsg" class="muted" style="margin-top:6px"></div></div></div>`;
   wire();
+  // إنشاء ملف الجودة مباشرة من الميداني (المالك 11-11): يُبنى على الخادم بقوالب الشركة، بلا الانتقال إلى البرنامج الرئيسي
+  if ($('#qbuild')) $('#qbuild').onclick = async () => { const M = $('#qbmsg'), B = $('#qbuild'); if (!navigator.onLine) return toast('إنشاء الملف يحتاج اتصالاً بالإنترنت', 4000);
+    if (S.Q.some(q => q.ref === key)) { if (!confirm('ما زال عندك ' + S.Q.filter(q => q.ref === key).length + ' بانتظار الإرسال، ولن تدخل في الملف. إنشاء الملف الآن؟')) return; }
+    let force = false; if (ST.miss && ST.miss.length) { const list = ST.miss.slice(0, 10).map(m => '• ' + m.name).join('\n') + (ST.miss.length > 10 ? '\n…' : ''); if (!confirm('الملف ناقص ' + ST.miss.length + ' بنداً:\n' + list + '\n\nإنشاء رغم النقص؟ تُضاف صفحة «بنود ناقصة» في آخره ويُرسل لمهندس الجودة.')) return; force = true; }
+    B.disabled = true; M.textContent = 'جارٍ إنشاء ملف PDF على الخادم… قد يستغرق دقيقة';
+    try { const r = await call('qdBuild', key, '', force); if (r.missing) { M.textContent = 'ناقص ' + r.missing.length + ' بنداً'; B.disabled = false; return; }
+      const n = (S.B.notices || []).find(x => 'D9:' + (x.mref || x.d9) === key), o = (S.B.orders || []).find(x => x.key === key), qf = r.qf || {}; [n, o].forEach(x => { if (x) { x.qf_url = qf.url || x.qf_url; x.qf_status = qf.status || x.qf_status; x.qf_id = qf.id || x.qf_id; } }); try { await DB.set(bKey(), S.B); } catch (e) {}
+      toast('أُنشئ ملف الجودة وأُرسل لمهندس الجودة'); render(); }
+    catch (e) { M.textContent = e.message; B.disabled = false; } };
   const save = op => enqueue({ t: 'qd', ref: key, op });
   if ($('#net')) $('#net').onchange = e => save({ net: e.target.value }); if ($('#mw')) $('#mw').onchange = e => save({ mw: e.target.value }); if ($('#wt')) $('#wt').onchange = e => save({ wt: e.target.value });
   if ($('#hdsave')) $('#hdsave').onclick = () => { const hdr = {}; $$('[data-hd]').forEach(e => hdr[e.dataset.hd] = e.value.trim()); save({ hdr }); toast('حُفظت البيانات' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); };
   $$('[data-eq]').forEach(c => c.onchange = () => save({ eq: $$('[data-eq]:checked').map(x => x.dataset.eq) }));
   if ($('#add')) $('#add').onchange = e => { if (e.target.value) save({ add: e.target.value }); };
   $$('[data-drop]').forEach(b => b.onclick = () => { if (confirm('إزالة «' + C.forms[b.dataset.drop].name + '» من هذا الأمر؟')) save({ drop: b.dataset.drop }); });
-  $$('[data-chk]').forEach(b => b.onclick = () => go({ v: 'chk', key, code: b.dataset.chk }));
+  $$('[data-chk]').forEach(b => b.onclick = () => go({ v: 'chk', key, code: b.dataset.chk })); $$('[data-mq]').forEach(b => b.onclick = () => go({ v: 'mq', key, code: b.dataset.mq }));
   $$('[data-nf]').forEach(b => b.onclick = () => go({ v: 'form', key, kind: b.dataset.nf }));
   if ($('#bqo')) $('#bqo').onclick = () => go({ v: 'boq', key }); if ($('#bqd')) $('#bqd').onclick = () => openDraw(key);
   $$('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('حذف هذه الصورة؟')) return; const id = b.dataset.id;
     if (/^L\d+$/.test(id)) { const qid = +id.slice(1); await DB.qdel(qid); S.Q = S.Q.filter(x => x.id !== qid); render(); } else enqueue({ t: 'del', ref: key, slot: b.dataset.del, fid: id }); });
-  $$('input[data-sf]').forEach(inp => inp.onchange = async () => { const files = [...inp.files]; inp.value = ''; if (!files.length) return;
-    try { for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'sf', ref: key, b64: await fileB64(f), mime: 'application/pdf', name: f.name }); }
-        else { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'sf', ref: key, b64: b, mime: 'image/jpeg', name: f.name }); } }
-      toast('حُفظ ملف السلامة على الجوال' + (navigator.onLine ? '' : ' — يُرسل عند الاتصال')); } catch (e) { toast(e.message, 4000); } });
+  $$('input[data-sf]').forEach(inp => inp.onchange = async () => { const files = [...inp.files], kind = inp.dataset.sf, cam = !!inp.dataset.cam; inp.value = ''; if (!files.length) return;
+    try { if (kind === 'ph') { const P = await takePhotos(files, it, cam); for (const x of P) await enqueue({ t: 'sf', ref: key, b64: x.b64, mime: 'image/jpeg', name: 'صورة_سلامة.jpg', loc: x.loc, kind: 'ph', thumb: x.thumb }); }
+      else for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'sf', ref: key, b64: await fileB64(f), mime: 'application/pdf', name: f.name, kind: 'doc' }); }
+        else { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'sf', ref: key, b64: b, mime: 'image/jpeg', name: f.name, kind: 'doc' }); } }
+      toast((kind === 'ph' ? 'حُفظت صور السلامة على الجوال' : 'حُفظ ملف السلامة على الجوال') + (navigator.onLine ? '' : ' — يُرسل عند الاتصال')); render(); } catch (e) { toast(e.message, 4000); } });
   $$('input[data-at]').forEach(inp => inp.onchange = async () => { const files = [...inp.files]; inp.value = ''; if (!files.length) return;
     try { for (const f of files) { if (/^image\//.test(f.type)) { const c = await shrink(f, 2000, 0.85), b = c.toDataURL('image/jpeg', 0.85).split(',')[1]; await enqueue({ t: 'att', ref: key, b64: b, mime: 'image/jpeg', name: f.name }); }
         else { if (f.size > 15e6) throw new Error(f.name + ': أكبر من 15 ميغابايت'); await enqueue({ t: 'att', ref: key, b64: await fileB64(f), mime: f.type || 'application/octet-stream', name: f.name }); } }
@@ -431,6 +448,31 @@ function itemView(A) {
     try { for (const f of files) { if (f.type === 'application/pdf') { if (f.size > 15e6) throw new Error('الملف أكبر من 15 ميغابايت'); await enqueue({ t: 'up', ref: key, slot, b64: await fileB64(f), mime: 'application/pdf', thumb: '' }); }
         else { const [p] = await takePhotos([f], it, !!inp.dataset.cam); await enqueue({ t: 'up', ref: key, slot, b64: p.b64, mime: p.mime, loc: p.loc, thumb: p.thumb }); } } toast('حُفظت على الجوال' + (navigator.onLine ? '' : ' — تُرسل عند الاتصال')); }
     catch (e) { toast(e.message, 4000); } });
+}
+// حصر الأعمال (QTY) والقياس (MEAS) لإشعارات الصيانة: إدخال مباشر من الموقع بلا مقايسة (المالك 11-11)
+const MQ_COLS = [['earth', 'قضيب تأريض'], ['ins', 'نهايات معزولة'], ['term', 'النهايات'], ['tape', 'شريط التحذير'], ['expose', 'الكشف والتمديد'], ['total', 'الطول الكلي للكابل'], ['loop', 'طول الكابل الظاهر'], ['thru', 'الطول داخل الوصلة'], ['trench', 'طول الكابل بالحفرية'], ['size', 'مقاس الكابل'], ['joints', 'وصلات ض.ع/ض.م'], ['pipe', 'تمديد مواسير'], ['t_l', 'بلاط: الطول'], ['t_w', 'بلاط: العرض'], ['a_l', 'أسفلت: الطول'], ['a_w', 'أسفلت: العرض'], ['x_l', 'حفريات: الطول'], ['x_w', 'حفريات: العرض'], ['x_d', 'حفريات: العمق'], ['soil', 'نوعية التربة'], ['from', 'من نقطة … إلى نقطة']];
+function mqView(A) {
+  const { key, code } = S.r, it = itemOf(key), C = S.B.cat, F = C.forms[code], d = docOf(key), isQ = code === 'QTY', Q = JSON.parse(JSON.stringify((isQ ? d.qty : d.meas) || {}));
+  const inp = (k, lbl, v, t) => `<label>${esc(lbl)}<input data-k="${k}" value="${esc(v == null ? '' : v)}" ${t ? 'type="' + t + '"' : ''}></label>`;
+  const grid = (id, cols, rows, min) => { const R = rows.slice(); while (R.length < (min || 3)) R.push({}); return `<div class="tw" style="overflow:auto"><table class="fg" id="${id}"><thead><tr>${cols.map(c => `<th>${esc(c[1])}</th>`).join('')}<th></th></tr></thead><tbody>${R.map(r => `<tr>${cols.map(c => `<td><input data-c="${c[0]}" value="${esc(r[c[0]] == null ? '' : r[c[0]])}" style="min-width:${c[2] || 70}px"></td>`).join('')}<td><b class="x" data-rx="1" style="cursor:pointer">✕</b></td></tr>`).join('')}</tbody></table></div><button data-add="${id}" style="margin-top:4px">+ سطر</button>`; };
+  const rowsOf = id => [...document.querySelectorAll('#' + id + ' tbody tr')].map(tr => { const o = {}; tr.querySelectorAll('input[data-c]').forEach(i => { if (i.value.trim()) o[i.dataset.c] = i.value.trim(); }); return o; }).filter(o => Object.keys(o).length);
+  A.innerHTML = topBar(F.name, 1) + `<div class="wrap"><div class="card"><div class="muted">D9 ${esc(it.wo)} · ${esc(it.contractor || '')} · ${esc(it.station || '')}</div>
+    ${isQ ? `<div class="f" style="margin-top:8px">${inp('date', 'التاريخ', Q.date || it.date || today(), 'date')}${inp('work', 'نوع العمل', Q.work || it.work_type || '')}${inp('fault', 'نوع العطل', Q.fault || it.work_desc || '')}${inp('area', 'المنطقة', Q.area || it.district || '')}${inp('station', 'رقم المحطة', Q.station || it.station || '')}${inp('start', 'تاريخ ووقت بدء العمل', Q.start)}${inp('end', 'وقت الانتهاء من العطل', Q.end)}${inp('dur', 'مدة الإصلاح', Q.dur)}${inp('con_sup', 'مشرف عمل المقاول', Q.con_sup)}${inp('emp', 'اسم الموظف', Q.emp)}</div>
+      <h3>الإجراء</h3>${grid('g_act', [['t', 'الوصف', 180], ['ea', 'EA', 50], ['m2', 'M2', 50], ['m3', 'M3', 50]], Q.act || [], 3)}
+      <h3>المواد المستخدمة</h3>${grid('g_mat', [['t', 'اسم المادة', 180], ['q', 'العدد / الطول', 70]], Q.mat || [], 3)}
+      <h3>المواد المزالة من الشبكة</h3>${grid('g_rem', [['t', 'اسم المادة', 180], ['q', 'العدد / الطول', 70]], Q.rem || [], 1)}
+      <h3>الحفريات</h3>${grid('g_exc', [['l', 'الطول', 50], ['w', 'العرض', 50], ['d', 'العمق', 50], ['k', 'نوع الحفر', 90]], Q.exc || [], 1)}
+      <label style="margin-top:8px">الملاحظات<textarea data-k="notes" rows="2">${esc(Q.notes || '')}</textarea></label>`
+    : `<div class="f" style="margin-top:8px">${inp('station', 'رقم المحطة', Q.station || it.station || '')}${inp('meters', 'عدد العدادات', Q.meters)}${inp('breaker', 'سعة القاطع الرئيسي', Q.breaker)}${inp('con_rep', 'اسم مندوب المقاول', Q.con_rep)}</div>
+      <h3>سطور القياس</h3><div class="muted">اترك ما لا ينطبق فارغاً. المجموع في الحفريات يُحسب عند الطباعة.</div>${grid('g_rows', MQ_COLS.map(c => [c[0], c[1], /from|size|soil/.test(c[0]) ? 110 : 60]), Q.rows || [], 2)}`}
+    <div class="sticky" style="margin-top:10px"><span class="muted">${Q.at ? 'آخر حفظ: ' + esc(Q.at) + ' — ' + esc(Q.by || '') : ''}</span><span style="flex:1"></span><button class="pri" id="sv">حفظ</button></div></div></div>`;
+  wire();
+  $$('[data-add]').forEach(b => b.onclick = () => { const tb = document.querySelector('#' + b.dataset.add + ' tbody'), tr = tb.lastElementChild.cloneNode(true); tr.querySelectorAll('input').forEach(i => i.value = ''); tb.appendChild(tr); tr.querySelector('[data-rx]').onclick = () => tr.remove(); });
+  $$('[data-rx]').forEach(x => x.onclick = () => { const tb = x.closest('tbody'); if (tb.children.length > 1) x.closest('tr').remove(); else x.closest('tr').querySelectorAll('input').forEach(i => i.value = ''); });
+  $('#sv').onclick = async () => { const o = {}; $$('[data-k]').forEach(i => { if (i.value.trim()) o[i.dataset.k] = i.value.trim(); });
+    if (isQ) { o.act = rowsOf('g_act'); o.mat = rowsOf('g_mat'); o.rem = rowsOf('g_rem'); o.exc = rowsOf('g_exc'); if (!o.act.length) return toast('أدخل سطراً واحداً على الأقل في الإجراء', 4000); }
+    else { o.rows = rowsOf('g_rows'); if (!o.rows.length) return toast('أدخل سطر قياس واحداً على الأقل', 4000); }
+    o.by = me(); o.at = now(); await enqueue({ t: 'qd', ref: key, op: isQ ? { qty: o } : { meas: o } }); toast('حُفظ' + (navigator.onLine ? '' : ' — يُرسل عند الاتصال')); go({ v: 'item', key }); };
 }
 function chkView(A) {
   const { key, code } = S.r, it = itemOf(key), C = S.B.cat, F = C.forms[code], d = docOf(key), f = (d.f || {})[code] || {}, P0 = planOf(it, d), isDef = !(f.a && Object.keys(f.a).length), a = Object.assign({}, isDef ? (defOf(code, P0.type) || {}) : f.a), nt = Object.assign({}, f.nt || {});
