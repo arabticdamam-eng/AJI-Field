@@ -38,6 +38,8 @@ tbody tr{cursor:pointer}tbody tr:hover{background:var(--hov)}
 td.last,th.last{background:var(--accbg);color:var(--acc2);position:sticky;left:0}th.last{z-index:2}
 .late{color:var(--dan);font-weight:500}.muted{color:var(--mut)}.wrap{white-space:normal;min-width:220px;max-width:340px}.wrap span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.ctx{display:inline-block;vertical-align:middle;margin-inline-start:6px;background:#1D6F42;color:#fff !important;border-radius:4px;font:700 10px Arial,sans-serif;padding:2px 4px;cursor:pointer;text-decoration:none}.ctx.xs{font-size:8px;padding:1px 3px;margin-inline-start:3px;border-radius:3px}.ctx:hover{background:#14532F}
+@media print{.ctx{display:none}#prt .ctcmp th,#prt .ctcmp td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 .gfold{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:0 0 6px;padding:0 10px}.gfold>summary{cursor:pointer;padding:7px 2px;font-weight:600;font-size:13px;user-select:none}.gfold[open]>summary{border-bottom:1px solid var(--line);margin-bottom:8px}.gfold .gfb{padding-bottom:8px}.gfold .kpis{margin-bottom:0}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}.kpi b{display:block;font-size:24px;font-weight:500}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px}
@@ -1040,7 +1042,7 @@ function sheet(base, defCols, opt={}){
   let STALE=new Set();
   const stickRows=fl=>{ STALE=new Set(); const q=((ST.f||{}).q||'').trim(), on=q||ST.xf||Object.values(ST.cf||{}).some(v=>v)||ST.sort;
     if(!on){ ST.stick=null; return fl; }
-    const sig=JSON.stringify([S.view,A.file||'',A.sub||'',q,ST.xf?ST.xf.key:'',ST.cf||{},ST.sort||null]), K=ST.stick;
+    const sig=JSON.stringify([S.view,A.file||'',A.sub||'',q,ST.xf?ST.xf.key+'|'+(ST.xf.label||''):'',ST.cf||{},ST.sort||null]), K=ST.stick;
     if(!K||K.sig!==sig){ ST.stick={sig,ids:fl.map(rid),seen:new Set(base.map(rid))}; return fl; }
     const fresh=fl.filter(o=>!K.seen.has(rid(o))); if(fresh.length) K.ids=fresh.map(rid).concat(K.ids); base.forEach(o=>K.seen.add(rid(o)));
     const by=new Map(); base.forEach(o=>{ const k=rid(o); if(!by.has(k)) by.set(k,[]); by.get(k).push(o); });
@@ -4585,7 +4587,7 @@ const olCal=o=>{ const d=String(o.last_action_date||'').slice(0,10); if(!/^\d{4}
 // أيام تأخير الأمر: أيام العمل من تاريخ الإسناد حتى اليوم ناقص مدة الأمر — يظهر إن تجاوز مدته فقط
 const olLate=o=>{ const a=String(o.assign_date||'').slice(0,10), du=Math.round(+o.duration); if(!/^\d{4}-\d{2}-\d{2}$/.test(a)||!(du>0)) return ''; const w=workDiff(a,S.B.today); return w===''||w-du<=0?'':w-du; };
 const olVal=(o,k)=>k==='days_cal'?olCal(o):k==='late'?olLate(o):k==='assign_date'?String(o.assign_date||'').slice(0,10):k==='duration'?(o.duration==null?'':o.duration):k==='wo'?o.wo+(o.ccode?'-'+o.ccode:''):k==='eng'?(o.site_engineer||o.engineer||''):k==='act'?olName(olKey(o)):k==='act_date'?String(o.last_action_date||'').slice(0,10):k==='days'?olDays(o):k==='act_con'?(o.last_action_con?actLbl(o.last_action_con):''):k==='stage'?stLbl(o.cur_stage):(o[k]==null?'':o[k]);
-function olExport(L,title,cols){ exportCsv(L, cols||OL_C, { file:String(title||'أوامر').replace(/[\s\/]+/g,'_')+'_'+S.B.today, lbl:k=>olLbl(k,cols), val:olVal }); }
+function olExport(L,title,cols){ exportCsv(L, cols||OL_C, { file:String(title||'أوامر').replace(/[\s\/]+/g,'_')+'_'+S.B.today, lbl:k=>olLbl(k,cols), val:olVal, src:()=>cols===CT_C?'مستهدفات الإقفال':'', clr:()=>['#0F4C81','#E3EEF8'] }); }
 // قائمة الأوامر خلف أي رقم: تفصيلية وقابلة للتصدير (تُرسل لمدير المكتب)
 function olList(title,list,lim,cols){ const L=[...list].sort((a,b)=>(olDays(b)||0)-(olDays(a)||0)), C=cols?cols.filter(k=>k!=='type'&&k!=='district'&&k!=='stage'):['wo','office','contractor','eng','act','act_date','days','act_con','due_date'];
   modal(`<h3 style="margin-top:0">${esc(title)} <span class="muted" style="font-size:13px">(${L.length})</span></h3><div class="bar"><button id="ollx">⬇ تصدير Excel</button><span class="muted">الزمن بأيام العمل من تاريخ آخر إجراء في أولاب حتى اليوم</span></div>
@@ -4935,13 +4937,16 @@ async function ctRender(){ let M=$('#ctbox'); if(!M) return;
   const ofI=(p,of)=>p.items.filter(x=>!of||x[1]===of), cnt=(L,t)=>L.filter(x=>x[2]===t);
   const row=(p,of)=>{ const L=ofI(p,of), d=cnt(L,'d'), r=L.filter(x=>x[2]!=='d'), n=L.filter(x=>x[5]===1), late=r.filter(x=>x[3]!==''&&x[3]>p.lim), dy=r.filter(x=>x[3]!==''), avg=dy.length?Math.round(dy.reduce((a,x)=>a+x[3],0)/dy.length*10)/10:'', tot=d.length+r.length, pv=D.prev?(D.prev.r[p.id+'|'+(of||'*')]||0):null;
     return {p,of,tot,d,r,n,late,avg,pct:tot?Math.round(d.length/tot*100):0,diff:pv==null?null:r.length-pv,all:d.concat(r)}; };
-  const num=(x,k,c)=>{ const id=x.p.id+'|'+x.of+'|'+k; return x[k].length?`<a data-ct="${esc(id)}" style="cursor:pointer;font-weight:600;color:${c||'var(--acc)'};${S.ctSel===id&&S.xf&&S.xf.key==='ct'?'outline:2px solid var(--acc);border-radius:6px;padding:0 6px;background:var(--accbg)':''}">${x[k].length}</a>`:'0'; };
+  const num=(x,k,c)=>{ const id=x.p.id+'|'+x.of+'|'+k; return x[k].length?`<a data-ct="${esc(id)}" style="cursor:pointer;font-weight:600;color:${c||'var(--acc)'};${S.ctSel===id&&S.xf&&S.xf.key==='ct'?'outline:2px solid var(--acc);border-radius:6px;padding:0 6px;background:var(--accbg)':''}">${x[k].length}</a><a data-ctx="${esc(id)}" class="ctx${U.cmp?' xs':''}" title="تصدير أوامر هذا الرقم إلى Excel">X</a>`:'0'; };
+  // لون لكل مكتب من عنوانه حتى صف الإجمالي (المالك 12-11)
+  const OFC={'الخبر':['#2F6FB3','#C9DFF5','#DCEBFA'],'الدمام':['#4B8B3B','#CFE7C4','#E3F2DC'],'القطيف':['#C27A0E','#F5D9B6','#FBE9D6']}, OFX=[['#5B3A8C','#DDD0EE','#EFE8F8'],['#0E7C86','#C5E6E8','#E0F2F3'],['#993C1D','#F2CFC2','#FAECE7']], ofc=o=>!o?['#5F5E5A','#DADADA','#ECECEC']:OFC[o]||OFX[Math.max(0,offs.indexOf(o))%OFX.length];
   const arrow=x=>x.diff==null?'<span class="muted" title="تظهر المقارنة بعد أسبوع من أول لقطة">—</span>':x.diff===0?'<span class="muted">= بلا تغيير</span>':x.diff<0?`<span style="color:#3B6D11;font-weight:600">▼ ${-x.diff}</span>`:`<span style="color:#A32D2D;font-weight:600">▲ ${x.diff}</span>`;
   const bar=x=>`<div class="whsb"><i style="width:${x.pct}%;background:${x.pct>=80?'#3B6D11':x.pct>=40?'#C27A0E':'#A32D2D'}"></i><span>${x.pct}%</span></div>`;
   let tbl='';
-  if(U.cmp){ const OF=offs.concat(['']);
-    tbl=`<div class="tw"><table id="cttb"><thead><tr><th rowspan="2">المرحلة</th><th rowspan="2">المستهدف</th>${OF.map(o=>`<th colspan="3" style="text-align:center;background:var(--accbg)">${o?esc(o):'الإجمالي'}</th>`).join('')}</tr><tr>${OF.map(()=>'<th>العدد</th><th>المنجز</th><th>المتبقي</th>').join('')}</tr></thead><tbody>
-      ${D.rows.map(p=>`<tr><td>${esc(lbl(p.a))}</td><td>${esc(lbl(p.b))}</td>${OF.map(o=>{ const x=row(p,o); return `<td>${num(x,'all')}</td><td>${num(x,'d','#3B6D11')}</td><td>${num(x,'r','#A32D2D')}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`; }
+  if(U.cmp){ const OF=offs.concat(['']), sum=(o,k)=>D.rows.reduce((n,p)=>n+(k==='all'?row(p,o).tot:row(p,o)[k].length),0);
+    tbl=`<div class="tw"><table id="cttb" class="ctcmp"><thead><tr><th rowspan="2">المرحلة</th><th rowspan="2">المستهدف</th>${OF.map(o=>`<th colspan="3" style="text-align:center;background:${ofc(o)[0]};color:#fff">${o?esc(o):'الإجمالي'}</th>`).join('')}</tr><tr>${OF.map(o=>['العدد','المنجز','المتبقي'].map(t=>`<th style="background:${ofc(o)[1]};color:#222;text-align:center">${t}</th>`).join('')).join('')}</tr></thead><tbody>
+      ${D.rows.map(p=>`<tr><td>${esc(lbl(p.a))}</td><td>${esc(lbl(p.b))}</td>${OF.map(o=>{ const x=row(p,o), bg=`style="background:${ofc(o)[2]};text-align:center"`; return `<td ${bg}>${num(x,'all','#222')}</td><td ${bg}>${num(x,'d','#3B6D11')}</td><td ${bg}>${num(x,'r','#A32D2D')}</td>`; }).join('')}</tr>`).join('')}
+      <tr style="font-weight:700"><td colspan="2">الإجمالي</td>${OF.map(o=>['all','d','r'].map(k=>`<td style="background:${ofc(o)[1]};text-align:center">${sum(o,k)}</td>`).join('')).join('')}</tr></tbody></table></div>`; }
   else { const X=D.rows.map(p=>row(p,U.off)), T={tot:0,d:0,r:0,n:0,late:0}; X.forEach(x=>{ T.tot+=x.tot; T.d+=x.d.length; T.r+=x.r.length; T.n+=x.n.length; T.late+=x.late.length; });
     tbl=`<div class="tw"><table id="cttb"><thead><tr><th>المرحلة</th><th>المستهدف</th><th title="كل ما مرّ بالمرحلة خلال المدة: ما كان فيها يوم البداية وما دخلها بعده">العدد</th><th>المنجز</th><th>المتبقي</th><th style="min-width:170px">نسبة الإنجاز</th><th title="من العدد: ما دخل المرحلة بعد تاريخ البداية">منها دخل بعد البداية</th><th>المتأخر</th><th>متوسط البقاء (يوم عمل)</th><th>عن الأسبوع السابق</th></tr></thead><tbody>
       ${X.map(x=>`<tr><td>${esc(lbl(x.p.a))}</td><td>${esc(lbl(x.p.b))}</td><td>${num(x,'all')}</td><td>${num(x,'d','#3B6D11')}</td><td>${num(x,'r','#A32D2D')}</td><td>${bar(x)}</td><td>${num(x,'n','#854F0B')}</td><td title="من المتبقي: تجاوز ${x.p.lim} يوم عمل في مرحلته">${num(x,'late','#A32D2D')}</td><td>${x.avg===''?'—':x.avg}</td><td>${arrow(x)}</td></tr>`).join('')}
@@ -4957,14 +4962,20 @@ async function ctRender(){ let M=$('#ctbox'); if(!M) return;
   const re=async()=>{ S.ct=null; await ctRender(); };
   $('#ctrf').onclick=re; $('#ctcmp').onclick=()=>{ U.cmp=U.cmp?0:1; ctRender(); }; if($('#ctof')) $('#ctof').onchange=e=>{ U.off=e.target.value; ctRender(); }; if($('#cted')) $('#cted').onclick=()=>{ U.ed=U.ed?0:1; ctRender(); };
   const T2={all:'العدد',d:'المنجز',r:'المتبقي',n:'دخل بعد البداية',late:'المتأخر'};
+  // الأيقونة الخضراء بجانب الرقم تصدّر أوامره مباشرة بملف الأعمدة الستة عشر (CT_C) دون فلترة الجدول
+  M.querySelectorAll('[data-ctx]').forEach(a=>a.onclick=e=>{ e.stopPropagation(); const [pid,of,k]=a.dataset.ctx.split('|'), p=D.rows.find(x=>x.id===pid), x=row(p,of), L=x[k].map(t=>byRef(t[0])).filter(Boolean); if(!L.length) return toast('لا أوامر ظاهرة لك في هذا الرقم');
+    L.sort((a,b)=>(olDays(b)||0)-(olDays(a)||0)); olExport(L,T2[k]+' — '+lbl(p.a).replace(/^إجراء - |^مرحلة - /,'')+' ← '+lbl(p.b).replace(/^إجراء - |^مرحلة - /,'')+(of?' — '+of:''),CT_C); });
   // الضغط على رقم يفلتر جدول الإسنادات على أوامره (الشارة ✕ فوق الجدول تلغيه)، ويُظهر أعمدة مدة البقاء وأيام التأخير
   M.querySelectorAll('[data-ct]').forEach(a=>a.onclick=()=>{ const id=a.dataset.ct, [pid,of,k]=id.split('|'), p=D.rows.find(x=>x.id===pid), x=row(p,of);
     if(S.ctSel===id&&S.xf&&S.xf.key==='ct'){ S.xf=null; S.ctSel=''; S.ctSet=null; } else { S.ctSel=id; S.ctSet=new Set(x[k].map(t=>t[0])); S.xf={key:'ct',label:T2[k]+' — '+lbl(p.a)+' ← '+lbl(p.b)+(of?' — '+of:'')}; }
-    S.page=0; S.pos=null; if(S.view==='orders') vOrders(); });
+    S.page=0; S.pos=null; S.stick=null; if(S.view==='orders') vOrders(); });
   $('#ctpr').onclick=()=>{ let p=$('#prt'); if(!p){ p=document.createElement('div'); p.id='prt'; document.body.appendChild(p); } p.innerHTML=`<div class="pf" dir="rtl"><h3 style="margin:0 0 4px">مستهدفات الإقفال${U.off&&!U.cmp?' — '+esc(U.off):''}</h3><div style="margin-bottom:8px">${D.set?'من '+esc(C.from)+(C.to?' إلى '+esc(C.to):'')+' · ':''}حتى ${esc(D.today)}</div>${$('#ctbody').innerHTML}</div>`; window.print(); };
-  $('#ctxl').onclick=()=>{ const OF=U.cmp?offs.concat(['']):[U.off], L=[]; D.rows.forEach(p=>OF.forEach(o=>{ const x=row(p,o); L.push({a:lbl(p.a),b:lbl(p.b),of:o||'الكل',tot:x.tot,d:x.d.length,r:x.r.length,pct:x.pct+'%',n:x.n.length,late:x.late.length,avg:x.avg,diff:x.diff==null?'':x.diff}); }));
+  $('#ctxl').onclick=()=>{ if(U.cmp){ const OF=offs.concat(['']), K=['a','b'], LB={a:'المرحلة',b:'المستهدف'}, SRC={}, CLR={}; OF.forEach((o,i)=>[['tot','العدد'],['d','المنجز'],['r','المتبقي']].forEach(([k,t])=>{ const c='o'+i+'_'+k; K.push(c); LB[c]=t; SRC[c]=o||'الإجمالي'; CLR[c]=[ofc(o)[0],ofc(o)[2]]; }));
+      const L=D.rows.map(p=>{ const r={a:lbl(p.a),b:lbl(p.b)}; OF.forEach((o,i)=>{ const x=row(p,o); r['o'+i+'_tot']=x.tot; r['o'+i+'_d']=x.d.length; r['o'+i+'_r']=x.r.length; }); return r; });
+      return exportCsv(L,K,{file:'مستهدفات_الإقفال_المكاتب_'+D.today,stk:'a',lbl:k=>LB[k],val:(o,k)=>o[k],src:k=>SRC[k]||'مستهدفات الإقفال',clr:k=>CLR[k]||['#0F4C81','#E3EEF8']}); }
+    const OF=[U.off], L=[]; D.rows.forEach(p=>OF.forEach(o=>{ const x=row(p,o); L.push({a:lbl(p.a),b:lbl(p.b),of:o||'الكل',tot:x.tot,d:x.d.length,r:x.r.length,pct:x.pct+'%',n:x.n.length,late:x.late.length,avg:x.avg,diff:x.diff==null?'':x.diff}); }));
     const K=['a','b','of','tot','d','r','pct','n','late','avg','diff'], LB={a:'المرحلة',b:'المستهدف',of:'المكتب',tot:'العدد',d:'المنجز',r:'المتبقي',pct:'نسبة الإنجاز',n:'منها دخل بعد البداية',late:'المتأخر',avg:'متوسط البقاء (يوم عمل)',diff:'فرق المتبقي عن الأسبوع السابق'};
-    exportCsv(L,K,{file:'مستهدفات_الإقفال_'+D.today,lbl:k=>LB[k],val:(o,k)=>o[k]}); };
+    exportCsv(L,K,{file:'مستهدفات_الإقفال_'+D.today,stk:'a',lbl:k=>LB[k],val:(o,k)=>o[k],src:()=>'مستهدفات الإقفال',clr:()=>['#0F4C81','#E3EEF8']}); };
   if(!ed) return;
   const read=()=>[...M.querySelectorAll('#ctpt tbody tr')].map(tr=>({id:tr.dataset.id||'',a:tr.querySelector('[data-f="a"]').value,b:tr.querySelector('[data-f="b"]').value,lim:tr.querySelector('[data-f="lim"]').value}));
   const keep=()=>{ C.pairs=read(); C.from=$('#ctf').value; C.to=$('#ctt').value; };
