@@ -653,7 +653,7 @@ async function focusRun(){ const box=$('#fmain');
   if(FOCUS.t==='qd'){ box.innerHTML=`<div class="muted">أمر / إشعار: <b>${esc(String(FOCUS.ref).replace(/^D9:/,'D9 ').replace(/~.*$/,''))}</b></div><div class="bar" style="margin-top:8px"><button class="pri" id="fqd">📄 فتح ملف الجودة</button></div>`; $('#fqd').onclick=()=>qdModal(FOCUS.ref); qdModal(FOCUS.ref); return; }
   // عرض نموذج من ملف الجودة وطباعته PDF من التطبيق الميداني (المالك 10-11): ?qp=<الأمر>&code=<النموذج>
   if(FOCUS.t==='qp'){ box.innerHTML='<div class="loading">جارٍ تجهيز النموذج…</div>';
-    try{ const C=await qdCat(), F=FOCUS.code==='*'?{name:'ملف الجودة والسلامة'}:FOCUS.code==='SUM'?{name:'ملخص ملف الجودة'}:C.forms[FOCUS.code]; if(!F) throw new Error('النموذج غير موجود');
+    try{ const C=await qdCat(), F=FOCUS.code==='*'?{name:'ملف الجودة والسلامة'}:FOCUS.code==='FRM'?{name:'نماذج الإشراف فقط'}:FOCUS.code==='SUM'?{name:'ملخص ملف الجودة'}:C.forms[FOCUS.code]; if(!F) throw new Error('النموذج غير موجود');
       const html=await qdServerHtml(FOCUS.ref,FOCUS.code,FOCUS.day||''); $('#ftitle').textContent=F.name;
       box.innerHTML=`<div class="bar"><button class="pri" id="fprint">🖨 طباعة / حفظ PDF</button>${S.B&&S.B.fo?'':`<a class="btn" href="./app.html?qd=${encodeURIComponent(FOCUS.ref)}" style="text-decoration:none">📄 ملف الجودة</a>`}<span class="muted">من شاشة الطباعة اختر «حفظ كـ PDF» أو شاركها</span></div><div id="fprev" style="overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff">${html}</div>`;
       $('#fprint').onclick=()=>qdPrintHtml(html); }
@@ -1517,7 +1517,7 @@ function qdDraw(C,V){ const X=V.ctx, o=X.o, d=V.d, P=V.plan, ed=X.canEdit, qs=QF
    ${ed&&addOpts.length?`<div class="bar" style="margin-top:6px"><select id="qdadd"><option value="">+ إضافة نموذج لهذا الأمر…</option>${addOpts.map(k=>`<option value="${k}">${P.sug.includes(k)?'★ ':''}${esc(C.forms[k].name)}</option>`).join('')}</select></div>`:''}
    <h3 style="margin:14px 0 4px">الصور المطلوبة</h3>${phSec||'<div class="muted">اختر المعدّات لتظهر قائمة الصور.</div>'}
    <div class="card" style="margin-top:12px"><div class="bar" style="margin:0">${ed?`<button class="pri" id="qdbuild">📄 إنشاء ملف الجودة والسلامة${missN?' (رغم النقص)':''}</button>`:''}${X.lock?'<span class="pill p-w">🔒 انتهت مهلة 24 ساعة بعد إنشاء الملف فأُقفل التعديل — يُفتح إذا أرجعه مهندس الجودة للتصحيح</span>':X.lk_at?'<span class="pill">🕒 التعديل متاح حتى '+esc(String(X.lk_at).slice(0,16))+'</span>':''}${missN?`<span class="muted">ناقص ${missN} بنداً</span>`:'<span class="qdk qdk2">✓ مكتمل</span>'}
-     ${X.canReview?`<button id="qdsum" title="الغلاف وجدول المحتويات والبنود الناقصة — لا يدخل في ملف PDF">📋 ملخص الملف</button>`:''}${X.canReview&&V.qf&&V.qf.id?`<span class="sp"></span><button class="pri" id="qdok">✅ اعتماد</button><button id="qdno" style="color:var(--dan);border-color:var(--dan)">⛔ رفض بنود</button>`:''}</div>
+     <button id="qdfrm" title="طباعة النماذج وحدها — بلا صور الجودة وبلا صور السلامة ومستنداتها">🖨 النماذج فقط</button>${X.canReview?`<button id="qdsum" title="الغلاف وجدول المحتويات والبنود الناقصة — لا يدخل في ملف PDF">📋 ملخص الملف</button>`:''}${X.canReview&&V.qf&&V.qf.id?`<span class="sp"></span><button class="pri" id="qdok">✅ اعتماد</button><button id="qdno" style="color:var(--dan);border-color:var(--dan)">⛔ رفض بنود</button>`:''}</div>
      ${X.old&&ed&&!X.d9?`<div class="muted" style="margin-top:8px">أمر قديم: يمكن أيضاً <a href="#" id="qdold">رفع ملف جودة جاهز (PDF)</a>.</div>`:''}${X.d9&&(ed||X.canReview)?`<div class="bar" style="margin-top:8px"><label class="upl">📤 رفع ملف جودة جاهز (PDF)<input type="file" id="qdready" accept="application/pdf,.pdf" style="display:none"></label><span class="muted">يحل محل الملف المنشأ ويُرسل للجودة</span></div>`:''}<div id="qdmsg" class="muted"></div><div class="err" id="qderr"></div></div></div>`);
   const err=m=>{ if($('#qderr')) $('#qderr').textContent=m; }, again=V2=>{ qdApply(V2); qdDraw(C,V2); };
   if($('#qdwt')) $('#qdwt').onchange=()=>api('qdSave',S.tok,ref,{wt:$('#qdwt').value}).then(again).catch(e=>err(e.message));
@@ -1536,7 +1536,7 @@ function qdDraw(C,V){ const X=V.ctx, o=X.o, d=V.d, P=V.plan, ed=X.canEdit, qs=QF
   document.querySelectorAll('[data-qlk]').forEach(b=>b.onclick=()=>formsModal(ref,b.dataset.qlk));
   document.querySelectorAll('[data-qdel]').forEach(b=>b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); if(!confirm('حذف هذا الملف؟')) return; api('qdRemove',S.tok,ref,b.dataset.qdel,b.dataset.id).then(again).catch(er=>err(er.message)); });
   document.querySelectorAll('input[data-qup]').forEach(inp=>inp.onchange=()=>qdUploadFiles(C,V,inp.dataset.qup,[...inp.files],!!inp.dataset.cam));
-  if($('#qdbuild')) $('#qdbuild').onclick=()=>qdBuild(C,V);
+  if($('#qdbuild')) $('#qdbuild').onclick=()=>qdBuild(C,V); if($('#qdfrm')) $('#qdfrm').onclick=()=>qdPrintGen(C,V,'FRM','');
   if($('#qdok')) $('#qdok').onclick=()=>{ const n=prompt('ملاحظة الاعتماد (اختيارية)',''); if(n===null) return; api('qdReview',S.tok,ref,'approve',[],n).then(V2=>{ toast('تم الاعتماد'); again(V2); }).catch(e=>err(e.message)); };
   if($('#qdno')) $('#qdno').onclick=()=>qdRejectUI(C,V);
   if($('#qdold')) $('#qdold').onclick=e=>{ e.preventDefault(); qfModal(ref); };
