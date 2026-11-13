@@ -1550,8 +1550,8 @@ async function qdUploadFiles(C,V,slot,files,cam){ const ref=V.ctx.key; if(!files
       msg('جارٍ الرفع '+n+' من '+files.length+'…'); V2=await api('qdUpload',S.tok,ref,slot,b64,mime,loc||''); loc=''; }
     catch(e){ toast(e.message); } }
   if(V2){ qdApply(V2); if($('#mdl')&&$('.qdm')) qdDraw(C,V2); toast('تم الرفع'); } }
-function qdHdrVal(V,k,f){ const o=V.ctx.o, h=(f&&f.hdr)||{}; if(h[k]) return h[k]; if(V.d.hdr&&V.d.hdr[k]) return V.d.hdr[k]; if(k==='equip_no'&&o.station) return o.station;
-  if(k==='date') return S.B.today; if(k==='time') return nowHM(); if(k==='location') return o.district||o.station||''; return ''; }
+function qdHdrVal(V,k,f){ const o=V.ctx.o, h=(f&&f.hdr)||{}; if(k==='location'){ const v=String(h[k]||(V.d.hdr&&V.d.hdr[k])||'').trim(); return v&&v!==String(o.district||'').trim()&&v!==String(o.station||'').trim()?v:(V.geo||''); } if(h[k]) return h[k]; if(V.d.hdr&&V.d.hdr[k]) return V.d.hdr[k]; if(k==='equip_no'&&o.station) return o.station;
+  if(k==='date') return S.B.today; if(k==='time') return nowHM(); if(k==='location') return V.geo||''; return ''; }
 function qdForm(C,V,code){ const F=C.forms[code], f=(V.d.f||{})[code]||{}, ed=V.ctx.canEdit, isDef=!(f.a&&Object.keys(f.a).length), a=Object.assign({},qdAns(C,V,code)), nt=Object.assign({},f.nt||{}), o=V.ctx.o;
   const H=['date','time','location'].concat(F.hdr||[]), HL=Object.assign({date:'التاريخ',time:'الوقت',location:'الموقع'},C.hdr), R=ed?'':'disabled';
   const opts=k=>C.opts&&C.opts[k];
@@ -1691,7 +1691,7 @@ async function qdBuildHtml(C,V,msg){ if(V.lic&&V.lic.has&&/pdf$/.test(V.lic.mime
     else if(F.k==='lic'&&V.lic.has) pg.push(/pdf$/.test(V.lic.mime||'')?(V.licImg?`<div class="pf att"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><img src="${V.licImg}"></div>`:`<div class="pf cov"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><p>الإجازة مرفوعة بصيغة PDF على Drive ولا يمكن تضمينها؛ أعد رفعها من «ملفي» لتظهر هنا. <a href="${e(phView(V.lic.id))}">فتح الإجازة</a></p></div>`):`<div class="pf att"><h3>إجازة الاستشاري — ${e(V.lic.name)}</h3><img data-fid="${e(V.lic.id)}"></div>`); }
   if(V.draw_id) pg.push(`<div class="pf att"><h3>مخطط الموقع</h3><img data-fid="${e(V.draw_id)}"></div>`);
   // الصور 4 في الصفحة (المالك 11-11): شبكة 2×2 بتعليق تحت كل صورة
-  const ph4=(title,L)=>`<div class="pf ph4"><h3>${e(title)}</h3><div class="g4">${L.map(x=>`<div class="c4"><img data-fid="${e(x.id)}"><div class="cap1">${e(x.t)}</div></div>`).join('')}</div></div>`;
+  const ph4=(title,L)=>`<div class="pf ph4"><h3>${e(title)}</h3><div class="g4">${L.map(x=>`<div class="c4"><img data-fid="${e(x.id)}"></div>`).join('')}</div></div>`;
   P.cats.forEach(g=>{ const G=C.ph[g]; if(!G) return; const L=[]; G.items.forEach((t,i)=>((d.ph||{})[g+':'+i]||[]).forEach(x=>L.push({t:(i+1)+'. '+t,id:x.id})));
     for(let i=0;i<L.length;i+=4) pg.push(ph4('الصور — '+G.name,L.slice(i,i+4))); });
   // صور السلامة (المالك 11-11): 4 صور في الصفحة
@@ -2515,7 +2515,7 @@ async function stampPhoto(im,c){ const info=await c.info; if(info.logo) S.aji=in
   let cv=im.cv; if(!cv){ const src=await loadImg(im.du); cv=document.createElement('canvas'); cv.width=src.naturalWidth; cv.height=src.naturalHeight; cv.getContext('2d').drawImage(src,0,0); }
   const W=cv.width, H=cv.height, g=cv.getContext('2d'), m=Math.min(W,H), pad=Math.max(6,Math.round(m*0.025)), ltr=t=>'‪'+t+'‬';
   const ty=info.type?info.type+(info.ccode&&info.ccode!==info.type?' ('+info.ccode+')':''):(info.ccode||'');
-  const groups=[[ltr(info.at),'المهندس: '+info.by],['أمر العمل '+ltr(info.wo)+(ty?' · النوع '+ltr(ty):''),info.district?'الحي: '+info.district:''],['الموقع: '+(loc?ltr(loc.lat.toFixed(6)+', '+loc.lng.toFixed(6))+(loc.acc?' (±'+Math.round(loc.acc)+' م)':''):'غير متاح')]];
+  const groups=[[ltr(info.at)],['أمر العمل '+ltr(info.wo)+(ty?' · النوع '+ltr(ty):''),info.district?'الحي: '+info.district:''],['الموقع: '+(loc?ltr(loc.lat.toFixed(6)+', '+loc.lng.toFixed(6))+(loc.acc?' (±'+Math.round(loc.acc)+' م)':''):'غير متاح')]];
   let fs=Math.max(12,Math.round(W/40)); const font=()=>{ g.font='600 '+fs+'px Tahoma, Arial, sans-serif'; }; font(); const lines=[];
   groups.forEach(gr=>{ gr=gr.filter(Boolean); const j=gr.join(' · '); if(gr.length<2||g.measureText(j).width<=W-2*pad) lines.push(j); else gr.forEach(t=>lines.push(t)); });
   while(fs>10&&Math.max(...lines.map(t=>g.measureText(t).width))>W-2*pad){ fs--; font(); }
