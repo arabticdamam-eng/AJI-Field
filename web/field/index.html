@@ -86,7 +86,7 @@ async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op
 // الخادم الجديد بجانب القاعدة (Supabase Edge «aji») على الموقع الجديد فقط: كل الطلبات إليه أولاً عدا رفع الملفات.
 // ردّه {google} ← خادم Google كما كان (لم يُكتب شيء). الحفظ يحمل رقماً ثابتاً لكل عمل في قائمة الإرسال، فإعادته بعد انقطاع لا تكرره.
 const EDGE_URL = 'https://cnauqprdllsboiayfrgn.supabase.co/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_RD = /^(fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdHtml|sfList|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet|orderFiles)$/;
+const EDGE_RD = /^(mapData|fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdHtml|sfList|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet|orderFiles)$/;
 const EDGE_NO = /^(qdBuild|uploadSignature|deleteSignature)$/;   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
 let RID = null; const BIG_ARG = 1400000, EDGE_UP = /^(sfUpload|qdUpload|uploadAttachment|uploadFormPhoto|uploadFormScan|fieldCInvPhoto|fieldMaintPhoto|uploadLicense)$/;
 async function edgeTry(fn, args) {
@@ -309,6 +309,7 @@ function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div
     <div class="grp">عملي</div>
     <a data-go="home:o" class="${on('home', () => S.tab === 'o')}">📍 أوامري<span class="n">${B.orders.length}</span></a>
     <a data-go="home:n" class="${on('home', () => S.tab === 'n')}">🔧 إشعارات الصيانة<span class="n">${B.notices.length}</span></a>
+    <a data-go="map" class="${on('map')}">🗺 الخريطة</a>
     <a data-go="queue" class="${on('queue')}">⏳ بانتظار الإرسال<span class="n">${S.Q.length}</span></a>
     ${(S.PJ && S.PJ.sup && S.PJ.list && S.PJ.list.length > 1) ? `<div class="grp">المشروع</div>${S.PJ.list.map(p => `<a data-pj="${esc(p.id)}" class="${String(p.id) === String(S.pid || '') ? 'on' : ''}">🏗 ${esc(p.name)}${String(p.id) === String(S.pid || '') ? '<span class="n">الحالي</span>' : ''}</a>`).join('')}` : ''}
     ${FO() ? '' : `<div class="grp">البرنامج</div><a href="./app.html" id="mapp" style="background:#FFF6CC;font-weight:700">🖥 البرنامج الكامل<span class="n">كل التبويبات</span></a>`}
@@ -324,7 +325,7 @@ function drawer() { let d = $('#drw'); if (!d) { d = document.createElement('div
     if (String(pid) === String(S.pid || '')) return; switchProj(pid, a.textContent.replace(/^🏗\s*/, '')); });
   d.querySelectorAll('[data-go]').forEach(a => a.onclick = () => { menu(false); const [v, x] = a.dataset.go.split(':');
     if (v === 'sync') return sync(true); if (v === 'home') { S.tab = x; S.q = ''; return S.r.v === 'home' ? render() : go({ v: 'home' }); }
-    if (v === 'queue') return go({ v: 'queue' }); if (v === 'me' || v === 'pw') return go({ v }); if (v === 'full') return S.r.v === 'full' ? (S.r = { v: 'full', sec: x }, history.replaceState(S.r, ''), render(), scrollTo(0, 0)) : go({ v: 'full', sec: x }); });
+    if (v === 'queue') return go({ v: 'queue' }); if (v === 'me' || v === 'pw' || v === 'map') return go({ v }); if (v === 'full') return S.r.v === 'full' ? (S.r = { v: 'full', sec: x }, history.replaceState(S.r, ''), render(), scrollTo(0, 0)) : go({ v: 'full', sec: x }); });
 }
 async function logoutField() { if (S.Q.length && !confirm('لديك ' + S.Q.length + ' عملاً لم يُرسل وسيُحذف من الجوال. تسجيل الخروج؟')) return; try { if (navigator.onLine) await call('fieldLogout', S.dev); } catch (e) {} for (const op of S.Q) await DB.qdel(op.id); S.Q = []; S.dev = ''; S.B = null; S.F = null; S.ME = null; S.ATT = null; S.noFull = false; ajiKeep(); try { localStorage.removeItem('wo_tok'); } catch (e) {} await DB.delk('dev'); await DB.delk('B'); await DB.delk('F'); await DB.delk('nofull'); render(); }
 function wire() { if ($('#mb')) { drawer(); $('#mb').onclick = () => { drawer(); menu(true); }; } else { const d = $('#drw'); if (d) d.innerHTML = ''; menu(false); } if ($('#web')) $('#web').onclick = e => { if (!navigator.onLine) { e.preventDefault(); toast('البرنامج الكامل يحتاج اتصالاً بالإنترنت أول مرة'); } }; if ($('#bk')) $('#bk').onclick = () => history.back(); if ($('#sy')) $('#sy').onclick = () => sync(true); }
@@ -335,7 +336,7 @@ function render() {
   // لا يُعاد رسم شاشة تعبئة مفتوحة عند انتهاء مزامنة في الخلفية، فلا يضيع ما يكتبه المهندس (المالك 11-11)
   // أول دخول: تغيير كلمة السر هنا قبل أي شيء (كان يُحوَّل إلى البرنامج الكامل)
   if (S.B.user && S.B.user.must_change && S.r.v !== 'pw') S.r = { v: 'pw', force: 1 };
-  const v = S.r.v, sig = JSON.stringify(S.r); if ((v === 'chk' || v === 'mq' || v === 'pw' || v === 'me') && S.rv === sig && A.firstChild) return; S.rv = sig; if (v === 'pw') return pwView(A); if (v === 'me') return meView(A); if (v === 'att') return attView(A); if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'mq') return mqView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); homeView(A);
+  const v = S.r.v, sig = JSON.stringify(S.r); if ((v === 'chk' || v === 'mq' || v === 'pw' || v === 'me' || v === 'map') && S.rv === sig && A.firstChild) return; S.rv = sig; if (v === 'pw') return pwView(A); if (v === 'me') return meView(A); if (v === 'att') return attView(A); if (v === 'full') return fullView(A); if (v === 'rec') return recView(A); if (v === 'review') return reviewView(A); if (v === 'item') return itemView(A); if (v === 'chk') return chkView(A); if (v === 'mq') return mqView(A); if (v === 'form') return formView(A); if (v === 'boq') return boqView(A); if (v === 'queue') return queueView(A); if (v === 'mt') return mtView(A); if (v === 'map') return mapView(A); homeView(A);
 }
 // ---------- حسابي: كلمة السر و«ملفي» (التوقيع والإجازة) — نُقلت من البرنامج الكامل (المالك 11-11) ----------
 function pwView(A) { const force = !!(S.B.user && S.B.user.must_change);
@@ -402,7 +403,7 @@ function homeView(A) {
   A.innerHTML = topBar('AJI الميداني') + `<div class="wrap">
     <div class="card row"><div style="flex:1"><b>${esc(me())}</b><div class="muted">${navigator.onLine ? 'متصل' : 'بدون إنترنت — يُحفظ عملك على الجوال'} · ${esc(S.msg || ('بيانات ' + (B.at || '')))}</div></div>
       ${S.Q.length ? `<button id="qv" class="${fails ? '' : 'pri'}">بانتظار الإرسال ${S.Q.length}${fails ? ' · ⚠ ' + fails : ''}</button>` : '<span class="pill p-ok">✓ لا شيء بانتظار الإرسال</span>'}</div>
-    <div class="tabs"><button data-t="o" class="${tab === 'o' ? 'on' : ''}">أوامر العمل (${B.orders.length})</button><button data-t="n" class="${tab === 'n' ? 'on' : ''}">إشعارات الصيانة (${B.notices.length})</button></div>
+    <div class="tabs"><button data-t="o" class="${tab === 'o' ? 'on' : ''}">أوامر العمل (${B.orders.length})</button><button data-t="n" class="${tab === 'n' ? 'on' : ''}">إشعارات الصيانة (${B.notices.length})</button><button id="tmap">🗺 الخريطة</button></div>
     ${tab === 'n' ? '<button class="pri big" id="mtadd" style="width:100%;margin-bottom:10px">+ إشعار صيانة جديد</button>' : ''}
     <input id="q" placeholder="بحث برقم الأمر أو المقاول أو الحي" value="${esc(q)}" style="margin-bottom:10px">
     ${shown.map(it => { const d = docOf(it.key), P = planOf(it, d), st = stateOf(it, d, P), qs = QFS[it.qf_status || ''] || QFS[''], rj = (d.rej || []).length;
@@ -412,7 +413,7 @@ function homeView(A) {
       ${D.map(x => { const qs = QFS[x.qf_status || ''] || QFS['']; return `<div style="border-top:1px solid var(--line);padding:8px 0"><div class="row"><span class="t">${x.d9 ? 'إشعار ' : ''}${esc(x.wo)}${x.type && !x.d9 ? '-' + esc(x.type) : ''}</span><span class="pill ${qs[1]}">${esc(qs[0])}</span><span style="flex:1"></span><span class="muted">📅 ${esc(String(x.qf_at || '').slice(0, 16))}</span></div><div class="muted">${esc(x.office || '')} · ${esc(x.contractor || '')}</div>
         <div class="row" style="margin-top:6px">${x.qf_url ? `<a class="btn" href="${esc(x.qf_url)}" target="_blank" rel="noopener">👁 عرض الملف</a>` : ''}<a class="btn" href="./app.html?qp=${encodeURIComponent(x.key)}&code=*">🖨 معاينة / طباعة</a><a class="btn" href="./app.html?qp=${encodeURIComponent(x.key)}&code=FRM">🖨 النماذج فقط</a></div></div>`; }).join('')}</details>` : ''; })()}
     <div class="row" style="margin:16px 0"><button id="lo" style="color:var(--dan)">تسجيل الخروج</button><span class="muted">الإصدار 1</span></div></div>`;
-  wire(); if ($('#donebox')) $('#donebox').ontoggle = e => { S.doneOpen = e.target.open; }; $$('[data-t]').forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); });
+  wire(); if ($('#donebox')) $('#donebox').ontoggle = e => { S.doneOpen = e.target.open; }; $$('[data-t]').forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); }); if ($('#tmap')) $('#tmap').onclick = () => go({ v: 'map' });
   if ($('#mtadd')) $('#mtadd').onclick = () => go({ v: 'mt', id: '' });
   $('#q').oninput = e => { S.q = e.target.value; const p = e.target.selectionStart; render(); const i = $('#q'); i.focus(); i.setSelectionRange(p, p); };
   $$('[data-k]').forEach(b => b.onclick = () => go({ v: 'item', key: b.dataset.k })); navWire(); if ($('#qv')) $('#qv').onclick = () => go({ v: 'queue' }); if ($('#full')) { if (FO()) $('#full').remove(); else $('#full').onclick = () => { location.href = './app.html'; }; }
@@ -426,6 +427,38 @@ const MT_F = [['d9', 'رقم الإشعار D9', 'req'], ['d1', 'رقم الإش
   ['work_desc', 'وصف العمل', 'area'], ['reason', 'السبب', ''], ['notes', 'ملاحظات', 'area']];
 const MT_WT = ['مجدول', 'طوارئ'];
 function mtDraft() { return S.mtD || (S.mtD = { date: today(), office: (S.B.offices || [])[0] || '', work_type: 'طوارئ' }); }
+// ---------- الخريطة والزونات (المالك 14-11): مكتبة Leaflet محلية وخلفية OpenStreetMap؛ هذا الجزء نفسه في البرنامج الرئيسي والميداني ----------
+const MAPC = ['#0E7C86', '#C55A11', '#6A3DB8', '#1F7A1F', '#B8860B', '#C2185B', '#00695C', '#4E342E', '#283593', '#AD1457', '#558B2F', '#5D4037'];
+function mapLib(bases) { if (window.L && window.L.map) return Promise.resolve(); const one = b => new Promise((ok, no) => { const c = document.createElement('link'); c.rel = 'stylesheet'; c.href = b + 'leaflet.css'; document.head.appendChild(c); const s = document.createElement('script'); s.src = b + 'leaflet.js'; s.onload = ok; s.onerror = () => { c.remove(); s.remove(); no(new Error('تعذّر تحميل مكتبة الخرائط — تحقق من الاتصال')); }; document.head.appendChild(s); });
+  return bases.reduce((p, b) => p.catch(() => one(b)), Promise.reject()); }
+function mapDraw(el, D, opt) { if (el._map) { try { el._map.remove(); } catch (e) {} el._map = null; } const LL = window.L, map = LL.map(el, { zoomControl: true }); el._map = map;
+  LL.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  const engs = [...new Set(D.pts.map(p => p.eng || '—'))].sort(), col = e => MAPC[engs.indexOf(e || '—') % MAPC.length], myZ = {}, B = []; D.pts.forEach(p => { if (p.mine) myZ[p.office + '|' + p.z] = 1; });
+  D.zones.forEach(z => { const on = opt.field ? !!myZ[z.office + '|' + z.z] : true; LL.circle([z.lat, z.lng], { radius: D.r, color: on ? '#1F3864' : '#9aa3b2', weight: on ? 2 : 1, dashArray: on ? null : '4 5', fillOpacity: on ? 0.07 : 0.02, interactive: false }).addTo(map);
+    LL.marker([z.lat, z.lng], { interactive: false, icon: LL.divIcon({ className: '', html: `<div style="font:700 11px Tahoma,Arial;color:${on ? '#1F3864' : '#8a93a3'};white-space:nowrap;transform:translate(-50%,-50%);text-shadow:0 0 3px #fff,0 0 3px #fff">Z${z.z}</div>`, iconSize: [0, 0] }) }).addTo(map); if (on && opt.field) B.push([z.lat, z.lng]); });
+  D.pts.forEach(p => { const dim = (opt.field && !p.mine) || (!!opt.hl && (p.eng || '—') !== opt.hl), sz = dim ? 11 : 18;
+    const m = p.t === 'mt' ? LL.marker([p.lat, p.lng], { icon: LL.divIcon({ className: '', html: `<div style="width:${sz}px;height:${sz}px;margin:-${sz / 2}px 0 0 -${sz / 2}px;transform:rotate(45deg);background:${col(p.eng)};border:2px solid #fff;box-shadow:0 0 3px #0009;opacity:${dim ? 0.45 : 1}"></div>`, iconSize: [0, 0] }) })
+      : LL.circleMarker([p.lat, p.lng], { radius: dim ? 6 : 10, color: '#fff', weight: 2, fillColor: col(p.eng), fillOpacity: dim ? 0.45 : 1 });
+    m.addTo(map).bindPopup(() => opt.pop(p, col(p.eng)), { maxWidth: 290 }); if (!dim) B.push([p.lat, p.lng]); });
+  if (opt.pos) { LL.circleMarker([opt.pos.lat, opt.pos.lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#1a73e8', fillOpacity: 1 }).addTo(map).bindTooltip('موقعي الآن'); B.push([opt.pos.lat, opt.pos.lng]); }
+  const all = B.length ? B : D.pts.map(p => [p.lat, p.lng]); if (all.length) map.fitBounds(LL.latLngBounds(all).pad(0.3), { maxZoom: 16 }); else map.setView([26.42, 50.09], 11);
+  setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 200); return { map, engs, col }; }
+// المهندس الذي له في اليوم مواقع في أكثر من زون (المسموح دائرة واحدة)
+function mapMulti(D) { const by = {}; D.pts.forEach(p => { if (!p.eng) return; (by[p.eng] = by[p.eng] || {})[p.office + ' Z' + p.z] = 1; }); return Object.keys(by).filter(e => Object.keys(by[e]).length > 1).map(e => ({ eng: e, zones: Object.keys(by[e]).sort() })); }
+async function mapView(A) { const day = S.r.day || today();
+  A.innerHTML = topBar('الخريطة', 1) + `<div class="wrap"><div class="card"><div class="row"><input type="date" id="mpd" value="${esc(day)}" style="max-width:170px"><span style="flex:1"></span><span id="mpinfo" class="muted"></span></div>
+    <div id="mpwarn"></div><div id="mpbox" style="direction:ltr;height:66vh;min-height:360px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin-top:8px;position:relative;z-index:0"><div class="muted" style="padding:14px">جارٍ تحميل الخريطة…</div></div>
+    <div class="muted" style="margin-top:6px">مواقعك بارزة وملوّنة، ومواقع زملاء المكتب باهتة. ● أمر عمل &nbsp; ◆ إشعار &nbsp; 🔵 موقعك الآن. الدائرة الداكنة زونك.</div></div></div>`;
+  wire(); $('#mpd').onchange = () => { S.r = { v: 'map', day: $('#mpd').value || today() }; S.rv = ''; render(); };
+  if (!navigator.onLine) { $('#mpbox').innerHTML = '<div class="muted" style="padding:14px">الخريطة تحتاج اتصالاً بالإنترنت.</div>'; return; }
+  const posP = new Promise(ok => { if (!navigator.geolocation) return ok(null); const t = setTimeout(() => ok(null), 7000); navigator.geolocation.getCurrentPosition(p => { clearTimeout(t); ok({ lat: p.coords.latitude, lng: p.coords.longitude }); }, () => { clearTimeout(t); ok(null); }, { enableHighAccuracy: true, timeout: 6500, maximumAge: 60000 }); });
+  let D, pos; try { await mapLib(['./', 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/']); [D, pos] = await Promise.all([call('mapData', day, true), posP]); }
+  catch (e) { if ($('#mpbox')) $('#mpbox').innerHTML = '<div class="muted" style="padding:14px;color:var(--dan)">' + esc(e.message) + '</div>'; return; }
+  if (S.r.v !== 'map' || !$('#mpbox')) return; $('#mpbox').innerHTML = '';
+  const keyOf = p => p.t === 'mt' ? (p.ref || '') : ((S.B.orders || []).find(o => String(o.wo) === String(p.wo).split('-')[0] && (!p.type || o.type === p.type)) || (S.B.orders || []).find(o => String(o.wo) === String(p.wo).split('-')[0]) || {}).key || '';
+  mapDraw($('#mpbox'), D, { field: 1, pos, pop: (p, c) => { const k = p.mine ? keyOf(p) : ''; return `<div dir="rtl" style="font:14px Tahoma,Arial;line-height:1.8;text-align:right"><b>${p.t === 'mt' ? 'إشعار ' : ''}${esc(String(p.wo || '—').split('~')[0])}${p.t !== 'mt' && p.type ? '-' + esc(p.type) : ''}</b> <span style="background:#EAF0F7;border-radius:8px;padding:0 6px">Z${p.z}</span><br>${p.mine ? `${esc(p.contractor || '')}${p.work ? '<br>' + esc(String(p.work).slice(0, 110)) : ''}${p.time ? '<br>🕒 ' + esc(p.time) : ''}<br>` : ''}<span style="color:${c}">●</span> <b>${esc(p.eng || 'بلا مهندس')}</b>${p.mine ? ' (أنت)' : ''}${p.phone && !p.mine ? ` · <a href="tel:${esc(p.phone)}" dir="ltr">${esc(p.phone)}</a>` : ''}${p.mine ? `<br>${p.nav ? `<a href="${esc(p.nav)}" target="_blank" rel="noopener">📍 اتجاهات</a>` : ''}${k ? ` &nbsp; <a href="#" onclick="go({v:'item',key:${esc(JSON.stringify(k))}});return false">فتح المهمة</a>` : ''}` : ''}</div>`; } });
+  const mine = D.pts.filter(p => p.mine), mz = [...new Set(mine.map(p => 'Z' + p.z))]; $('#mpinfo').textContent = mine.length ? 'مواقعك: ' + mine.length + ' · ' + mz.join('، ') : 'لا مواقع لك بإحداثيات في هذا اليوم';
+  $('#mpwarn').innerHTML = mz.length > 1 ? `<div class="card" style="border-color:var(--dan);margin-top:8px">⚠ مواقعك اليوم في أكثر من زون: ${esc(mz.join('، '))}</div>` : ''; }
 function mtView(A) {
   const d = mtDraft(), B = S.B, offs = B.offices || [], ctrs = B.contractors || [];
   const ph = S.mtPh || (S.mtPh = []);
