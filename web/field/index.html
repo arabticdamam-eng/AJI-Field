@@ -71,8 +71,13 @@ const phUrl = (id, w) => SU[id] ? SU[id] : (id = (S.B && S.B.mv && S.B.mv[id]) |
 
 // ---------- storage (IndexedDB): kv = settings and the downloaded data, q = work waiting to be sent ----------
 const DB = { db: null,
-  open() { return this.db ? Promise.resolve(this.db) : new Promise((ok, no) => { const r = indexedDB.open('aji-field', 1); r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('kv'); d.createObjectStore('q', { keyPath: 'id', autoIncrement: true }); }; r.onsuccess = () => { this.db = r.result; ok(this.db); }; r.onerror = () => no(r.error); }); },
-  async tx(st, mode, f) { const d = await this.open(); return new Promise((ok, no) => { const t = d.transaction(st, mode), s = t.objectStore(st); let res; const q = f(s); if (q) q.onsuccess = () => res = q.result; t.oncomplete = () => ok(res); t.onerror = () => no(t.error); }); },
+  // آيفون يغلق اتصال قاعدة الجوال حين يُترك التطبيق في الخلفية؛ كان التطبيق يبقى على الاتصال المغلق فتفشل العملية التالية بـ«database connection is closing» (المالك 15-11): يُعاد فتحه وتُعاد العملية مرة
+  open() { return this.db ? Promise.resolve(this.db) : new Promise((ok, no) => { const r = indexedDB.open('aji-field', 1); r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('kv'); d.createObjectStore('q', { keyPath: 'id', autoIncrement: true }); }; r.onsuccess = () => { const d = r.result; this.db = d; d.onclose = () => { if (this.db === d) this.db = null; }; d.onversionchange = () => { try { d.close(); } catch (e) {} if (this.db === d) this.db = null; }; ok(d); }; r.onerror = () => no(r.error); r.onblocked = () => no(new Error('قاعدة بيانات الجوال مشغولة')); }); },
+  drop() { const d = this.db; this.db = null; try { if (d) d.close(); } catch (e) {} },
+  async tx(st, mode, f, again) { let d; try { d = await this.open(); } catch (e) { if (!again) { this.drop(); return this.tx(st, mode, f, 1); } throw new Error('تعذّر فتح التخزين في الجوال — أغلق التطبيق وافتحه ثم أعد المحاولة'); }
+    try { return await new Promise((ok, no) => { const t = d.transaction(st, mode), s = t.objectStore(st); let res; const q = f(s); if (q) q.onsuccess = () => res = q.result; t.oncomplete = () => ok(res); t.onerror = () => no(t.error); t.onabort = () => no(t.error || new Error('abort')); }); }
+    catch (e) { const closed = e && (e.name === 'InvalidStateError' || /clos(ing|ed)|connection/i.test(String(e.message || ''))); if (closed && !again) { this.drop(); return this.tx(st, mode, f, 1); }
+      if (closed) throw new Error('تعذّر الحفظ في الجوال — أغلق التطبيق وافتحه ثم أعد المحاولة'); throw e; } },
   get(k) { return this.tx('kv', 'readonly', s => s.get(k)); }, set(k, v) { return this.tx('kv', 'readwrite', s => s.put(v, k)); }, delk(k) { return this.tx('kv', 'readwrite', s => s.delete(k)); },
   qall() { return this.tx('q', 'readonly', s => s.getAll()); }, qadd(o) { return this.tx('q', 'readwrite', s => s.add(o)); }, qput(o) { return this.tx('q', 'readwrite', s => s.put(o)); }, qdel(id) { return this.tx('q', 'readwrite', s => s.delete(id)); }
 };
@@ -168,7 +173,7 @@ async function runOp(op) {
   if (op.t === 'boq') return call('boqSave', op.ref, { lines: op.lines });
   if (op.t === 'draw') return call('boqDraw', op.ref, op.draw, op.png || '');
   if (op.t === 'mt') {
-    const r = await call('fieldSaveMaint', op.data);
+    let r = op.saved; if (!r) { r = await call('fieldSaveMaint', op.data); op.saved = r || { id: '' }; await DB.qput(op); }   // أُنشئ الإشعار: إعادة المحاولة تكمل الصور فقط ولا تنشئه ثانية
     op.done = op.done || [];
     for (let i = op.done.length; i < (op.photos || []).length; i++) { const p = op.photos[i];
       const x = await call('fieldMaintPhoto', op.data.d9, p.b64, p.mime); op.done.push(x.id); await DB.qput(op); }
