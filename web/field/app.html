@@ -314,6 +314,21 @@ async function callX(fn,...a){ if(!READ_FN.test(fn)) acClear();
       if(j.err){ if(/انتهت الجلسة/.test(j.err)) logout(); throw new Error(j.err); } return j.ok; }
     if(j&&j.google){ S.edgeG=S.edgeG||{}; S.edgeG[fn]=j.google; } }
   return api0(fn,...a); }
+// ---- رفع مباشر من المتصفح إلى مخزن Supabase (16-11): الملف لا يمر بأي خادم — تذكرة رفع (upTicket) ← رفع إلى الرابط الموقّع ← حفظ بالمسار.
+// إن تعذّر المسار المباشر (غير مفعّل، أو فشل الرفع/التحقق) يُرفع عبر خادم Google مباشرة كما كان (legacy)، ويُذكر السبب.
+// أخطاء الصلاحية والحجم والنوع تُعرض كما هي ولا يُعاد الرفع.
+const UP_STOP=/صلاحية|معتمد من الجودة|حجم الملف|يجب أن يكون|فارغ|انتهت الجلسة|غير موجود|مسجّل مسبقاً/;
+function upPut(url,f,mime,onp){ return new Promise((ok,no)=>{ const x=new XMLHttpRequest(); x.open('PUT',url); x.setRequestHeader('Content-Type',mime||'application/octet-stream'); x.setRequestHeader('x-upsert','true');
+  x.upload.onprogress=e=>{ if(onp&&e.lengthComputable) onp(Math.min(99,Math.round(e.loaded*100/e.total))); };
+  x.onload=()=>{ x.status>=200&&x.status<300?ok():no(new Error('المخزن ردّ '+x.status)); }; x.onerror=()=>no(new Error('انقطع الاتصال بالمخزن')); x.onabort=()=>no(new Error('أُلغي الرفع')); x.send(f); }); }
+const upB64=f=>new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=()=>no(new Error('تعذّرت قراءة الملف')); r.readAsDataURL(f); });
+async function upDirect(kind,ref,f,save,legacy,prog){ prog=prog||(()=>{}); let why=''; S.upFall='';
+  try{ const t=await api('upTicket',S.tok,kind,ref,f.name,f.type||'',f.size); prog('جارٍ الرفع… 0%');
+    await upPut(t.url,f,t.mime,p=>prog('جارٍ الرفع… '+p+'%')); prog('جارٍ الحفظ…');
+    return await save(t.path); }
+  catch(e){ why=String(e&&e.message||e); if(UP_STOP.test(why)) throw e; }
+  prog('جارٍ الرفع عبر المسار الاحتياطي… قد يستغرق دقيقة حسب حجم الملف');
+  const n=await legacy(await upB64(f)); S.upFall=why; try{ console.warn('upDirect fallback:',why); }catch(e){} return n; }
 // ---- قراءة بذاكرة للشاشات (07-11): تعرض آخر ما حُمّل فوراً وتجدّد في الخلفية؛ إن تغيّر شيء تُعاد الشاشة نفسها بصمت
 // (إلا والمستخدم يكتب أو أمامه نافذة). أي حفظ يمسح الذاكرة، فما بعده يُقرأ جديداً.
 const AC={};
@@ -1453,7 +1468,7 @@ function qfModal(wo){
    ${o.qf_id?`<div class="card" style="margin:8px 0"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${qfLinks(o.qf_url,o.qf_name,'qfopen')}<span class="muted">${esc(o.qf_name)}</span></div>
      <div class="muted" style="margin-top:6px">رفعه ${esc(o.qf_by)} — ${esc(o.qf_at)}</div>${o.qf_note?`<div style="margin-top:6px" class="${o.qf_status==='مرفوض'?'late':''}"><b>ملاحظة الجودة:</b> ${esc(o.qf_note)}</div>`:''}</div>`:'<div class="card muted" style="margin:8px 0">لم يُرفع ملف جودة بعد.</div>'}
    ${up?`<div class="card" style="margin:8px 0"><h3>${o.qf_id?(qe?'رفع نسخة معدّلة (تحل محل القديمة وتُعتمد)':'رفع نسخة جديدة (تحل محل القديمة)'):'رفع ملف الجودة'}</h3>
-     <input type="file" id="qff" accept="application/pdf,.pdf"> <button class="pri" id="qfup">رفع</button><div class="muted" style="margin-top:4px">PDF حتى 30 ميغابايت. الملف القديم ينتقل إلى سلة المحذوفات في Drive.</div><div id="qfprog" class="muted"></div></div>`:''}
+     <input type="file" id="qff" accept="application/pdf,.pdf"> <button class="pri" id="qfup">رفع</button><div class="muted" style="margin-top:4px">PDF حتى 30 ميغابايت. النسخة الجديدة تحل محل القديمة.</div><div id="qfprog" class="muted"></div></div>`:''}
    ${qe&&o.qf_id?`<div class="card" style="margin:8px 0"><h3>مراجعة الجودة</h3><label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut)">ملاحظة (مطلوبة عند الرفض)<textarea id="qfnote" rows="2">${o.qf_status==='مرفوض'?esc(o.qf_note):''}</textarea></label>
      <div style="margin-top:8px;display:flex;gap:8px"><button class="pri" id="qfok">✅ اعتماد</button><button id="qfno" style="color:var(--dan);border-color:var(--dan)">⛔ رفض وإعادة للمهندس</button></div></div>`:''}
    <div class="err" id="qferr"></div>`);
@@ -1461,10 +1476,9 @@ function qfModal(wo){
   if($('#qfup')) $('#qfup').onclick=()=>{ const f=$('#qff').files[0]; if(!f) return $('#qferr').textContent='اختر الملف أولاً';
     if(f.size>30*1024*1024) return $('#qferr').textContent='حجم الملف أكبر من 30 ميغابايت، اضغطه ثم ارفعه';
     if(!/pdf$/i.test(f.name)&&f.type!=='application/pdf') return $('#qferr').textContent='الملف يجب أن يكون PDF';
-    $('#qfup').disabled=true; $('#qfprog').textContent='جارٍ الرفع… قد يستغرق دقيقة حسب حجم الملف';
-    const rd=new FileReader(); rd.onload=()=>{ const b64=String(rd.result).split(',')[1];
-      api('uploadQuality',S.tok,wo,b64,f.type||'application/pdf').then(n=>{ toast('تم رفع ملف الجودة'); done(n); }).catch(e=>{ $('#qferr').textContent=e.message; $('#qfup').disabled=false; $('#qfprog').textContent=''; }); };
-    rd.readAsDataURL(f); };
+    $('#qfup').disabled=true; $('#qferr').textContent=''; const prog=t=>{ const e=$('#qfprog'); if(e) e.textContent=t; }; prog('جارٍ الرفع…');
+    upDirect('qf',wo,f,path=>api('uploadQuality',S.tok,wo,'','application/pdf',{up:path}),b64=>api0('uploadQuality',S.tok,wo,b64,f.type||'application/pdf'),prog)
+      .then(n=>{ toast(S.upFall?'تم رفع ملف الجودة عبر المسار الاحتياطي — '+S.upFall:'تم رفع ملف الجودة'); done(n); }).catch(e=>{ $('#qferr').textContent=e.message; $('#qfup').disabled=false; prog(''); }); };
   const rev=a=>{ const note=$('#qfnote').value.trim(); if(a==='reject'&&!note) return $('#qferr').textContent='اكتب سبب الرفض';
     api('reviewQuality',S.tok,wo,a,note).then(n=>{ toast(a==='approve'?'تم الاعتماد':'تم الرفض وإعادته للمهندس'); done(n); }).catch(e=>$('#qferr').textContent=e.message); };
   if($('#qfok')) $('#qfok').onclick=()=>rev('approve'); if($('#qfno')) $('#qfno').onclick=()=>rev('reject');
@@ -1796,7 +1810,8 @@ function qfBulkForm(){
   $('#qbgo').onclick=async()=>{ $('#qbgo').disabled=true; $('#qbf').disabled=true; let done=0, skip=0, fail=0; const rep=$('#qbrep').checked, pend=$('#qbpend').checked;
     const read=f=>new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=no; r.readAsDataURL(f); });
     for(let i=0;i<items.length;i++){ const x=items[i]; if(x.st!=='جاهز') continue; const cell=$('#qbs'+i); cell.textContent='جارٍ الرفع…';
-      try{ const b64=await read(x.f); const n=await api('uploadQuality',S.tok,x.o.key,b64,'application/pdf',{bulk:true,pending:pend,skipIfExists:!rep});
+      try{ const qo={bulk:true,pending:pend,skipIfExists:!rep};
+        const n=await upDirect('qf',x.o.key,x.f,path=>api('uploadQuality',S.tok,x.o.key,'','application/pdf',Object.assign({up:path},qo)),b64=>api0('uploadQuality',S.tok,x.o.key,b64,'application/pdf',qo),t=>{ cell.textContent=t; });
         Object.assign(x.o,n); delete x.o._skipped; derive(x.o);
         if(n._skipped){ skip++; cell.textContent='تُرك (له ملف سابق)'; } else { done++; cell.textContent='✅ '+n.qf_status; } }
       catch(e){ fail++; cell.textContent='خطأ: '+e.message; cell.className='late'; } }
