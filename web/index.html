@@ -230,7 +230,7 @@ table.fit td{vertical-align:top}table.fit select{width:100%}
 .pf .more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pf .more img{width:calc(50% - 3px);max-height:85mm;object-fit:contain;border:1px solid #999;break-inside:avoid}
 .pf .sig{max-height:60px;max-width:190px;object-fit:contain;vertical-align:middle}
 .pf .line{border-bottom:1px solid #000;height:22px}
-.pf.saf .hbar td{background:#F2F2F2;color:#0080FF;text-align:center;font-weight:700}.pf.saf td.v{color:#1F4E9A;text-align:center}.pf.saf .page{border:1.5px solid #000}
+.pf.sfh{break-before:page;page-break-before:always}.pf.sfh td{padding:2px 5px;height:auto}.pf.sfh td.g{background:#D9D9D9;font-weight:700;text-align:center}.pf.sfh td.c{text-align:center}.pf.sfh td.b{font-weight:700}.pf.saf .hbar td{background:#F2F2F2;color:#0080FF;text-align:center;font-weight:700}.pf.saf td.v{color:#1F4E9A;text-align:center}.pf.saf .page{border:1.5px solid #000}
 .pf.qua .page{border:1.5px solid #000;padding:10px 16px 16px}.pf.qua .hbar{background:#D8E4BC;border:1px solid #000;text-align:center;font-weight:700;width:46%;margin:8px auto;padding:2px}.pf.qua td.g{background:#D8E4BC}
 .pf.qua .mgr{background:#DCE6F1;border:1px solid #000;padding:6px 8px;font-weight:700}
 .pf.f26 .page{border:1.5px solid #000;padding:0;font-family:Arial,Tahoma,sans-serif;color:#000}.pf.f26 table{width:100%;border-collapse:collapse}.pf.f26 td{border:1px solid #000;padding:3px 6px;font-size:10.5px;color:#000;text-align:center;vertical-align:middle}.pf.f26 td.k{background:#F2F2F2;font-weight:700}.pf.f26 td.b{font-weight:700}.pf.f26 td.tt{background:#fff;font-size:13px;border-bottom:1px solid #000}.pf.f26 td.a{background:#fff;font-size:9.5px;font-weight:700}.pf.f26 .en{font-size:10px;font-weight:700;direction:ltr}.pf.f26 td.pic img{max-width:96%;max-height:95mm;display:block;margin:0 auto}.pf.f26 .muted2{color:#000;font-size:11px}.pf.f26 .blu{color:#1F3864}.pf.f26 table+table{margin-top:-1px}.pf.f26+.pf.f26{break-before:page;page-break-before:always}
@@ -2483,6 +2483,33 @@ const phView=id=>(id=mvId(id),/^p:/.test(id))?'https:\/\/cnauqprdllsboiayfrgn.su
 const money=v=>(+v||0)?(+v).toLocaleString('en'):'';
 function fmCell(o,k){ const n=+(k==='vio'?o.vio_n:k==='mom'?o.mom_n:o.site_n)||0; return `<span class="fmb ${n?(k==='vio'?'fmv':k==='mom'?'fmm':'fms'):'fm0'}" data-fg="${k}" data-wo="${esc(o.key)}" title="${n?'فتح':'إضافة'} ${FG[k].t}">${n?(k==='vio'?'⚠️ ':k==='mom'?'📝 ':'📍 ')+n:'＋'}</span>`; }
 async function fmMeta(){ if(!S.meta) S.meta=await api('formsMeta',S.tok); return S.meta; }
+// المالك 16-11: سطر الاعتماد في محاضر المخالفات — مسمّى واسم للصيانة والطوارئ وآخران للإنشاءات، يغيّرهما المدير
+async function vioApprUI(){ let M; try{ M=await fmMeta(); }catch(e){ return toast(e.message); } const A=M.appr||{mt:{},cn:{}}, row=(k,lb)=>`<div style="margin-top:10px"><b>${lb}</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><label style="flex:2;min-width:220px">المسمّى<input id="va_${k}_t" value="${esc((A[k]||{}).t||'')}"></label><label style="flex:1;min-width:160px">الاسم<input id="va_${k}_n" value="${esc((A[k]||{}).n||'')}"></label></div></div>`;
+  modal(`<h3 style="margin-top:0">⚙ اعتماد محاضر المخالفات</h3><div class="muted">يُطبع في سطر الاعتماد أسفل محضر مخالفة السلامة ومحضر مخالفة الجودة: «اعتماد + المسمّى» ثم الاسم. خانة التوقيع تبقى فارغة.</div>
+   ${row('mt','الصيانة والطوارئ')}${row('cn','الإنشاءات')}<div class="err" id="vaerr"></div>
+   <div style="display:flex;gap:8px;margin-top:12px"><button class="pri" id="vasave">حفظ</button><span class="sp"></span><button onclick="closeModal()">إلغاء</button></div>`);
+  $('#vasave').onclick=async()=>{ const g=k=>({t:$('#va_'+k+'_t').value.trim(),n:$('#va_'+k+'_n').value.trim()}); $('#vasave').disabled=true;
+    try{ const r=await api('vioApprSave',S.tok,{mt:g('mt'),cn:g('cn')}); if(S.meta) S.meta.appr=r; closeModal(); toast('حُفظ — يظهر في المحاضر المطبوعة من الآن'); }catch(e){ $('#vaerr').textContent=e.message; $('#vasave').disabled=false; } }; }
+// المالك 16-11: «نموذج رصد مخالفة لأعمال المقاولين حسب بنود العقد الموحد» — النموذج المساعد لمخالفة السلامة في الصيانة والطوارئ:
+// علامة ✓ في مربع بند المخالفة، وخانتا «تكرار» و«إصابة» فارغتان. البند القديم الترقيم (1-2-19ج-ثالثاًN) يقابل الجديد (18-2-1-ب-ثالثا-N).
+function safCode(code){ const c=String(code||'').replace(/[\u064B-\u0652\s]/g,''); let m=c.match(/^18-2-1-ب-(ثالثا|ثانيا)-?(\d+)$/); if(m) return '18-2-1-ب-'+m[1]+'-'+m[2];
+  m=c.match(/^1-2-19ج-?ثالثا-?(\d+)$/); return m?'18-2-1-ب-ثالثا-'+(m[1]==='24'?'26':m[1]):''; }
+function fmSafHelper(f,d,M,X){ const e=x=>esc(x==null?'':x), L=M.saf||[]; if(!L.length) return '';
+  const tk=t=>String(t||'').replace(/[\u064B-\u0652\s.\-–()\/،,]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي'), on={};
+  (d.items||[]).forEach(it=>{ if(!it||!(it.text||it.code)) return; let c=safCode(it.code); if(!c||!L.some(x=>x.code===c)){ const k=tk(it.text), h=k&&L.find(x=>{ const y=tk(x.text); return y===k||(k.length>12&&(y.indexOf(k)>=0||k.indexOf(y)>=0)); }); c=h?h.code:''; } if(c) on[c]=1; });
+  const box=c=>`<td class="c" style="width:5%;font-size:15px;font-weight:700">${on[c]?'☑':'☐'}</td>`, A=L.filter(x=>/ثالثا/.test(x.code)), B=L.filter(x=>/ثانيا/.test(x.code));
+  return `<div class="pf saf sfh"><div class="logos">${X.logo?`<img src="${X.logo}">`:'<span></span>'}<span></span></div>
+   <div style="font-weight:700;font-size:13px;margin:6px 0 8px">نموذج رصد مخالفة لأعمال المقاولين حسب ما ورد في بنود العقد الموحد</div>
+   <div class="page"><table><colgroup><col style="width:13%"><col style="width:20%"><col style="width:16%"><col style="width:18%"><col style="width:13%"><col style="width:20%"></colgroup>
+   <tr><td class="g">الإدارة</td><td class="v">${e(X.dpt)}</td><td class="g">الدائرة / المكتب</td><td class="v">${e([X.cir,X.office].filter(Boolean).join(' / '))}</td><td class="g">الموقع</td><td class="v">${e(d.location)}</td></tr>
+   <tr><td class="g">التاريخ</td><td class="v">${e(d.date)}</td><td class="g">الوقت</td><td class="v">${e(d.time)}</td><td class="g">اسم المقاول</td><td class="v">${e(X.con)}</td></tr>
+   <tr><td class="g">رقم المشروع</td><td class="v" colspan="5">${e(X.cno)}${X.wo?' — '+X.wo:''}</td></tr></table></div>
+   <div style="font-size:11px;margin:5px 0 3px">يتم وضع علامة ( ✓ ) على المخالفة التي تم ارتكابها مع تحديد وجود إصابة (نعم/لا). التكرار يحدد بعد الرجوع لسجل المخالفات.</div>
+   <div class="page"><table><colgroup><col style="width:5%"><col style="width:19%"><col style="width:52%"><col style="width:8%"><col style="width:8%"><col style="width:8%"></colgroup>
+   <tr><td class="g"></td><td class="g c b">رقم المخالفة</td><td class="g c b">وصف المخالفة</td><td class="g c b">تصنيف</td><td class="g c b">تكرار</td><td class="g c b">إصابة</td></tr>
+   ${A.map(x=>`<tr>${box(x.code)}<td class="c b" style="font-size:10.5px">${e(x.code)}</td><td style="font-size:10.5px">${e(x.text)}</td><td class="c">${e(x.cat)}</td><td></td><td></td></tr>`).join('')}
+   ${B.map((x,i)=>`<tr>${box(x.code)}<td class="c b" style="font-size:10.5px">${e(x.code)}</td><td style="font-size:10.5px;background:#DDEBF7">${e(x.text)}</td>${i?'':`<td class="c" colspan="3" rowspan="${B.length}" style="font-size:10.5px">إيقاف العمل وإيقاف إسناد الأعمال لمدة شهر + غرامة مالية 25,000 ريال</td>`}</tr>`).join('')}
+   </table></div><div style="margin-top:8px;font-size:11.5px"><b>وصف المخالفة:</b> <span style="color:#1F4E9A;white-space:pre-wrap">${e(d.desc)}</span></div></div>`; }
 function mtSetCount(d9,n){ d9=String(d9||'').replace(/^D9:/,''); const R=S.mt; if(R){ const i=R.headers.indexOf('vio_n'), j=R.headers.indexOf('mref')>=0?R.headers.indexOf('mref'):R.headers.indexOf('d9'); (R.L||[]).forEach(x=>{ if(String(x.mref||x.d9).trim()===d9) x.vio_n=n; }); if(i>=0&&j>=0) R.rows.forEach(x=>{ if(String(x[j]).trim()===d9) x[i]=n; }); }
   document.querySelectorAll('.fmb[data-wo="D9:'+d9+'"]').forEach(el=>{ el.outerHTML=mtCell({d9,vio_n:n}); }); S.fmList=null; S.fxList=null; }
 function mtCell(o){ const d9=String(o.mref||o.d9||'').trim(); if(!d9) return ''; const n=+o.vio_n||0; return `<span class="fmb ${n?'fmv':'fm0'}" data-fg="vio" data-wo="D9:${esc(d9)}" title="${n?'فتح':'إضافة'} المخالفات">${n?'⚠️ '+n:'＋'}</span>`; }
@@ -3013,6 +3040,8 @@ function fmPrintHtml(f,o,M,sg){
   const more=ph.length>1?`<div class="more">${ph.slice(1).map(u=>`<img src="${u}">`).join('')}</div>`:'';
   const items=(d.items||[]).slice(); const tot=items.reduce((s,it)=>s+(f.kind==='safety'?1:(+it.qty||0))*(+it.price||0),0);
   const logos=(r,l)=>`<div class="logos">${r?`<img src="${r}">`:'<span></span>'}${l?`<img src="${l}">`:'<span></span>'}</div>`;
+  // المالك 16-11: سطر الاعتماد بالمسمّى والاسم حسب نوع العمل (صيانة وطوارئ: الإشعارات والأوامر التي تبدأ بـ4)، والقيمة تُكتب والتكرار يُترك فارغاً
+  const mtT=isMt||String(o.wo||f.wo).replace(/^D9:/,'').charAt(0)==='4', AP=((M.appr||{})[mtT?'mt':'cn'])||{t:'مدير الإدارة',n:''}, num=x=>{ const n=+x; return x!==''&&x!=null&&isFinite(n)&&n?n.toLocaleString('en-US'):''; };
   if(f.kind==='safety'){ while(items.length<4) items.push({});
     const C='<colgroup><col style="width:17%"><col style="width:16%"><col style="width:17%"><col style="width:17%"><col style="width:16%"><col style="width:17%"></colgroup>';
     return `<div class="pf saf">${logos(L.se,L.pdc)}<div class="page"><table>${C}
@@ -3026,21 +3055,21 @@ function fmPrintHtml(f,o,M,sg){
      <tr class="hbar"><td colspan="6">تفاصيل المخالفات</td></tr></table>
      <table><colgroup><col style="width:4%"><col style="width:17%"><col style="width:37%"><col style="width:14%"><col style="width:14%"><col style="width:14%"></colgroup>
      <tr><td class="c">م</td><td class="c">رقم بند المخالفة بالعقد</td><td class="c">رقم ونص المخالفة حسب تصنيف المخالفات</td><td class="c">التكرار</td><td class="c">قيمة المخالفة</td><td class="c">الاجمالي</td></tr>
-     ${items.map((it,i)=>`<tr style="height:30px"><td class="c">${i+1}</td><td class="v">${e(it.code)}</td><td class="v">${e(it.text)}</td><td class="v"></td><td class="v"></td><td class="v"></td></tr>`).join('')}
+     ${items.map((it,i)=>`<tr style="height:30px"><td class="c">${i+1}</td><td class="v">${e(safCode(it.code)||it.code)}</td><td class="v">${e(it.text)}</td><td class="v"></td><td class="v">${num(it.price)}</td><td class="v">${num(it.price)}</td></tr>`).join('')}
      <tr style="height:230px"><td colspan="3" style="vertical-align:top"><div>وصف المخالفات</div><div class="v" style="color:#1F4E9A;text-align:center;margin-top:60px;white-space:pre-wrap">${e(d.desc)}</div>${d.action?`<div style="margin-top:14px">الإجراء المطلوب: <span style="color:#1F4E9A">${e(d.action)}</span></div>`:''}</td><td colspan="3" style="vertical-align:top;padding:0">${ph[0]?`<img class="pimg" src="${ph[0]}" style="max-height:78mm;height:78mm">`:''}</td></tr></table>
      <table>${C}<tr class="hbar"><td colspan="6">المصادقة</td></tr>
      <tr style="height:44px"><td>اسم محرر المحضر</td><td class="v">${e(d.author)}</td><td>الرقم الوظيفي</td><td class="v">${e(sg.emp_no)}</td><td>التوقيع</td><td class="c">${sig}</td></tr>
      <tr style="height:44px"><td>اسم مستلم المحضر للمقاول</td><td class="v">${e(d.receiver)}</td><td>الرقم الوظيفي/الاقامة</td><td class="v">${e(d.receiver_id)}</td><td>التوقيع</td><td></td></tr>
      <tr><td>الوقت</td><td class="v" colspan="2">${e(d.time)}</td><td>التاريخ</td><td class="v" colspan="2">${e(d.date)}</td></tr>
-     <tr class="hbar"><td colspan="6">اعتماد مدير الادارة</td></tr>
-     <tr style="height:52px"><td>اسم مدير الادارة</td><td></td><td>التوقيع</td><td></td><td>التاريخ</td><td></td></tr></table></div>
-     <div style="position:relative;break-inside:avoid"><div style="margin-top:14px">في حالة امتناع المقاول عن التوقيع يتم ذكر السبب</div><div class="line" style="height:auto;min-height:22px;padding-top:4px;color:#1F4E9A;white-space:pre-wrap">${e(d.contractor_note||'')}</div>${st?`<img class="stamp" src="${L.stamp}" style="position:absolute;left:6%;top:-6px">`:''}</div>${more}</div>`; }
-  if(f.kind==='quality'){ while(items.length<5) items.push({}); const m4=isMt||String(o.wo||f.wo).replace(/^D9:/,'').charAt(0)==='4';
+     <tr class="hbar"><td colspan="6">اعتماد ${e(AP.t)}</td></tr>
+     <tr style="height:52px"><td>اسم ${e(AP.t)}</td><td class="v">${e(AP.n)}</td><td>التوقيع</td><td></td><td>التاريخ</td><td></td></tr></table></div>
+     <div style="position:relative;break-inside:avoid"><div style="margin-top:14px">في حالة امتناع المقاول عن التوقيع يتم ذكر السبب</div><div class="line" style="height:auto;min-height:22px;padding-top:4px;color:#1F4E9A;white-space:pre-wrap">${e(d.contractor_note||'')}</div>${st?`<img class="stamp" src="${L.stamp}" style="position:absolute;left:6%;top:-6px">`:''}</div>${more}</div>${mtT?fmSafHelper(f,d,M,{dpt,cir,office:f.office||o.office,cno:cNo,wo:woT,logo:L.se,con:FULLC(d.contractor)||f.contractor||''}):''}`; }
+  if(f.kind==='quality'){
     // maintenance & emergency (numbers starting with 4): the company's bilingual «Violation Report» form; construction keeps the form below
-    if(m4){ // the company's «Form-26» (نموذج محضر مخالفة) as issued: grey label cells, black borders; one page per violation item
+    { // المالك 16-11: Form-26 للإنشاءات والصيانة والطوارئ معاً — the company's «Form-26» (نموذج محضر مخالفة) as issued: grey label cells, black borders; one page per violation item
       const K=(a,en,x)=>`<td class="k"${x||''}>${a}<div class="en">${en}</div></td>`, V=(x,a)=>`<td class="v"${a||''}>${x}</td>`, its=(d.items||[]).filter(it=>it.text||it.code||it.price); if(!its.length) its.push({});
-      const d9=String(woT||'').replace(/<[^>]*>/g,'').trim(), loc=[d9?'D9 '+d9:'', f.office||o.office||'', o.station||o.district||d.location||''].filter(Boolean).join(' — ');
-      const page=(it,i)=>{ const q=+it.qty||(it.text?1:0), pr=+it.price||0, t=it.text?q*pr:'', pic=ph[i]||ph[0];
+      const d9=String(woT||'').replace(/<[^>]*>/g,'').trim(), loc=[d9?(isMt?'D9 ':'أمر العمل ')+d9:'', f.office||o.office||'', o.station||o.district||d.location||''].filter(Boolean).join(' — ');
+      const page=(it,i)=>{ const pr=+it.price||0, t=it.text?pr:'', pic=ph[i]||ph[0];
         return `<div class="pf f26"><div class="page">
        <table><tr><td class="tt" style="height:62px"><div style="display:flex;align-items:center;justify-content:center;position:relative"><span>نموذج محضر مخالفة</span>${L.se?`<img src="${L.se}" style="position:absolute;left:30px;max-height:56px">`:''}</div></td></tr>
        <tr><td class="k b" style="font-size:12px">محضر مخالفة رقم ( ${fmNo(f)} ) / Violation Report Number ( ${fmNo(f)} )${its.length>1?` <span style="font-weight:400">— البند ${i+1} من ${its.length}</span>`:''}</td></tr></table>
@@ -3053,12 +3082,12 @@ function fmPrintHtml(f,o,M,sg){
        <table class="mid"><colgroup><col style="width:33%"><col style="width:13%"><col style="width:54%"></colgroup>
        <tr style="height:44px">${K('رقم بند المخالفة بالعقد','Violation Paragraph No. in Contract')}${V(e(it.code||'-'))}<td rowspan="8" class="pic">${pic?`<img src="${pic}">`:'<span class="muted2">مكان الصورة</span>'}</td></tr>
        <tr>${K('(حسب جدول تصنيف المخالفات) رقم ونص المخالفة','Violation Reference and statement (as per violation Classification table)')}${K('قيمة المخالفة','Violation Cost')}</tr>
-       <tr style="height:52px">${V(e(it.text||''))}${V('')}</tr>
+       <tr style="height:52px">${V(e(it.text||''))}${V(num(it.price))}</tr>
        <tr>${K('(حسب جدول تصنيف الجزاءات) رقم ونص المخالفة','Violation Reference and statement (as per Penalties Classification table)')}${K('التكرار','Repetition')}</tr>
        <tr style="height:44px">${V('')}${V('')}</tr>
-       <tr style="height:44px">${K('(حسب جدول تصنيف الغرامات) فئة الغرامة','Fine category (as per fines classifications table)')}${V('')}</tr>
+       <tr style="height:44px">${K('(حسب جدول تصنيف الغرامات) فئة الغرامة','Fine category (as per fines classifications table)')}${V(e(it.cat||''))}</tr>
        <tr>${K('الجزاء (حسب التصنيفات والتكرار)','')}${K('إجمالي قيمة الغرامة (حسب التصنيفات والتكرار)','')}</tr>
-       <tr style="height:44px">${V('')}${V('')}</tr></table>
+       <tr style="height:44px">${V('')}${V(num(t))}</tr></table>
        <table><tr style="height:92px"><td style="vertical-align:top"><div style="display:flex;justify-content:space-between"><b>وصف المخالفة:</b><b class="blu" style="direction:ltr">Violation description:</b></div><div style="white-space:pre-wrap;margin-top:6px;text-align:center">${e(d.desc)}</div></td></tr></table>
        <table class="au"><colgroup><col style="width:24%"><col style="width:26%"><col style="width:22%"><col style="width:28%"></colgroup>
        <tr><td colspan="2" class="k b" style="text-align:right;font-size:12px">المصادقة</td><td colspan="2" class="k b" style="text-align:left;direction:ltr;font-size:12px">:Authentication :</td></tr>
@@ -3066,28 +3095,11 @@ function fmPrintHtml(f,o,M,sg){
        <tr><td class="a">الرقم الوظيفي / Badge number</td>${V(e(sg.emp_no||''))}<td class="a">رقم الإقامة / ID number</td>${V(e(d.receiver_id||''))}</tr>
        <tr><td class="a">التاريخ / Date</td>${V(e(d.date))}<td class="a">التاريخ / Date</td>${V(e(d.date))}</tr>
        <tr style="height:46px"><td class="a">التوقيع / Signature</td><td class="v">${sig}</td><td class="a">التوقيع / Signature</td><td></td></tr>
-       <tr style="height:40px"><td class="a">اعتماد مدير إدارة كهرباء ${e(dpt||'.....')}</td><td></td><td class="a">التوقيع / Signature</td><td></td></tr></table>
+       <tr style="height:40px"><td class="a">اعتماد ${e(AP.t)}</td><td class="v">${e(AP.n)}</td><td class="a">التوقيع / Signature</td><td></td></tr></table>
        <div style="margin-top:8px;font-weight:700;text-decoration:underline;font-size:11px">ملاحظة: في حالة امتناع ممثل المقاول (مدير موقع المشروع أو من ينوبه) عن إستلام المحضر أو توقيعه، يقوم المقاول بكتابة سبب الامتناع أدناه (سبب عدم التوقيع على المخالفة):</div>
        <div style="position:relative;min-height:80px;border:1px solid #000;margin-top:4px;padding:6px;white-space:pre-wrap;font-size:11px">${e(d.statement||d.contractor_note||'')}${st&&i===its.length-1?`<img src="${L.stamp}" style="position:absolute;left:8%;top:4px;max-height:76px">`:''}</div></div></div>`; };
       return its.map(page).join('')+more; }
-    const mg=t=>`<div style="width:44%"><div class="mgr">${t}</div><div style="margin-top:16px">الاسم :</div><div class="line"></div><div style="margin-top:16px">التوقيع</div><div class="line"></div></div>`;
-    return `<div class="pf qua"><div class="page"><div class="logos" style="padding:0">${L.se?`<img src="${L.se}">`:''}<span></span></div>
-     <table style="width:42%"><tr><td class="b">رقم المحضر</td><td class="c b">${fmNo(f)}</td></tr></table>
-     <div class="hbar">بيانات امر العمل</div>
-     <table style="width:92%;margin:0 auto"><tr><td class="b">${WOL}</td><td class="c">${woT}</td><td class="b">المقاول</td><td class="c b">${e(FULLC(d.contractor))}</td></tr>
-     <tr><td class="b">اسم المشروع</td><td class="c">${e((S.B.project||{}).name||'')}</td><td class="b">الموقع</td><td class="c b">${e(f.office||o.office)}${d.location?'-'+e(d.location):''}</td></tr></table>
-     <div class="hbar">وصف المخالفة</div>
-     <div class="bx c b" style="width:92%;margin:0 auto;padding:12px 8px;min-height:40px;white-space:pre-wrap">${e(d.desc)}</div>
-     ${ph[0]?`<img class="pimg" src="${ph[0]}" style="margin-top:6px;max-width:62%">`:''}
-     <table style="margin-top:4px"><tr><td class="b">التاريخ</td><td class="c b">${e(d.date)}</td><td class="b">الوقت</td><td class="c b">${e(d.time)}</td><td class="b">الموقع</td><td class="c">${e(d.location)}</td></tr></table>
-     <table style="margin-top:8px"><colgroup><col style="width:5%"><col style="width:47%"><col style="width:16%"><col style="width:16%"><col style="width:16%"></colgroup>
-     <tr><td class="c b">م</td><td class="c b">بند الغرامة</td><td class="c b">الكمية</td><td class="c b">قيمة الغرامة</td><td class="c b">الاجمالي</td></tr>
-     ${items.map((it,i)=>`<tr><td class="c b">${it.text?i+1:''}</td><td class="c">${e(it.text)}</td><td class="c"></td><td class="c"></td><td class="c"></td></tr>`).join('')}
-     <tr><td colspan="3" style="border:none"></td><td class="c g">الاجمالي</td><td class="c g b"></td></tr></table>
-     <table style="margin-top:14px"><tr style="height:90px"><td class="b" style="width:22%">افادة المقاول :</td><td style="width:78%;white-space:pre-wrap">${e(d.statement)}</td></tr></table>
-     <div style="margin-top:14px;line-height:2"><b>الاسم :</b> ${e(d.contractor_rep)}<br><b>التوقيع :</b></div>
-     <div style="margin-top:18px;line-height:2"><b>محرر المخالفة:</b> <span style="margin-right:40px">${e(d.author)}</span><div style="display:flex;align-items:center;gap:40px;min-height:56px"><b>التوقيع :</b><span>${sig}</span></div></div>
-     <div style="display:flex;justify-content:space-between;margin-top:24px">${mg(m4?'مدير دائرة الصيانة':'مدير دائرة الانشاءات')}${mg(m4?'مدير ادارة العمليات والصيانة':'مدير إدارة تخطيط الشبكات والإنشاءات')}</div></div>${more}</div>`; }
+  }
   if(f.kind==='site'){ const K=x=>`<td class="k">${x}</td>`, V=x=>`<td class="v">${e(x)}</td>`;
     return `<div class="pf sit">${logos(L.se,L.pdc)}<div class="page"><table class="bx"><colgroup><col style="width:17%"><col style="width:33%"><col style="width:17%"><col style="width:33%"></colgroup>
      <tr><td class="k">ادارة كهرباء : Dep.</td><td class="v">${e(dpt)}</td><td class="hb" colspan="2">بطاقة تسليم الموقع للمقاول<div style="font-size:11px">رقم: ${fmNo(f)}</div></td></tr>
@@ -3161,7 +3173,7 @@ async function vForms(){
     cell:(x,k,v)=>k==='pick'?`<span class="pkb" data-pk="${esc(x.id)}" style="cursor:pointer;font-size:16px">${F.pick[x.id]?'☑':'☐'}</span>`:k==='kind'?`${(FK[x.kind]||{}).i||''} ${esc(v)}`:k==='seq'?`<b>${esc(v)}</b>`:k==='total'?money(v):k==='sum'?`<span>${esc(v)}</span>`:k==='act'?`<span style="white-space:nowrap"><button data-fo="${esc(x.id)}">فتح</button> <button data-fp="${esc(x.id)}">🖨</button></span>`:esc(v),
     cls:()=>'', search:x=>[x.wo,x.sum,x.author,x.contractor,x.seq,x.id].join(' '), match, open:async x=>{ const f=await get(x.id); if(f) formEditor(f,fmOrder(f.wo,f),null); }, undo:null,
     norm:(o,k,v)=>v, put:()=>({}), save:()=>Promise.resolve(),
-    bar:`<button class="pri" id="ffnew">+ نموذج جديد</button><button id="ffpa" title="طباعة كل النماذج الظاهرة حسب الفلتر، نموذج في كل صفحة">🖨 طباعة الكل</button><button id="ffps" class="pri" style="display:none"></button><button id="ffpc" style="display:none" title="إلغاء التحديد">✕ إلغاء التحديد</button>${S.B.admin?`<button id="ffreb" title="إرجاع قيم كل المخالفات — حتى القديمة — إلى القيمة الأساسية للبند في جدول الغرامات، ومسح خانة التكرار. لا يرفع التكرارُ قيمةَ المخالفة.">↺ إرجاع القيم الأساسية</button>`:''}<button id="ffst" title="كتابة إفادة المقاول (مثل: رفض المقاول التوقيع) في كل مخالفات السلامة والجودة الظاهرة حسب الفلتر، أو المحددة فقط">✍ إفادة المقاول</button>${S.B.admin?'<button id="ffph" title="صور المخالفات المستخرجة من إكسل، مرفوعة في مجلد على Drive بأسماء مثل S12_1.jpg">استيراد الصور من Drive</button>':''}`,
+    bar:`<button class="pri" id="ffnew">+ نموذج جديد</button><button id="ffpa" title="طباعة كل النماذج الظاهرة حسب الفلتر، نموذج في كل صفحة">🖨 طباعة الكل</button><button id="ffps" class="pri" style="display:none"></button><button id="ffpc" style="display:none" title="إلغاء التحديد">✕ إلغاء التحديد</button>${S.B.admin?`<button id="ffap" title="المسمّى والاسم المطبوعان في سطر الاعتماد بمحاضر المخالفات">⚙ اعتماد المخالفات</button>`:''}${S.B.admin?`<button id="ffreb" title="إرجاع قيم كل المخالفات — حتى القديمة — إلى القيمة الأساسية للبند في جدول الغرامات، ومسح خانة التكرار. لا يرفع التكرارُ قيمةَ المخالفة.">↺ إرجاع القيم الأساسية</button>`:''}<button id="ffst" title="كتابة إفادة المقاول (مثل: رفض المقاول التوقيع) في كل مخالفات السلامة والجودة الظاهرة حسب الفلتر، أو المحددة فقط">✍ إفادة المقاول</button>${S.B.admin?'<button id="ffph" title="صور المخالفات المستخرجة من إكسل، مرفوعة في مجلد على Drive بأسماء مثل S12_1.jpg">استيراد الصور من Drive</button>':''}`,
     help:'الفلتر ▾ في رأس كل عمود، والترتيب بالضغط على اسم العمود. ☐ لتحديد نماذج للطباعة أو لإفادة المقاول. نقرتان على الصف أو «فتح» لفتح النموذج. للبحث عن عدة نماذج اكتب أرقامها مفصولة بمسافة: 12 15 Q7.',
     onDraw:l=>{ S.ffRows=l; const n=k=>l.filter(x=>x.kind===k).length, tot=l.reduce((s,x)=>s+(+x.total||0),0); if(!$('#ffk')) return;
       $('#ffk').innerHTML=`<div class="kpi" data-kf="safety">مخالفات سلامة<b>${n('safety')}</b></div><div class="kpi" data-kf="quality">مخالفات جودة<b>${n('quality')}</b></div><div class="kpi" data-kf="meeting">محاضر اجتماع<b>${n('meeting')}</b></div><div class="kpi" data-kf="site">بطاقات تسليم الموقع<b>${n('site')}</b></div><div class="kpi">إجمالي الغرامات (ريال)<b>${money(tot)||0}</b></div>`; },
@@ -3177,6 +3189,7 @@ async function vForms(){
       fmNewForm(kd,pk.o,null); }; };
   if($('#gimp')) $('#gimp').onclick=()=>goImport($('#gimp').dataset.k);
 
+  if($('#ffap')) $('#ffap').onclick=vioApprUI;
   if($('#ffph')) $('#ffph').onclick=photosFromDrive; $('#ffpa').onclick=()=>printAll(S.ffRows||[]); $('#ffps').onclick=()=>printAll(L.filter(x=>F.pick[x.id]).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(+b.seq)-(+a.seq))); $('#ffpc').onclick=()=>{ F.pick={}; shell(); };
       if($('#ffreb')) $('#ffreb').onclick=async()=>{
         if(!confirm('إرجاع قيم كل المخالفات — حتى القديمة — إلى القيمة الأساسية للبند، ومسح خانة التكرار.\n\nالقيم السابقة تُحفظ في سجل الحركات قبل التغيير.\n\nمتابعة؟')) return;
