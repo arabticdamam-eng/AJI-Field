@@ -4264,6 +4264,7 @@ function xuModel(D,opt){
     const FQ=xuQ(sec), FN=rows.length+2, FC=k=>FQ+'!$'+FL[k]+'$3:$'+FL[k]+'$'+FN, FID=FQ+'!$'+FL.id+'$3:$'+FL.id+'$'+FN;
     const T3={ttl:{b:1,sz:15,al:'center',va:'center',bd:1,fill:'D0CECE'},hb:{b:1,fc:'0080FF',fill:'F2F2F2',al:'center',bd:1},hg:{b:1,fill:'D8E4BC',al:'center',bd:1},hq:{b:1,fill:'DCE6F1',al:'center',bd:1},lab:{b:1,bd:1,va:'center',wrap:1,sz:10},val:{bd:1,fc:'1F4E9A',va:'center',wrap:1},valc:{bd:1,fc:'1F4E9A',al:'center',va:'center',wrap:1},inp:{bd:1,b:1,sz:13,fill:'FFF4CC',al:'center',ul:1},note:{fc:'5F5E5A',sz:9},money:{bd:1,fc:'1F4E9A',al:'center',nf:'#,##0.00'},img:{al:'center',va:'center'},plain:{sz:10},k:{b:1,sz:10,va:'center'},cb:{b:1,al:'center',va:'center'},red:{b:1,fc:'C00000',sz:9}};
     const IMGU=(u,st)=>u?{f:'_xlfn.IMAGE("'+String(u).replace(/"/g,'""')+'")',v:'',dyn:1,st:st||T3.img}:{st:st||T3.img};
+    const XAP=Object.assign({mt:{t:'مدير إدارة العمليات والصيانة',n:'م/ عمر البسيمي'},cn:{t:'مدير إدارة التخطيط والإنشاءات',n:'م/ حسن القحطاني'}},(S.meta&&S.meta.appr)||{}), xq=t=>String(t||'').replace(/"/g,'""');   // سطر الاعتماد: نفس مسمّى واسم «⚙ اعتماد المخالفات»
     const mkPrint=(pname,kind,idc,build)=>{ const IS4=()=>'LEFT(IFERROR(_xlfn.XLOOKUP("'+FORM_PFX_X[kind]+'"&'+idc+'&"",'+FID+','+FC('wo')+',""),"")&"",1)="4"', d4=String(FXV(FR.find(x=>x.kind===kind)||{},'wo')||'').charAt(0)==='4'; const def=FR.find(x=>x.kind===kind); if(!def) return; const G3=[], merges=[], hts={}; const put3=(r,c,x)=>{ (G3[r]=G3[r]||[])[c]=x; };
       const pfx=FORM_PFX_X[kind], ID='"'+pfx+'"&'+idc+'&""';
       const L2=(k,st)=>{ let v=FXV(def,k); const txt=!(/date$/.test(k)||k==='date'||/^(total|i\d[ps])$/.test(k)); if(!txt&&/date/.test(k)){ const d=xuSer(v); if(d!=null){ v=d; st=Object.assign({},st||T3.valc,{nf:'yyyy-mm-dd'}); } else v=String(v||''); } else if(!txt){ const n=xuNum(v); v=n==null?'':n; }
@@ -4293,8 +4294,8 @@ function xuModel(D,opt){
       put3(28,0,{v:'المصادقة',st:T3.hb}); merges.push('A29:F29');
       put3(29,0,{v:'اسم محرر المحضر',st:T3.lab}); put3(29,1,L2('author')); merges.push('B30:C30'); put3(29,3,{v:'التوقيع',st:T3.lab}); put3(29,4,IMG('sig')); merges.push('E30:F30'); hts[29]=40;
       put3(30,0,{v:'اسم مستلم المحضر للمقاول',st:T3.lab}); put3(30,1,L2('receiver')); put3(30,2,{v:'الهوية/الإقامة',st:T3.lab}); put3(30,3,L2('receiver_id',T3.valc)); put3(30,4,{v:'التوقيع',st:T3.lab}); put3(30,5,{st:T3.val}); hts[30]=34;
-      put3(31,0,{v:'اعتماد مدير الادارة',st:T3.hb}); merges.push('A32:F32');
-      put3(32,0,{v:'اسم مدير الادارة',st:T3.lab}); put3(32,1,{st:T3.val}); put3(32,2,{v:'التوقيع',st:T3.lab}); put3(32,3,{st:T3.val}); put3(32,4,{v:'التاريخ',st:T3.lab}); put3(32,5,{st:T3.val}); hts[32]=34;
+      put3(31,0,{f:'"اعتماد "&IF('+IS4()+',"'+xq(XAP.mt.t)+'","'+xq(XAP.cn.t)+'")',v:'اعتماد '+(d4?XAP.mt.t:XAP.cn.t),st:T3.hb}); merges.push('A32:F32');
+      put3(32,0,{v:'الاسم',st:T3.lab}); put3(32,1,{f:'IF('+IS4()+',"'+xq(XAP.mt.n)+'","'+xq(XAP.cn.n)+'")',v:d4?XAP.mt.n:XAP.cn.n,st:T3.val}); put3(32,2,{v:'التوقيع',st:T3.lab}); put3(32,3,{st:T3.val}); put3(32,4,{v:'التاريخ',st:T3.lab}); put3(32,5,{st:T3.val}); hts[32]=34;
       put3(33,0,{v:'ملاحظة المقاول',st:T3.lab}); put3(33,1,L2('contractor_note')); merges.push('B34:F34');
       put3(34,0,{v:'في حالة امتناع المقاول عن التوقيع يتم ذكر السبب',st:T3.plain}); merges.push('A35:D35'); stampRow(put3,merges,hts,35); });
     mkPrint('طباعة مخالفة جودة','quality','$B$1',({put3,merges,hts,L2,IMG,NO,def,ID,IS4,d4})=>{ put3(0,4,IMGU(LG.se)); merges.push('E1:F1'); hts[0]=58;
@@ -4312,8 +4313,8 @@ function xuModel(D,opt){
       put3(29,0,{v:'الاسم :',st:T3.k}); put3(29,1,L2('contractor_rep',T3.val)); merges.push('B30:C30'); put3(29,3,{v:'التوقيع :',st:T3.k}); put3(29,4,{st:T3.val}); merges.push('E30:F30'); hts[29]=34;
       put3(30,0,{v:'محرر المخالفة:',st:T3.k}); put3(30,1,L2('author',T3.val)); merges.push('B31:D31'); hts[30]=30;
       put3(31,0,{v:'التوقيع :',st:T3.k}); put3(31,1,IMG('sig')); merges.push('B32:C32'); hts[31]=48;
-      put3(32,0,{f:'IF('+IS4()+',"مدير دائرة الصيانة","مدير دائرة الانشاءات")',v:d4?'مدير دائرة الصيانة':'مدير دائرة الانشاءات',st:T3.hq}); merges.push('A33:B33'); put3(32,3,{f:'IF('+IS4()+',"مدير ادارة العمليات والصيانة","مدير إدارة تخطيط الشبكات والإنشاءات")',v:d4?'مدير ادارة العمليات والصيانة':'مدير إدارة تخطيط الشبكات والإنشاءات',st:T3.hq}); merges.push('D33:F33');
-      put3(33,0,{v:'الاسم :',st:T3.k}); put3(33,3,{v:'الاسم :',st:T3.k}); hts[33]=30; put3(34,0,{v:'التوقيع :',st:T3.k}); put3(34,3,{v:'التوقيع :',st:T3.k}); hts[34]=30; });
+      put3(32,0,{f:'IF('+IS4()+',"مدير دائرة الصيانة","مدير دائرة الانشاءات")',v:d4?'مدير دائرة الصيانة':'مدير دائرة الانشاءات',st:T3.hq}); merges.push('A33:B33'); put3(32,3,{f:'IF('+IS4()+',"'+xq(XAP.mt.t)+'","'+xq(XAP.cn.t)+'")',v:d4?XAP.mt.t:XAP.cn.t,st:T3.hq}); merges.push('D33:F33');
+      put3(33,0,{v:'الاسم :',st:T3.k}); put3(33,3,{v:'الاسم :',st:T3.k}); put3(33,4,{f:'IF('+IS4()+',"'+xq(XAP.mt.n)+'","'+xq(XAP.cn.n)+'")',v:d4?XAP.mt.n:XAP.cn.n,st:T3.val}); merges.push('E34:F34'); hts[33]=30; put3(34,0,{v:'التوقيع :',st:T3.k}); put3(34,3,{v:'التوقيع :',st:T3.k}); hts[34]=30; });
     mkPrint('طباعة محضر اجتماع','meeting','$E$2',({put3,merges,hts,L2,IMG,NO,def,ID})=>{ logosRow(put3,merges,hts,0);
       put3(1,0,{v:'محضر إجتماع',st:T3.ttl}); merges.push('A2:C2'); put3(1,3,{v:'الرقم',st:T3.lab}); put3(1,4,{v:+def.seq||def.seq,st:T3.inp}); put3(1,5,NO()); hts[1]=30;
       put3(2,0,{v:'المكان:',st:T3.lab}); put3(2,1,L2('location')); put3(2,2,{v:'التاريخ:',st:T3.lab}); put3(2,3,L2('date')); put3(2,4,{v:'رقم أمر العمل:',st:T3.lab}); put3(2,5,{f:'IFERROR(IF(_xlfn.XLOOKUP('+ID+','+FID+','+FC('wo_type')+',"")&""="",_xlfn.XLOOKUP('+ID+','+FID+','+FC('wo')+',"")&"",_xlfn.XLOOKUP('+ID+','+FID+','+FC('wo_type')+',"")&" - "&_xlfn.XLOOKUP('+ID+','+FID+','+FC('wo')+',"")),"")',v:(FXV(def,'wo_type')?FXV(def,'wo_type')+' - ':'')+FXV(def,'wo'),dyn:1,st:T3.valc});
@@ -4410,7 +4411,7 @@ async function xuGather(say){
   if(tabOn('olap')){ say('جارٍ تحميل أولاب…'); try{ D.olap=S.olap||(S.olap=await api('listOlap',S.tok)); }catch(e){ miss.push('أولاب'); } }
   D.miss=miss; return D;
 }
-async function xuBuild(opt,say){ say=say||(()=>{}); const D=await xuGather(say); say('جارٍ بناء الملف…'); await new Promise(r=>setTimeout(r,30)); const model=xuModel(D,opt||{charts:true}); const blob=await xuZip(xuParts(model)); return {blob,stats:model.stats,miss:D.miss}; }
+async function xuBuild(opt,say){ say=say||(()=>{}); try{ await fmMeta(); }catch(e){} const D=await xuGather(say); say('جارٍ بناء الملف…'); await new Promise(r=>setTimeout(r,30)); const model=xuModel(D,opt||{charts:true}); const blob=await xuZip(xuParts(model)); return {blob,stats:model.stats,miss:D.miss}; }
 function exportUnified(){
   modal(`<h3 style="margin-top:0">تصدير إكسل موحّد</h3>
    <div class="muted" style="line-height:1.9">ملف واحد فيه ورقة لكل قسم وورقة للداشبورد، بألوان الأقسام وأسمائها على الأوراق والأعمدة. الإسنادات مقسومة على ورقة لكل مكتب (${esc((S.B.lists.office||[]).join('، '))}) تُعدَّل فيها، وورقة «الإسنادات» تجمعها تلقائياً بمعادلات ربط (محمية من التعديل، وفيها 100 صف احتياطي لكل مكتب للأوامر الجديدة)، ومنها تُجلب الأعمدة إلى بقية الأوراق بمعادلة XLOOKUP (بمفتاح «رقم الأمر-الرمز»)، وأرقام الداشبورد ورسومه معادلات حيّة. ورقة «رحلة أمر العمل» فيها كل خطوة ومسؤولها في كل مكتب؛ «خطوة الرحلة» و«المسؤول الحالي» في أوراق المكاتب معادلات تتبع آخر إجراء في أولاب (كما في البرنامج: المرحلة اليدوية الأبعد تبقى) ومسؤولي الرحلة، فتعديل المسؤول في ورقة الرحلة ينعكس على الأوامر. أعمدة كل ورقة هي أعمدتك الظاهرة في تبويبها. يحتاج Excel 365.<br>بعد التعديل يمكن إرجاع الملف من «الاستيراد ← ملف موحّد» (المدير).</div>
