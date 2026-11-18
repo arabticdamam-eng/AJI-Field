@@ -1788,8 +1788,14 @@ async function vQdCat(){ let C; try{ C=await qdCat(); }catch(e){ $('#usub').inne
 function vQuality(){
   const l=S.orders.filter(o=>o.qf_status);
   const n=k=>l.filter(o=>o.qf_status===k).length;
-  sheet(l,['wo','type','office','contractor','site_engineer','cur_stage','qf_at','qf_by','qf_note','qf'],{kpis:`<div class="kpis"><div class="kpi" data-kf="w">بانتظار المراجعة<b>${n('بانتظار الجودة')}</b></div><div class="kpi" data-kf="ok">معتمد<b>${n('معتمد')}</b></div><div class="kpi" data-kf="rej">مرفوض (عند المهندس)<b class="late">${n('مرفوض')}</b></div></div>`, kf:{w:{label:'بانتظار المراجعة',fn:o=>o.qf_status==='بانتظار الجودة'}, ok:{label:'معتمد',fn:o=>o.qf_status==='معتمد'}, rej:{label:'مرفوض',fn:o=>o.qf_status==='مرفوض'}},intro:'ملفات الجودة المرفوعة. اضغط على حالة الملف لفتحه أو اعتماده أو رفضه.'});
+  // المالك 18-11: ملفات جودة إشعارات الصيانة والطوارئ تظهر لمهندس الجودة هنا أيضاً (كانت في تبويب الصيانة فقط)
+  if(!S.mt&&tabOn('maint')&&!S._qmtTry){ S._qmtTry=1; api('listMaint',S.tok).then(r=>{ S.mt=S.mt||r; if(S.view==='quality') vQuality(); }).catch(()=>{}); }
+  const MQ=(()=>{ const R=S.mt; if(!R||!R.headers) return []; const H=R.headers; return R.rows.map(r=>{ const o={}; H.forEach((k,i)=>o[k]=r[i]); return o; }).filter(o=>o.id&&o.qf_status&&QF_ST[o.qf_status]&&o.qf_at).sort((a,b)=>(a.qf_status==='بانتظار الجودة'?0:1)-(b.qf_status==='بانتظار الجودة'?0:1)||String(b.qf_at||'').localeCompare(String(a.qf_at||''))); })();
+  const mn=k=>MQ.filter(o=>o.qf_status===k).length;
+  const mqHtml=MQ.length?`<details class="card" id="qmt" ${mn('بانتظار الجودة')?'open':''} style="margin:8px 0"><summary><b>🛠 إشعارات الصيانة والطوارئ</b> · بانتظار المراجعة <b>${mn('بانتظار الجودة')}</b> · معتمد ${mn('معتمد')} · مرفوض ${mn('مرفوض')}</summary><div class="tw" style="max-height:38vh;margin-top:6px"><table><thead><tr><th>رقم الإشعار</th><th>النوع</th><th>المكتب</th><th>المقاول</th><th>المهندس</th><th>تاريخ رفع الملف</th><th>رفعه</th><th>ملاحظة الجودة</th><th>ملف الجودة</th></tr></thead><tbody>${MQ.map(o=>{ const s=QF_ST[o.qf_status]||QF_ST['']; return `<tr><td>${esc(o.d9||o.mref||'')}</td><td>${esc(o.mt_kind||o.work_type||'')}</td><td>${esc(o.office||'')}</td><td>${esc(o.contractor||'')}</td><td>${esc(o.engineer||'')}</td><td>${esc(o.qf_at||'')}</td><td>${esc(o.qf_by||'')}</td><td>${esc(o.qf_note||'')}</td><td><span class="qfb ${s.c}" data-mq="${esc(String(o.mref||o.d9||'').trim())}" style="cursor:pointer">${s.i} ${esc(s.t)}</span></td></tr>`; }).join('')}</tbody></table></div></details>`:'';
+  sheet(l,['wo','type','office','contractor','site_engineer','cur_stage','qf_at','qf_by','qf_note','qf'],{kpis:mqHtml+`<div class="kpis"><div class="kpi" data-kf="w">بانتظار المراجعة<b>${n('بانتظار الجودة')}</b></div><div class="kpi" data-kf="ok">معتمد<b>${n('معتمد')}</b></div><div class="kpi" data-kf="rej">مرفوض (عند المهندس)<b class="late">${n('مرفوض')}</b></div></div>`, kf:{w:{label:'بانتظار المراجعة',fn:o=>o.qf_status==='بانتظار الجودة'}, ok:{label:'معتمد',fn:o=>o.qf_status==='معتمد'}, rej:{label:'مرفوض',fn:o=>o.qf_status==='مرفوض'}},intro:'ملفات الجودة المرفوعة. اضغط على حالة الملف لفتحه أو اعتماده أو رفضه.'});
   const bb=document.createElement('button'); bb.className='pri'; bb.textContent='📦 رفع جماعي لملفات سابقة'; bb.onclick=qfBulkForm; const bar=$('#main .bar'); if(bar) bar.insertBefore(bb, bar.querySelector('#gcols'));
+  document.querySelectorAll('#qmt .qfb[data-mq]').forEach(el=>el.onclick=e=>{ e.preventDefault(); e.stopPropagation(); qdModal('D9:'+el.dataset.mq); });
 }
 
 const QF_GRACE=3;
@@ -1807,28 +1813,54 @@ function qfEngTable(list){
 }
 
 function qfBulkForm(){
+  // المالك 18-11: الرفع الجماعي يقبل المجلدات (اسم المجلد رقم أمر العمل أو رقم الإشعار) وكل ما فيها: PDF وصور وExcel، كل ملف منفصلاً كما هو، وأول 8 لكل أمر
+  const EXT=['pdf','jpg','jpeg','png','xlsx','xls'], MAXN=8, JUNK=/^(\.|~\$|thumbs\.db$|desktop\.ini$)/i;
   modal(`<h3 style="margin-top:0">رفع جماعي لملفات الجودة السابقة</h3>
-   <div class="muted" style="margin-bottom:8px">اختر عدة ملفات PDF دفعة واحدة. يُقرأ رقم أمر العمل من اسم كل ملف (مثل 263064595.pdf أو 263064595-804 جودة.pdf) ويُربط بالأمر تلقائياً.</div>
-   <input type="file" id="qbf" accept="application/pdf,.pdf" multiple>
-   <div style="margin:8px 0;display:flex;gap:16px;flex-wrap:wrap"><label><input type="checkbox" id="qbrep"> استبدال الملف إن كان للأمر ملف سابق</label><label><input type="checkbox" id="qbpend"> تحتاج مراجعة الجودة (وإلا تُعتمد مباشرة)</label></div>
+   <div class="muted" style="margin-bottom:8px">اختر مجلداً يضم مجلدات باسم رقم أمر العمل أو رقم إشعار الصيانة (مثل 263028132 أو 263028132-804 أو 4121706443)، أو اسحب عدة مجلدات وأفلتها في المربع، أو اختر ملفات يحمل اسمها الرقم. كل ما في المجلد يُرفع ملفات منفصلة كما هي — PDF وصور وExcel — وأول ${MAXN} ملفات لكل أمر أو إشعار. الإشعار الذي له ملف جودة منشأ من النماذج لا يُرفع له شيء.</div>
+   <div id="qbdrop" style="border:2px dashed var(--line,#9bb);border-radius:10px;padding:16px;text-align:center;margin-bottom:8px">📂 اسحب المجلدات أو الملفات وأفلتها هنا</div>
+   <label class="upl">📁 اختيار مجلد<input type="file" id="qbd" webkitdirectory multiple style="display:none"></label> <label class="upl">📄 اختيار ملفات<input type="file" id="qbf" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls" multiple style="display:none"></label>
+   <div style="margin:8px 0;display:flex;gap:16px;flex-wrap:wrap"><label><input type="checkbox" id="qbrep"> استبدال الملفات إن كان للأمر ملف سابق</label><label><input type="checkbox" id="qbpend"> تحتاج مراجعة الجودة (وإلا تُعتمد مباشرة)</label></div>
    <div id="qblist"></div><div class="err" id="qberr"></div>
    <button class="pri" id="qbgo" disabled>رفع</button> <button onclick="closeModal()">إغلاق</button>`);
-  let items=[];
-  $('#qbf').onchange=()=>{ items=[...$('#qbf').files].map(f=>{ const nm=f.name.replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-0x660)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-0x6f0)); const nums=nm.match(/\d+/g)||[]; const cands=nums.filter(n=>n.length>=6&&n.length<=12); let wo=cands.find(n=>S.orders.some(x=>x.wo===n))||cands[0]||''; const tp=nums.find(n=>n.length===3); const o=wo?byRef(wo+(tp?'-'+tp:'')):null; const tmis=o&&tp&&String(o.type)!==tp&&String(o.ccode)!==tp;
-      let st=!/pdf$/i.test(f.name)?'ليس PDF':!wo?'لا يوجد رقم أمر في الاسم':!o?'رقم غير موجود في البرنامج':f.size>30*1024*1024?'أكبر من 30 ميغابايت':'جاهز';
-      if(st==='جاهز'&&tmis) st='جاهز'; return {f,wo,o,st,warn:tmis?'النوع في الاسم '+tp+' ≠ النوع في البرنامج '+o.type:''}; });
-    const ok=items.filter(x=>x.st==='جاهز').length;
-    $('#qblist').innerHTML=`<div class="muted" style="margin:6px 0">${items.length} ملفاً — جاهز منها ${ok}</div><div class="tw" style="max-height:45vh"><table><thead><tr><th>الملف</th><th>أمر العمل</th><th>المكتب</th><th>ملف حالي</th><th>الحالة</th></tr></thead><tbody>${items.map((x,i)=>`<tr><td>${esc(x.f.name)}</td><td>${esc(x.wo)}</td><td>${esc(x.o?x.o.office:'')}</td><td>${x.o&&x.o.qf_id?esc(x.o.qf_status):''}</td><td id="qbs${i}" class="${x.st==='جاهز'?'':'late'}">${esc(x.st)}${x.warn?`<div class="muted" style="color:var(--warn)">${esc(x.warn)}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`;
-    $('#qbgo').disabled=!ok; };
-  $('#qbgo').onclick=async()=>{ $('#qbgo').disabled=true; $('#qbf').disabled=true; let done=0, skip=0, fail=0; const rep=$('#qbrep').checked, pend=$('#qbpend').checked;
-    const read=f=>new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=no; r.readAsDataURL(f); });
-    for(let i=0;i<items.length;i++){ const x=items[i]; if(x.st!=='جاهز') continue; const cell=$('#qbs'+i); cell.textContent='جارٍ الرفع…';
-      try{ const qo={bulk:true,pending:pend,skipIfExists:!rep};
-        const n=await upDirect('qf',x.o.key,x.f,path=>api('uploadQuality',S.tok,x.o.key,'','application/pdf',Object.assign({up:path},qo)),b64=>api0('uploadQuality',S.tok,x.o.key,b64,'application/pdf',qo),t=>{ cell.textContent=t; });
-        Object.assign(x.o,n); delete x.o._skipped; derive(x.o);
-        if(n._skipped){ skip++; cell.textContent='تُرك (له ملف سابق)'; } else { done++; cell.textContent='✅ '+n.qf_status; } }
+  let items=[], src=[], busy=false;
+  const dg=t=>String(t||'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-0x660)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-0x6f0));
+  const NT=()=>{ const R=S.mt, m={}; if(!R||!R.headers) return m; const H=R.headers; R.rows.forEach(r=>{ const o={}; H.forEach((k,i)=>o[k]=r[i]); if(!o.id) return; [o.d9,o.mref].forEach(v=>{ v=String(v||'').trim(); if(v&&!m[v]) m[v]=o; }); }); return m; };
+  // الهدف من اسم (مجلد أو ملف): أمر عمل، أو إشعار، أو «يحتاج تحديد» إن طابق الاثنين
+  const target=(name,N)=>{ const nums=dg(name).match(/\d+/g)||[], cands=nums.filter(n=>n.length>=6&&n.length<=12); if(!cands.length) return null; const tp=nums.find(n=>n.length===3);
+    const wo=cands.find(n=>S.orders.some(x=>x.wo===n)), o=wo?(byRef(wo+(tp?'-'+tp:''))||byRef(wo)):null, nn=cands.find(n=>N[n]), nt=nn?N[nn]:null;
+    if(o&&nt) return {amb:1,num:wo}; if(o) return {kind:'o',o,ref:o.key,num:wo,warn:tp&&String(o.type)!==tp&&String(o.ccode)!==tp?'النوع في الاسم '+tp+' ≠ النوع في البرنامج '+o.type:''};
+    if(nt) return {kind:'n',n:nt,ref:'D9:'+String(nt.mref||nt.d9||'').trim(),num:nn}; return {unk:1,num:cands[0]}; };
+  const build=()=>{ const N=NT(); items=src.filter(x=>!JUNK.test(x.f.name)).map(x=>{ const segs=x.path.split('/'), dirs=segs.slice(0,-1).reverse(); let t=null; for(const d of dirs){ t=target(d,N); if(t) break; } if(!t) t=target(x.f.name,N);
+      const ext=(x.f.name.match(/\.([A-Za-z0-9]{1,5})$/)||[])[1]||''; let st=!EXT.includes(ext.toLowerCase())?'نوع غير مسموح (PDF وصور وExcel فقط)':!t?'لا يوجد رقم في اسم المجلد أو الملف':t.amb?'يحتاج تحديد: الرقم لأمر عمل ولإشعار معاً':t.unk?'رقم غير موجود في البرنامج':x.f.size>30*1024*1024?'أكبر من 30 ميغابايت':!x.f.size?'ملف فارغ':'جاهز';
+      if(st==='جاهز'&&t.kind==='n'&&t.n.qf_at&&t.n.qf_note!=='رفع جماعي (ملف سابق)') st='له ملف جودة منشأ — يُتجاوز';
+      return {f:x.f,path:x.path,t,ext:ext.toLowerCase(),st}; });
+    const G={}; items.forEach(x=>{ if(x.st==='جاهز') (G[x.t.ref]=G[x.t.ref]||[]).push(x); });
+    Object.keys(G).forEach(k=>{ G[k].sort((a,b)=>(a.ext==='pdf'?0:1)-(b.ext==='pdf'?0:1)||a.f.name.localeCompare(b.f.name,'ar',{numeric:true})); G[k].forEach((x,i)=>{ x.seq=i; if(i>=MAXN) x.st='تجاوز الحد ('+MAXN+' ملفات)'; }); });
+    items.sort((a,b)=>String((a.t&&a.t.num)||'~').localeCompare(String((b.t&&b.t.num)||'~'))||(a.seq==null?99:a.seq)-(b.seq==null?99:b.seq));
+    const ok=items.filter(x=>x.st==='جاهز').length, tg=new Set(items.filter(x=>x.st==='جاهز').map(x=>x.t.ref)).size;
+    $('#qblist').innerHTML=items.length?`<div class="muted" style="margin:6px 0">${items.length} ملفاً — جاهز منها ${ok} لـ ${tg} أمراً أو إشعاراً</div><div class="tw" style="max-height:42vh"><table><thead><tr><th>الملف</th><th>الهدف</th><th>المكتب</th><th>ملف حالي</th><th>الحالة</th></tr></thead><tbody>${items.map((x,i)=>{ const t=x.t||{}, o=t.o||t.n||{}; return `<tr><td dir="ltr" style="text-align:right">${esc(x.path)}</td><td>${t.kind==='n'?'إشعار ':t.kind==='o'?'أمر ':''}${esc(t.num||'')}</td><td>${esc(o.office||'')}</td><td>${esc(t.kind==='o'?(o.qf_id?o.qf_status:''):(o.qf_status||''))}</td><td id="qbs${i}" class="${x.st==='جاهز'?'':'late'}">${esc(x.st)}${t.warn?`<div class="muted" style="color:var(--warn)">${esc(t.warn)}</div>`:''}</td></tr>`; }).join('')}</tbody></table></div>`:'';
+    $('#qbgo').disabled=!ok||busy; };
+  const add=L=>{ src=src.concat(L); build(); };
+  if(!S.mt&&tabOn('maint')) api('listMaint',S.tok).then(r=>{ S.mt=S.mt||r; if($('#qblist')&&!busy) build(); }).catch(()=>{});
+  $('#qbd').onchange=()=>{ add([...$('#qbd').files].map(f=>({f,path:f.webkitRelativePath||f.name}))); $('#qbd').value=''; };
+  $('#qbf').onchange=()=>{ add([...$('#qbf').files].map(f=>({f,path:f.name}))); $('#qbf').value=''; };
+  const walk=(en,pre)=>new Promise(res=>{ if(en.isFile) en.file(f=>res([{f,path:pre+f.name}]),()=>res([])); else if(en.isDirectory){ const rd=en.createReader(), out=[]; const more=()=>rd.readEntries(async es=>{ if(!es.length) return res(out); for(const e of es) out.push(...await walk(e,pre+en.name+'/')); more(); },()=>res(out)); more(); } else res([]); });
+  const dz=$('#qbdrop'); ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{ e.preventDefault(); dz.style.background='rgba(14,124,134,.10)'; })); ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{ e.preventDefault(); dz.style.background=''; }));
+  dz.addEventListener('drop',async e=>{ if(busy) return; const its=[...(e.dataTransfer.items||[])].map(i=>i.webkitGetAsEntry?i.webkitGetAsEntry():null).filter(Boolean); let L=[];
+    if(its.length){ dz.textContent='جارٍ قراءة المجلدات…'; for(const en of its) L.push(...await walk(en,'')); dz.textContent='📂 اسحب المجلدات أو الملفات وأفلتها هنا'; } else L=[...(e.dataTransfer.files||[])].map(f=>({f,path:f.name})); add(L); });
+  $('#qbgo').onclick=async()=>{ busy=true; $('#qbgo').disabled=true; let done=0, skip=0, fail=0, mtTouched=false; const rep=$('#qbrep').checked, pend=$('#qbpend').checked;
+    const MIME={pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xls:'application/vnd.ms-excel'};
+    const st={};   // حالة كل هدف: هل رُفع أول ملف له، أم تُرك كله
+    for(let i=0;i<items.length;i++){ const x=items[i]; if(x.st!=='جاهز') continue; const cell=$('#qbs'+i), ref=x.t.ref, g=st[ref]||(st[ref]={first:true,skip:''});
+      if(g.skip){ skip++; cell.textContent=g.skip; continue; } cell.textContent='جارٍ الرفع…';
+      try{ const qo=Object.assign({bulk:true,pending:pend,ext:x.ext},g.first?{skipIfExists:!rep}:{mode:'add'}), mime=MIME[x.ext];
+        const n=await upDirect('qf',ref,x.f,path=>api('uploadQuality',S.tok,ref,'',mime,Object.assign({up:path},qo)),b64=>api0('uploadQuality',S.tok,ref,b64,mime,qo),t=>{ cell.textContent=t; });
+        if(n._skipped){ g.skip=n._skipped==='built'?'له ملف جودة منشأ — تُجووز':'تُرك (له ملف سابق)'; skip++; cell.textContent=g.skip; continue; }
+        g.first=false; done++; cell.textContent='✅ '+(n.qf_status||'');
+        if(x.t.kind==='o'){ Object.assign(x.t.o,n); delete x.t.o._skipped; derive(x.t.o); } else mtTouched=true; }
       catch(e){ fail++; cell.textContent='خطأ: '+e.message; cell.className='late'; } }
-    $('#qberr').textContent=''; shell(); toast(`تم رفع ${done} ملفاً`+(skip?` · تُرك ${skip}`:'')+(fail?` · فشل ${fail}`:'')); $('#qbf').disabled=false; };
+    if(mtTouched){ S.mt=null; S._qmtTry=0; }
+    $('#qberr').textContent=''; busy=false; shell(); toast(`تم رفع ${done} ملفاً`+(skip?` · تُرك ${skip}`:'')+(fail?` · فشل ${fail}`:'')); };
 }
 
 let undoBusy=false;
@@ -3594,7 +3626,7 @@ function mtWfCell(o){ const d9=String(o.mref||o.d9||'').trim(); if(!d9||!o.id) r
 function mtFilesModal(id){ const R=S.mt; if(!R) return; const H=R.headers, row=R.rows.find(r=>String(r[0])===String(id)); if(!row) return; const o={}; H.forEach((k,i)=>o[k]=row[i]); const ref='D9:'+String(o.mref||o.d9||'').trim(), q=QF_ST[o.qf_status||'']||QF_ST['']; let sf=0,ci=0,ai=0; try{ sf=(JSON.parse(o.sf_files||'[]')||[]).length; }catch(e){} try{ ci=(JSON.parse(o.c_inv_files||'[]')||[]).length; }catch(e){} try{ ai=(JSON.parse(o.a_inv_files||'[]')||[]).filter(f=>!f.pg).length; }catch(e){}
   modal(`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">📎 مرفقات الإشعار ${esc(o.d9||o.d1||'#'+o.id)}</h3><span class="muted">${esc([o.station,o.contractor,o.date].filter(Boolean).join(' · '))}</span><span class="sp"></span><button id="mwall" style="margin-inline-end:40px">📁 ملف الإشعار كاملاً</button></div>
     <div style="margin-top:10px;border:2px solid var(--pri,#0E7C86);border-radius:12px;padding:8px;background:rgba(14,124,134,.06)"><div style="font-weight:700;color:var(--pri,#0E7C86);margin:0 2px 6px">ملفات الإشراف والسلامة</div>
-    <div class="card"><b>📋 نماذج الإشراف وصور الجودة</b> <span class="qfb ${q.c}" style="margin-inline-start:6px">${q.i} ${o.qd_prog?esc(qdProgTxt(o.qd_prog)):esc(q.t)}</span> <button id="mwqd" style="margin-inline-start:8px">فتح نماذج الإشراف وصور الجودة</button></div>
+    <div class="card"><b>📋 نماذج الإشراف وصور الجودة</b> <span class="qfb ${q.c}" style="margin-inline-start:6px">${q.i} ${o.qd_prog?esc(qdProgTxt(o.qd_prog)):esc(q.t)}</span> <button id="mwqd" style="margin-inline-start:8px">فتح نماذج الإشراف وصور الجودة</button><div id="mwqfu" style="margin-top:6px"></div></div>
     <div class="card" style="margin-top:8px"><b>🦺 صور السلامة</b> <span class="muted">(${sf})</span> <button id="mwsf" style="margin-inline-start:8px">${sf?'فتح':'إرفاق'}</button></div></div>
     <div class="card" style="margin-top:8px"><b>⚠️ المخالفات</b> <span class="muted">(${+o.vio_n||0})</span> <button id="mwvio" style="margin-inline-start:8px">${+o.vio_n?'فتح':'إضافة'}</button></div>
     <div class="card" style="margin-top:8px"><b>📄 فاتورة المقاول</b> <span class="muted">(${ci})</span> <button id="mwci" style="margin-inline-start:8px">${ci?'فتح':'إرفاق'}</button></div>
@@ -3602,7 +3634,8 @@ function mtFilesModal(id){ const R=S.mt; if(!R) return; const H=R.headers, row=R
     <div class="card" style="margin-top:8px"><b>📜 شهادة الإنجاز</b> <span class="muted">تُعبّأ تلقائياً — <span dir="ltr">CC_Work Completion Certificate</span></span> <button id="mwcc" style="margin-inline-start:8px">فتح وطباعة</button></div>
     <div class="card" style="margin-top:8px"><b>📁 مرفقات أخرى</b> <button id="mwatt" style="margin-inline-start:8px">فتح</button></div>`);
   $('#mwiv').onclick=()=>invModal(o.id); $('#mwai').onclick=()=>aiModal(o.id); $('#mwcc').onclick=()=>ccModal(ref);
-  $('#mwall').onclick=()=>attModal(ref); $('#mwqd').onclick=()=>qdModal(ref); $('#mwsf').onclick=()=>sfModal(ref); $('#mwvio').onclick=()=>formsModal(ref,'vio'); $('#mwci').onclick=()=>ciModal(o.id); $('#mwatt').onclick=()=>attModal(ref); }
+  $('#mwall').onclick=()=>attModal(ref); $('#mwqd').onclick=()=>qdModal(ref); $('#mwsf').onclick=()=>sfModal(ref);
+  /* المالك 18-11: ملفات جودة جاهزة رُفعت على الإشعار (رفع جماعي) تُعرض هنا روابط */ if(o.qf_status) api('qfFiles',S.tok,ref).then(R=>{ const b=$('#mwqfu'), L=(R&&R.files)||[]; if(!b||!L.length) return; b.innerHTML='<span class="muted">ملفات جودة مرفوعة ('+L.length+'):</span> '+L.map(f=>`<a href="${esc(stDl(f.url||phView(f.id),f.name))}" target="_blank" rel="noopener" style="margin-inline-end:10px">${esc(f.name)}</a>`).join(''); }).catch(()=>{}); $('#mwvio').onclick=()=>formsModal(ref,'vio'); $('#mwci').onclick=()=>ciModal(o.id); $('#mwatt').onclick=()=>attModal(ref); }
 async function vMaintInv(q){
   $('#main').innerHTML='<div class="loading">جارٍ تحميل الفواتير…</div>'; S.mtInv=true;
   try{ await mrLoad(); }catch(e){ $('#main').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
@@ -4870,7 +4903,7 @@ function boqImport(kind){
 }
 
 // ---------- «أين الطلب»: every open order, with whom it is now and since how long; time per stage; ages; engineers' load ----------
-const WH_SUB=[['now','الآن مع مَن'],['steps','زمن كل مرحلة'],['ages','أعمار الأوامر'],['load','حمل المهندسين']];
+const WH_SUB=[['now','الآن مع مَن'],['steps','زمن كل مرحلة'],['gap','تعارض الإجراءات'],['ages','أعمار الأوامر'],['load','حمل المهندسين']];
 const whJob=n=>{ const p=(S.B.people||[]).find(x=>x.name===n); return p?(p.job||p.role||'غير محدد'):'غير محدد'; };
 const whSince=o=>{ const d=o.cur_owner?(o.cur_since||o.updated_at||o.assign_date):(o.assign_date||o.updated_at); const w=d?workDiff(String(d).slice(0,10),S.B.today):''; return w===''?'':Math.max(w,0); };
 const whAge=o=>o.assign_date?Math.max(workDiff(String(o.assign_date).slice(0,10),S.B.today)||0,0):'';
@@ -4904,6 +4937,88 @@ function olList(title,list,lim,cols,who){ const dK=who==='con'?olDaysK:olDays, p
 function olGroups(base,lim,who){ const K=who==='con', G={}, ji={}; (S.B.journey||[]).forEach((x,i)=>{ if(x.kind==='إجراء'&&ji[String(x.code)]==null) ji[String(x.code)]=i; });
   base.forEach(o=>{ const k=K?olKeyK(o):olKey(o), g=G[k]||(G[k]={k,L:[],s:0,c:0,mx:0,late:0,con:{}}); g.L.push(o); const d=K?olDaysK(o):olDays(o); if(d!==''){ g.s+=d; g.c++; g.mx=Math.max(g.mx,d); if(d>lim) g.late++; } const cc=K?olKey(o):String(o.last_action_con||'').trim(); if(cc) g.con[cc]=(g.con[cc]||0)+1; });
   return Object.values(G).map(g=>Object.assign(g,{n:g.L.length,avg:g.c?Math.round(g.s/g.c*10)/10:'',top:Object.keys(g.con).sort((a,b)=>g.con[b]-g.con[a])[0]||''})).sort((a,b)=>(a.k?(ji[a.k]??998):999)-(b.k?(ji[b.k]??998):999)); }
+
+// ---- تعارض الإجراءات (المالك 18-11): مقارنة آخر إجراء للمقاول بآخر إجراء للاستشاري من أولاب. «عند المالك» = المقاول سجّل إجراءه ولم يُسجَّل المقابل
+// على النظام (يُصعَّد إلى PDC)، «على المقاول» = الخطوة التالية عنده. القاعدة الأولية هنا، والمدير يعدّل حكم أي زوج فيُحفظ. الانتظار بالأيام التقويمية
+// من تاريخ آخر إجراء للمقاول (وإن غاب فمن تاريخ إجراء الاستشاري).
+function gapDef(a,c){ if(a==='154') return ['190','200','203','207','211'].includes(c)?{who:'own',need:'تسجيل 203 الانتهاء من تنفيذ الشبكة'}:{who:'con',need:'استكمال التنفيذ وتسجيل إجراءاته على النظام'};
+  if(a==='203') return c==='207'?{who:'own',need:'تنفيذ 211 فحص المعدات بالموقع'}:c==='211'?{who:'own',need:'تسجيل 155 استلام أمر العمل من المقاول'}:{who:'con',need:'إدخال بيانات العدادات وطلب فحص المعدات 207'};
+  if((a==='155'||a==='169')&&c==='170') return {who:'own',need:'اعتماد شهادة الإنجاز'}; return {who:'',need:''}; }
+function gapRule(a,c){ const o=((S.gap||{}).cfg||{})[a+'|'+c]; return o?{who:o.who||'',need:o.need||''}:gapDef(a,c); }
+const gapWait=o=>{ const d=String(o.last_action_con_date||o.last_action_date||'').slice(0,10); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return ''; return Math.max(0,Math.round((Date.parse(S.B.today+'T00:00:00Z')-Date.parse(d+'T00:00:00Z'))/864e5)); };
+const GAP_WHO={own:'عند المالك — يُصعَّد',con:'على المقاول','':'لا إجراء مطلوب'}, GAP_REL={ahead:'المقاول سابق',eq:'متساويان',behind:'الاستشاري سابق',none:'بلا إجراء للمقاول',unk:'إجراء خارج الرحلة'};
+const GAP_C=['wo','type','office','district','contractor','eng','act','act_date','act_con','con_date','g_wait','g_need','g_who','g_note'], GAP_L={g_wait:'أيام الانتظار (تقويمية)',g_need:'الإجراء المطلوب',g_who:'عند مَن',g_note:'الإفادة والموعد المتوقع'};
+const gapLbl=k=>GAP_L[k]||olLbl(k), gapVal=(o,k)=>k==='g_wait'?(o._gw==null?'':o._gw):k==='g_need'?(o._gn||''):k==='g_who'?(GAP_WHO[o._gwho||'']||''):k==='g_note'?'':olVal(o,k);
+const gapNm=c=>String(c||'').replace(/^(شركة|مؤسسة)\s+/,'').trim();
+function gapData(base,W){ const ji={}; (S.B.journey||[]).forEach((x,i)=>{ if(x.kind==='إجراء'&&ji[String(x.code)]==null) ji[String(x.code)]=i; });
+  const lim=W.gd==null?5:W.gd, R=[]; base.forEach(o=>{ const a=olKey(o), c=olKeyK(o); if(!a) return; const r=gapRule(a,c), w=gapWait(o), pa=ji[a], pc=c?ji[c]:null;
+    R.push({o,a,c,who:r.who,need:r.need,w,rel:!c?'none':(pa==null||pc==null)?'unk':pc>pa?'ahead':pc===pa?'eq':'behind',late:w!==''&&w>lim}); });
+  const byW=(x,y)=>(y.w||0)-(x.w||0); return {R,lim,own:R.filter(x=>x.who==='own'&&x.late).sort(byW),con:R.filter(x=>x.who==='con'&&x.late).sort(byW)}; }
+const gapOrders=X=>X.map(x=>{ x.o._gw=x.w; x.o._gn=x.need; x.o._gwho=x.who; return x.o; });
+function gapBody(base,W){
+  if(!S.gap){ api('gapGet',S.tok).then(r=>{ S.gap=r; if(S.view==='where'&&S.wh&&S.wh.sub==='gap') vWhere(); }).catch(e=>{ S.gap={cfg:{},can:false,err:e.message}; if(S.view==='where'&&S.wh&&S.wh.sub==='gap') vWhere(); }); return '<div class="loading">جارٍ تحميل قواعد التعارض…</div>'; }
+  const D=S.gapD=gapData(base,W), offs=[...new Set(base.map(o=>o.office).filter(Boolean))].sort(), LL=S.gapL={}; let li=0;
+  const lk=(X,title)=>{ if(!X.length) return '0'; const id='g'+(li++); LL[id]={t:title,X}; return `<a data-gl="${id}" style="cursor:pointer;color:var(--acc);font-weight:700">${X.length}</a>`; };
+  const needs=[...new Set(D.own.map(x=>x.need))], mxw=X=>X.reduce((m,x)=>Math.max(m,x.w||0),0);
+  const t1=D.own.length?`<div class="tw"><table><thead><tr><th>الإجراء المطلوب على النظام</th>${offs.map(o=>`<th>${esc(o)}</th>`).join('')}<th>الإجمالي</th><th>أقدم انتظار (يوم)</th></tr></thead><tbody>${needs.map(n=>{ const X=D.own.filter(x=>x.need===n); return `<tr><td>${esc(n)}</td>${offs.map(o=>`<td>${lk(X.filter(x=>x.o.office===o),n+' — '+o)}</td>`).join('')}<td>${lk(X,n)}</td><td>${mxw(X)}</td></tr>`; }).join('')}
+     <tr style="background:rgba(14,124,134,.10);font-weight:700"><td>الإجمالي</td>${offs.map(o=>`<td>${lk(D.own.filter(x=>x.o.office===o),'للتصعيد — '+o)}</td>`).join('')}<td>${lk(D.own,'كل ما يُصعَّد إلى المالك')}</td><td>${mxw(D.own)}</td></tr></tbody></table></div>`:'<div class="muted" style="padding:8px">لا أوامر واقفة عند المالك بهذه الشروط.</div>';
+  const CG={}; D.con.forEach(x=>{ const k=gapNm(x.o.contractor)||'بلا مقاول'; (CG[k]=CG[k]||[]).push(x); }); const CK=Object.keys(CG).sort((a,b)=>CG[b].length-CG[a].length); S.gapC=CG;
+  const t2=CK.length?`<div class="tw"><table><thead><tr><th>المقاول</th><th>الأوامر</th><th>أكثر من 30 يوماً</th><th>أقدم انتظار (يوم)</th><th></th></tr></thead><tbody>${CK.map(k=>{ const X=CG[k]; return `<tr><td>${esc(k)}</td><td>${lk(X,'على المقاول — '+k)}</td><td>${lk(X.filter(x=>x.w>30),'على المقاول — '+k+' — أكثر من 30 يوماً')}</td><td>${mxw(X)}</td><td style="white-space:nowrap"><button data-gcm="${esc(k)}">✉ نص البريد</button> <button data-gcx="${esc(k)}">⬇ Excel</button></td></tr>`; }).join('')}
+     <tr style="background:rgba(14,124,134,.10);font-weight:700"><td>الإجمالي</td><td>${lk(D.con,'كل ما على المقاولين')}</td><td>${lk(D.con.filter(x=>x.w>30),'على المقاولين — أكثر من 30 يوماً')}</td><td>${mxw(D.con)}</td><td></td></tr></tbody></table></div>`:'<div class="muted" style="padding:8px">لا أوامر على المقاولين بهذه الشروط.</div>';
+  const PG={}; D.R.forEach(x=>{ const k=x.a+'|'+x.c; (PG[k]=PG[k]||[]).push(x); }); const PK=Object.keys(PG).sort((a,b)=>PG[b].length-PG[a].length), adm=!!S.gap.can;
+  const t3=`<div class="tw" style="max-height:52vh"><table><thead><tr><th>إجراء الاستشاري</th><th>إجراء المقاول</th><th>الترتيب في الرحلة</th><th>العدد</th><th>الحكم</th><th>الإجراء المطلوب</th></tr></thead><tbody>${PK.map(k=>{ const X=PG[k], x0=X[0], ov=(S.gap.cfg||{})[k];
+     return `<tr><td>${esc(olName(x0.a))}</td><td>${esc(olNameK(x0.c))}</td><td class="${x0.rel==='ahead'?'late':''}">${GAP_REL[x0.rel]}</td><td>${lk(X,olName(x0.a)+' ← '+olNameK(x0.c))}</td><td>${adm?`<select data-gw="${esc(k)}">${['own','con',''].map(w=>`<option value="${w}" ${x0.who===w?'selected':''}>${GAP_WHO[w]}</option>`).join('')}</select>${ov?' <span class="muted" title="عدّله المدير">✎</span>':''}`:esc(GAP_WHO[x0.who])}</td><td>${adm?`<input data-gn="${esc(k)}" value="${esc(x0.need)}" style="width:100%;min-width:230px">`:esc(x0.need)}</td></tr>`; }).join('')}</tbody></table></div>`;
+  return `<div class="bar"><b>تعارض الإجراءات بين المقاول والاستشاري — من أولاب</b><span class="sp"></span><span class="muted">مضى على آخر إجراء أكثر من</span><input id="gapd" type="number" min="0" value="${D.lim}" style="width:64px"><span class="muted">يوماً</span>
+    <button id="gapx">⬇ ملف التصعيد الشامل</button><button id="gapxo">⬇ ملف لكل مكتب</button><button id="gapm">✉ نص بريد PDC</button></div>
+   <div class="muted" style="margin:2px 2px 8px">الانتظار بالأيام التقويمية من «تاريخ آخر إجراء مقاول» حتى اليوم ${esc(S.B.today)}، وإن غاب فمن تاريخ إجراء الاستشاري. اضغط أي رقم لفتح أوامره وتصديرها.${S.gap.err?` <span class="err">${esc(S.gap.err)}</span>`:''}</div>
+   <div class="card"><b>① واقف عند المالك — يُصعَّد إلى PDC</b> <span class="muted">المقاول سجّل إجراءه ولم يُسجَّل الإجراء المقابل على النظام</span>${t1}</div>
+   <div class="card" style="margin-top:10px"><b>② على المقاول</b> <span class="muted">الخطوة التالية عند المقاول</span>${t2}</div>
+   <details class="card" style="margin-top:10px" ${W.gp?'open':''} id="gapp"><summary><b>③ أزواج الإجراءات وحكم كل زوج</b> <span class="muted">${adm?'عدّل الحكم أو الإجراء المطلوب فيُحفظ ويُطبَّق على الأرقام والملفات':'يعدّلها المدير'}</span></summary>${t3}</details>`; }
+function gapShow(title,X){ const L=gapOrders(X), C=GAP_C.filter(k=>k!=='g_note');
+  modal(`<h3 style="margin-top:0">${esc(title)} <span class="muted" style="font-size:13px">(${L.length})</span></h3><div class="bar"><button id="gaplx">⬇ تصدير Excel</button><span class="muted">الانتظار بالأيام التقويمية</span></div>
+   <div class="tw" style="max-height:calc(100vh - 170px)"><table><thead><tr>${C.map(k=>`<th>${esc(gapLbl(k))}</th>`).join('')}</tr></thead><tbody>${L.slice(0,800).map(o=>`<tr data-wk="${esc(o.key)}">${C.map(k=>{ const v=gapVal(o,k); return k==='wo'?`<td style="color:var(--acc);font-weight:500">${esc(v)}</td>`:`<td>${esc(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>${L.length>800?'<div class="muted">يُعرض أول 800 — التصدير يشمل الكل.</div>':''}`,true);
+  document.querySelectorAll('#mdl [data-wk]').forEach(r=>r.onclick=()=>openOrder(r.dataset.wk)); $('#gaplx').onclick=()=>gapXlsx(title,[[title.slice(0,28),X]]); }
+function gapXlsx(file,sheets,sum){ const A={lbl:gapLbl,val:gapVal,src:()=>'تعارض الإجراءات',clr:()=>['#1F3864','#DDEBF7'],dates:['act_date','con_date']}, SH=[];
+  if(sum&&sum.rows.length){ const cols=sum.cols.map((c,i)=>'s'+i); SH.push(xuFlat('ملخص',sum.rows.map(r=>{ const o={}; r.forEach((v,i)=>o['s'+i]=v); return o; }),cols,{lbl:k=>sum.cols[+k.slice(1)],val:(o,k)=>o[k],src:()=>'تعارض الإجراءات',clr:()=>['#1F3864','#DDEBF7']})); }
+  sheets.forEach(([nm,X])=>{ if(X.length) SH.push(xuFlat(String(nm).replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,31),gapOrders(X),GAP_C,A)); });
+  if(!SH.length) return toast('لا أوامر للتصدير'); return xuDownload(String(file).replace(/[\s\/\\:*?"<>|]+/g,'_'),SH).then(()=>toast('صُدِّر الملف')).catch(e=>toast('تعذّر التصدير: '+e.message)); }
+// نص البريد بالقالب الرسمي (بلا أقواس، برتقالي للعناوين وأزرق للمتن) — يُعرض للنسخ إلى Outlook، والإرسال بيد المستخدم
+function gapMailHtml(P){ const O='#C55A11',B='#1F3864',G='#44546A', st="font-family:'Sakkal Majalla','Traditional Arabic','Simplified Arabic',Arial,sans-serif;font-weight:bold;line-height:1.95;";
+  const h=t=>`<p style="${st}font-size:18px;color:${O};margin:0 0 6px">${t}</p>`, p=(t,ind,c)=>`<p style="${st}font-size:16px;color:${c||B};margin:0 0 6px;${ind?'padding-right:22px;':''}">${t}</p>`, it=(n,t)=>`<p style="${st}font-size:18px;color:${B};margin:12px 0 2px"><span style="color:${O}">${n}.</span>&nbsp; ${t}</p>`;
+  const td=(t,b,a)=>`<td style="border:1px solid ${B};padding:4px 10px;${st}font-size:16px;color:${B};text-align:${a||'center'};${b?'background:#F2F2F2;':''}">${t}</td>`;
+  const tbl=`<table dir="rtl" style="border-collapse:collapse;margin:6px 22px 10px 0"><tr>${P.th.map(x=>td(esc(x),1)).join('')}</tr>${P.tr.map(r=>'<tr>'+r.map((x,i)=>td(esc(x),0,i?'center':'right')).join('')+'</tr>').join('')}</table>`;
+  return `<div dir="rtl" style="text-align:right;max-width:820px"><p style="${st}font-size:18px;color:${O};margin:0 0 2px">الإخوة الكرام / ${esc(P.to)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;المحترمون</p>${h('إدارة المشاريع')}<br>${h('السلام عليكم ورحمة الله وبركاته،،')}<br>${p(esc(P.intro))}
+   ${it(1,'ملخص الأوامر')}${p(esc(P.sum),1)}${tbl}${it(2,'مدة الانتظار')}${p(esc(P.wait),1)}${it(3,'تفصيل الأوامر')}${p(esc(P.det),1)}<p style="${st}font-size:16px;color:${G};margin:0 0 6px;padding-right:22px"><span style="color:${O}">مرفق:</span> ${esc(P.att)}</p>
+   ${h(esc(P.askT))}${P.ask.map((a,i)=>p(`<span style="color:${O}">${i+1}.</span>&nbsp; ${esc(a)}`,1)).join('')}<br>${p(esc(P.end))}${p('شاكرين لكم تعاونكم،،',0,O)}${p('وتفضلوا بقبول خالص التحية والتقدير،،',0,O)}</div>`; }
+function gapMailShow(subject,att,html,onX){ modal(`<h3 style="margin-top:0">نص البريد</h3><div class="card" style="background:rgba(14,124,134,.10)"><div><b>الموضوع:</b> <span id="gmsub">${esc(subject)}</span></div><div><b>المرفق:</b> ${esc(att)} — نزّله من زر Excel وأرفقه في البريد.</div></div>
+   <div class="bar" style="margin-top:8px"><button class="pri" id="gmcp">📋 نسخ النص</button><button id="gmcs">نسخ الموضوع</button><button id="gmx">⬇ Excel المرفق</button><span class="muted" id="gmmsg">انسخه ثم الصقه في Outlook فتنتقل الألوان والتنسيق. الإرسال من بريدك أنت.</span></div>
+   <div id="gmbody" style="border:1px solid var(--line);border-radius:8px;padding:14px;background:#fff;max-height:calc(100vh - 290px);overflow:auto">${html}</div>`,true);
+  $('#gmcp').onclick=async()=>{ try{ await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([$('#gmbody').innerText],{type:'text/plain'})})]); $('#gmmsg').textContent='✓ نُسخ النص'; }
+    catch(e){ const r=document.createRange(); r.selectNodeContents($('#gmbody')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); try{ document.execCommand('copy'); $('#gmmsg').textContent='✓ نُسخ النص'; }catch(e2){ $('#gmmsg').textContent='حدّد النص وانسخه يدوياً'; } } };
+  $('#gmcs').onclick=async()=>{ try{ await navigator.clipboard.writeText(subject); $('#gmmsg').textContent='✓ نُسخ الموضوع'; }catch(e){} }; $('#gmx').onclick=onX; }
+const gapDmy=d=>String(d||'').slice(0,10).split('-').reverse().join('/');
+function gapSum(D,offs){ const needs=[...new Set(D.own.map(x=>x.need))]; return {cols:['الإجراء المطلوب على النظام'].concat(offs,['الإجمالي','أقدم انتظار (يوم)']),rows:needs.map(n=>{ const X=D.own.filter(x=>x.need===n); return [n].concat(offs.map(o=>X.filter(x=>x.o.office===o).length),[X.length,X.reduce((m,x)=>Math.max(m,x.w||0),0)]); }).concat([['الإجمالي'].concat(offs.map(o=>D.own.filter(x=>x.o.office===o).length),[D.own.length,D.own.reduce((m,x)=>Math.max(m,x.w||0),0)])])}; }
+function gapWire(base,W,re){ const D=S.gapD; if(!D) return; const offs=[...new Set(base.map(o=>o.office).filter(Boolean))].sort(), ahead=D.R.filter(x=>x.rel==='ahead');
+  document.querySelectorAll('[data-gl]').forEach(a=>a.onclick=()=>{ const g=(S.gapL||{})[a.dataset.gl]; if(g) gapShow(g.t,g.X); });
+  if($('#gapd')) $('#gapd').onchange=e=>{ const n=Math.round(+e.target.value); W.gd=n>=0?n:5; re(); };
+  if($('#gapp')) $('#gapp').ontoggle=()=>{ W.gp=$('#gapp').open; };
+  const allX=()=>gapXlsx('تعارض الإجراءات - التصعيد'+(W.off?' - '+W.off:''),[['للتصعيد',D.own]].concat([...new Set(D.own.map(x=>x.need))].map(n=>[n,D.own.filter(x=>x.need===n)]),[['على المقاول',D.con],['كل ما سبق فيه المقاول',ahead]]),gapSum(D,offs));
+  if($('#gapx')) $('#gapx').onclick=allX;
+  if($('#gapxo')) $('#gapxo').onclick=async()=>{ for(const o of offs){ const own=D.own.filter(x=>x.o.office===o), con=D.con.filter(x=>x.o.office===o); if(!own.length&&!con.length) continue; const D2={own,con};
+      await gapXlsx('تعارض الإجراءات - مكتب '+o,[['للتصعيد',own]].concat([...new Set(own.map(x=>x.need))].map(n=>[n,own.filter(x=>x.need===n)]),[['على المقاول',con],['كل ما سبق فيه المقاول',ahead.filter(x=>x.o.office===o)]]),gapSum(D2,[o])); await new Promise(r=>setTimeout(r,500)); } };
+  if($('#gapm')) $('#gapm').onclick=()=>{ if(!D.own.length) return toast('لا أوامر للتصعيد'); const n=D.own.length, o30=D.own.filter(x=>x.w>30).length, mx=D.own.reduce((m,x)=>Math.max(m,x.w||0),0), sm=gapSum(D,offs), att='تعارض الإجراءات - التصعيد_'+S.B.today+'.xlsx';
+    gapMailShow(`أوامر عمل بانتظار إنهاء الإجراء على نظام أولاب — ${n} حتى ${gapDmy(S.B.today)}`,att,gapMailHtml({to:'شركة PDC',intro:`إشارةً إلى متابعة أوامر العمل على نظام أولاب، وتيسيراً على سيادتكم في إنهاء الإجراءات على النظام، نرفع لكم بياناً بأوامر العمل التي سجّل فيها المقاول إجراءه ولم يُسجَّل بعدُ الإجراء المقابل له، من واقع بيانات أولاب حتى تاريخ ${gapDmy(S.B.today)}.`,
+      sum:`عدد الأوامر ${n}، موزعة بحسب الإجراء المطلوب على النظام وبحسب المكتب كما يلي.`,th:sm.cols.slice(0,-1),tr:sm.rows.map(r=>r.slice(0,-1).map(String)),wait:(o30?`منها ${o30} مضى على إجراء المقاول فيها أكثر من ثلاثين يوماً، و`:'')+`أقدمها مضى عليه ${mx} يوماً.`,
+      det:'الملف المرفق يتضمن لكل أمر رقمه والمكتب والمقاول وإجراء المقاول وتاريخه والإجراء المسجَّل مقابله وتاريخه والإجراء المطلوب وعدد أيام الانتظار، مرتبةً بالأقدم.',att,askT:'وعليه نرجو من سيادتكم التكرم بما يلي',ask:['التوجيه بإنهاء الإجراءات المطلوبة على النظام للأوامر الواردة في الملف.','إفادتنا بما يتعذر إنهاؤه منها وسببه، لنتابعه مع المقاول من جهتنا.'],end:'ونحن على استعداد لتزويدكم بأي بيان إضافي أو تحديث للملف متى طُلب.'}),allX); };
+  const conX=k=>gapXlsx('أوامر بانتظار إجراء المقاول - '+k,[['الأوامر',(S.gapC||{})[k]||[]]]);
+  document.querySelectorAll('[data-gcx]').forEach(b=>b.onclick=()=>conX(b.dataset.gcx));
+  document.querySelectorAll('[data-gcm]').forEach(b=>b.onclick=()=>{ const k=b.dataset.gcm, X=(S.gapC||{})[k]||[]; if(!X.length) return; const n=X.length, o30=X.filter(x=>x.w>30).length, mx=X.reduce((m,x)=>Math.max(m,x.w||0),0), nm=X[0].o.contractor||k, needs=[...new Set(X.map(x=>x.need))], oc={}; X.forEach(x=>oc[x.o.office]=(oc[x.o.office]||0)+1); const att='أوامر_بانتظار_إجراء_المقاول_-_'+k.replace(/\s+/g,'_')+'_'+S.B.today+'.xlsx';
+    gapMailShow(`أوامر عمل بانتظار إجراء المقاول على نظام أولاب — ${nm} — ${n} حتى ${gapDmy(S.B.today)}`,att,gapMailHtml({to:nm,intro:`إشارةً إلى متابعة أوامر العمل المسندة إليكم على نظام أولاب، وتيسيراً عليكم في إنهاء إجراءاتها، نرفق لكم بياناً بأوامر العمل التي مضى على آخر إجراء فيها أكثر من ${D.lim} أيام والخطوة التالية فيها من جهتكم، من واقع بيانات أولاب حتى تاريخ ${gapDmy(S.B.today)}.`,
+      sum:`عدد الأوامر ${n}، موزعة على المكاتب كما يلي: `+Object.keys(oc).sort((a,b)=>oc[b]-oc[a]).map(o=>o+' '+oc[o]).join('، ')+'.',th:['المطلوب','عدد الأوامر'],tr:needs.map(q=>[q,String(X.filter(x=>x.need===q).length)]).concat([['الإجمالي',String(n)]]),wait:(o30?`منها ${o30} مضى عليها أكثر من ثلاثين يوماً، و`:'')+`أقدمها مضى عليه ${mx} يوماً من تاريخ آخر إجراء مسجَّل.`,
+      det:'الملف المرفق يتضمن لكل أمر رقمه والمكتب والحي وآخر إجراء مسجَّل وتاريخه والمطلوب لإنهائه، مع خانة لإفادتكم والموعد المتوقع.',att,askT:'وعليه نأمل منكم التكرم بما يلي',ask:['إنهاء الإجراء المطلوب على النظام للأوامر الواردة في الملف.','تعبئة خانة الإفادة لما يتعذر إنهاؤه مع بيان العائق والموعد المتوقع، وإعادة الملف في موعد أقصاه ــــــــــــ.'],end:'ونحن على استعداد لأي إيضاح أو تنسيق تحتاجونه لإنهاء هذه الأوامر.'}),()=>conX(k)); });
+  let tm; const save=()=>{ clearTimeout(tm); tm=setTimeout(async()=>{ try{ S.gap=await api('gapSave',S.tok,S.gap.cfg); toast('حُفظ حكم الزوج'); W.gp=true; re(); }catch(e){ toast(e.message); } },500); };
+  const put=k=>{ const sw=document.querySelector(`[data-gw="${CSS.escape(k)}"]`), sn=document.querySelector(`[data-gn="${CSS.escape(k)}"]`); S.gap.cfg=S.gap.cfg||{}; S.gap.cfg[k]={who:sw?sw.value:'',need:sn?sn.value.trim():''}; save(); };
+  document.querySelectorAll('[data-gw]').forEach(x=>x.onchange=()=>put(x.dataset.gw)); document.querySelectorAll('[data-gn]').forEach(x=>x.onchange=()=>put(x.dataset.gn)); }
 // the list of orders behind any number, in a side panel
 function whList(title, list){
   const L=[...list].sort((a,b)=>(whSince(b)||0)-(whSince(a)||0));
@@ -4923,7 +5038,8 @@ function vWhere(){
   const offs=[...new Set(S.orders.map(o=>o.office).filter(Boolean))].sort(), cons=[...new Set(S.orders.map(o=>o.contractor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const base=whBase();
   let body='';
-  if(W.sub==='now'){
+  if(W.sub==='gap'){ body=gapBody(base,W); }
+  else if(W.sub==='now'){
     // levels (by the job of whoever holds the order), then people, then every order
     const lv={}; base.forEach(o=>{ const k=o.cur_owner?whJob(o.cur_owner):'بدون مسؤول', d=whSince(o); const g=lv[k]=lv[k]||{n:0,s:0,c:0,mx:0}; g.n++; if(d!==''){ g.s+=d; g.c++; g.mx=Math.max(g.mx,d); } });
     const L2=W.lvl?base.filter(o=>(o.cur_owner?whJob(o.cur_owner):'بدون مسؤول')===W.lvl):base;
@@ -4977,6 +5093,7 @@ function vWhere(){
    <span class="sp"></span><span class="muted">${base.length} أمراً مفتوحاً</span>${W.sub==='now'?'<button id="whx">تصدير Excel</button>':''}</div>
    <div id="whb">${body}</div>`;
   const re=()=>vWhere();
+  if(W.sub==='gap') gapWire(base,W,re);
   document.querySelectorAll('[data-ws]').forEach(a=>a.onclick=()=>{ W.sub=a.dataset.ws; re(); });
   $('#whq').oninput=e=>{ W.q=e.target.value; clearTimeout(vWhere.t); vWhere.t=setTimeout(()=>{ re(); const i=$('#whq'); i.focus(); i.setSelectionRange(i.value.length,i.value.length); },300); };
   $('#whq').onkeydown=e=>{ if(e.key==='Enter'){ const o=S.orders.find(x=>String(x.wo)===W.q.trim()||x.key===W.q.trim()); if(o) openOrder(o.key); } };
