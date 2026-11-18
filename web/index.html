@@ -5340,7 +5340,7 @@ function ibAssign(keys){
 // ---------- «المطابقة والصرف»: الإنشاءات / الصيانة والطوارئ, each with its own columns; import and export in the matching file's form ----------
 const MR_MT='صيانة وطوارئ', mrInv=o=>/صيان|فاتور|طوار/.test(String(o.kind||''));
 const MR_CC=['key','wo','ccode','type','aj_code','office','contractor','cert_value','basket','cert','status','value','pct','required','cover','po','po_status','sap_date','pay_status','gis_date','notes'];
-const MR_IC=['inv_seq','wo','d9','n_office','n_contractor','n_station','n_work_type','inv_no','inv_net','prev','inv_from','inv_to','done_date','po','po_status','po_date','sap_date','tax_date','appr_head','appr_mgr','appr_fin','notes','note_date'];
+const MR_IC=['inv_seq','wo','d9','n_office','n_contractor','n_station','n_work_type','inv_no','inv_net','prev','done_date','po','po_status','po_date','sap_date','tax_date','appr_head','appr_mgr','appr_fin','notes','note_date'];   /* المالك 18-11: «للفترة من/إلى» ليستا عمودين — تُحسبان من تاريخ الإشعار ولمدة شهر */
 const MR_L={key:'المفتاح',wo:'رقم أمر العمل',ccode:'رمز استشاري',type:'النوع',aj_code:'كود ارابتك',office:'المكتب',contractor:'المقاول',cert_value:'قيمة الشهادة',basket:'السلة الحالية',cert:'شهادة الإنجاز',
   status:'موقف المطابقة',value:'قيمة المطابقة',pct:'%',required:'المطلوب للمطابقة',cover:'رقم الكفر',po:'رقم PO',po_status:'موقف PO',d9:'رقم الإشعار D9',sap_date:'تاريخ الرفع على الساب',pay_status:'موقف الصرف',notes:'ملاحظات',gis_date:'تاريخ التحويل (GIS)',
   inv_no:'رقم الفاتورة',inv_net:'صافي الفاتورة',prev:'إجمالي المفوتر سابقاً',inv_from:'للفترة من',inv_to:'إلى',done_date:'تاريخ إنجاز العمل',po_date:'تاريخ أمر الشراء',tax_date:'تاريخ الفاتورة الضريبية',
@@ -5443,13 +5443,19 @@ function vCover(top,wireTop){
   const st=document.getElementById('cvcss'); if(st&&!st.textContent) st.textContent=CV_CSS;
   const L=cvInvs(), C=((S.B.project||{}).cover)||{}, o=cvSel();
   const bar=`<div class="bar"><label style="display:flex;gap:6px;align-items:center">الفاتورة
+      <input id="cvq" placeholder="بحث: تسلسل، PO، أمر عمل، إشعار" style="width:210px" autocomplete="off">
       <select id="cvsq" style="min-width:230px">${L.map(x=>`<option value="${esc(x.inv_seq)}" ${o&&String(x.inv_seq)===String(o.inv_seq)?'selected':''}>${esc(x.inv_seq)} — ${esc(x.po||'بلا PO')} — ${esc(x.wo||x.d9||'')} — ${esc(cvF(cvNum(x.inv_net)))}</option>`).join('')}</select></label>
     <button class="pri" id="cvpr">🖨 طباعة</button>${S.B.admin?'<button id="cvst">ثوابت الكفر</button>':''}<span class="sp"></span>
     <span class="muted">${L.length} فاتورة صيانة</span></div>
-   <div class="muted" style="margin-bottom:8px">الغلاف يُملأ من فاتورة الصيانة المختارة: رقم أمر الشراء ورقم الفاتورة والفترة وأمر العمل وتاريخ الإنجاز والصافي والمفوتر سابقاً. الضريبة والإجماليات محسوبة. الثوابت (الرقم الضريبي ورقم عقد الاستشاري ورقم الحساب وقيمة العقد واسم الاستشاري) من «ثوابت الكفر»، ورقم العقد هنا هو عقد الاستشاري لا عقد المقاول.</div>`;
+   <div class="muted" style="margin-bottom:8px">الغلاف يُملأ من فاتورة الصيانة المختارة: رقم أمر الشراء ورقم الفاتورة والفترة (من تاريخ الإشعار ولمدة شهر) وأمر العمل وتاريخ الإنجاز والصافي والمفوتر سابقاً. الضريبة والإجماليات محسوبة. الثوابت (الرقم الضريبي ورقم عقد الاستشاري ورقم الحساب وقيمة العقد واسم الاستشاري) من «ثوابت الكفر»، ورقم العقد هنا هو عقد الاستشاري لا عقد المقاول.</div>`;
   $('#main').innerHTML=top+bar+(o?`<div id="cvbox">${cvHtml(o,C)}</div>`:'<div class="card muted">لا توجد فواتير صيانة بعد. استورد ورقة «تسلسل الفواتير الصيانة» من تبويب «الصيانة والطوارئ».</div>');
   wireTop();
   if($('#cvsq')) $('#cvsq').onchange=e=>{ S.cvSeq=e.target.value; vMatching(); };
+  // بحث في قائمة الفواتير: يصفّي الخيارات أثناء الكتابة، وEnter يفتح أول نتيجة
+  if($('#cvq')){ const nz=t=>String(t==null?'':t).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/\s+/g,'').toLowerCase(), opt=x=>`<option value="${esc(x.inv_seq)}" ${o&&String(x.inv_seq)===String(o.inv_seq)?'selected':''}>${esc(x.inv_seq)} — ${esc(x.po||'بلا PO')} — ${esc(x.wo||x.d9||'')} — ${esc(cvF(cvNum(x.inv_net)))}</option>`;
+    const hit=q=>L.filter(x=>!q||[x.inv_seq,x.po,x.wo,x.d9,x.inv_no,x.n_contractor,x.n_office].some(v=>nz(v).indexOf(q)>=0));
+    $('#cvq').oninput=e=>{ const M=hit(nz(e.target.value)); $('#cvsq').innerHTML=M.length?M.map(opt).join(''):'<option value="">لا نتائج</option>'; };
+    $('#cvq').onkeydown=e=>{ if(e.key!=='Enter') return; const M=hit(nz(e.target.value)); if(M.length){ S.cvSeq=M[0].inv_seq; vMatching(); } }; }
   if($('#cvty')) $('#cvty').onchange=e=>{ S.cvType=e.target.value; };
   if($('#cvpr')) $('#cvpr').onclick=()=>cvPrint(o,C);
   if($('#cvst')) $('#cvst').onclick=()=>cvSettings(C);
@@ -5709,7 +5715,7 @@ function mrSheets(mode,listsAt){
       widths:cols.map(k=>({key:16,m:5,wo:inv?14:13,contractor:15,n_contractor:15,basket:30,required:30,notes:32,po:15,inv_seq:10}[k]||12)),
       pre:[st=>{ sh.cf=[]; if(!inv) ['cert','status'].forEach(k=>[['تم','3B6D11','EAF3DE'],['جاري','854F0B','FAEEDA'],['متبقي','A32D2D','FCEBEB']].forEach(([t,f,b])=>sh.cf.push({sqref:C[k]+'3:'+C[k]+LAST,dxf:st.dxf(f,b),op:'equal',val:'"'+t+'"'}))); }]};
     sheets.push(sh); return {C,LAST}; };
-  const cC=['key','m'].concat(MR_CC.slice(1)), cI=MR_IC.slice();
+  const cC=['key','m'].concat(MR_CC.slice(1)), cI=MR_IC.slice(); cI.splice(cI.indexOf('prev')+1,0,'inv_from','inv_to');   /* في ملف Excel تبقيان (محسوبتين) لأن معادلات الغلاف تقرأ منهما */
   const SC=wantC?build(nmC,cC,CON,false,'3B6D11'):null, SI=wantI?build(nmI,cI,INV,true,'993C1D'):null;
   // summary: construction by PO / status, maintenance by invoice
   const SM=[], put=(r,c,x)=>{ (SM[r]=SM[r]||[])[c]=x; }, H1={b:1,fc:'FFFFFF',fill:'3B6D11',bd:1,al:'center',va:'center',wrap:1}, H2=Object.assign({},H1,{fill:'993C1D'}), TOT={b:1,fill:'F1EFE8',bd:1}, NF2={bd:1,nf:'#,##0.00'};
