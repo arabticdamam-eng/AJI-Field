@@ -4008,9 +4008,9 @@ function xuStyles(){
     if(r===undefined){
       const font=(sp.b||sp.sz||sp.fc||sp.u)?idx(fonts,'<font>'+(sp.b?'<b/>':'')+(sp.u?'<u/>':'')+'<sz val="'+(sp.sz||11)+'"/>'+(sp.fc?'<color rgb="FF'+sp.fc+'"/>':'<color theme="1"/>')+'<name val="Calibri"/><family val="2"/><scheme val="minor"/></font>'):0;
       const fill=sp.fill?idx(fills,'<fill><patternFill patternType="solid"><fgColor rgb="FF'+sp.fill+'"/><bgColor indexed="64"/></patternFill></fill>'):0;
-      const border=sp.bd?idx(borders,'<border>'+side('left','D3D1C7','thin')+side('right','D3D1C7','thin')+side('top','D3D1C7','thin')+(sp.bb?side('bottom',sp.bb,'medium'):side('bottom','D3D1C7','thin'))+'<diagonal/></border>'):0;
+      const bc=sp.bc||'D3D1C7', border=sp.bd?idx(borders,'<border>'+side('left',bc,'thin')+side('right',bc,'thin')+side('top',bc,'thin')+(sp.bb?side('bottom',sp.bb,'medium'):side('bottom',bc,'thin'))+'<diagonal/></border>'):0;
       let nf=0; if(sp.nf){ nf=NF[sp.nf]; if(nf===undefined) nf=164+idx(nfs,sp.nf); }
-      const al=(sp.al||sp.wrap||sp.va)?'<alignment'+(sp.al?' horizontal="'+sp.al+'"':'')+(sp.va?' vertical="'+sp.va+'"':'')+(sp.wrap?' wrapText="1"':'')+'/>':'';
+      const al=(sp.al||sp.wrap||sp.va||sp.rtl)?'<alignment'+(sp.al?' horizontal="'+sp.al+'"':'')+(sp.va?' vertical="'+sp.va+'"':'')+(sp.wrap?' wrapText="1"':'')+(sp.rtl?' readingOrder="2"':'')+'/>':'';
       const pr=sp.ul?'<protection locked="0"/>':'';
       xfs.push('<xf numFmtId="'+nf+'" fontId="'+font+'" fillId="'+fill+'" borderId="'+border+'" xfId="0"'+(nf?' applyNumberFormat="1"':'')+(font?' applyFont="1"':'')+(fill?' applyFill="1"':'')+(border?' applyBorder="1"':'')+(pr?' applyProtection="1"':'')+((al||pr)?' applyAlignment="1">'+al+pr+'</xf>':'/>'));
       r=xfs.length-1; cache.set(k,r); }
@@ -4022,6 +4022,7 @@ function xuStyles(){
     +(dxfs.length?'<dxfs count="'+dxfs.length+'">'+dxfs.join('')+'</dxfs>':'<dxfs count="0"/>')+'<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16"/></styleSheet>';
   return {id,dxf,xml};
 }
+const sp_tall=sh=>!!(sh.print&&sh.print.tall);
 function xuSheetXml(sh,st,first,drawRel){
   let maxc=0, dyn=0; const body=[];
   sh.rows.forEach((row,r)=>{ if(!row) return; let s=''; if(row.length>maxc) maxc=row.length;
@@ -4044,7 +4045,7 @@ function xuSheetXml(sh,st,first,drawRel){
   const spr=(sh.color||sh.print)?'<sheetPr>'+(sh.color?'<tabColor rgb="FF'+sh.color+'"/>':'')+(sh.print?'<pageSetUpPr fitToPage="1"/>':'')+'</sheetPr>':'';
   const xml=XU_D+'<worksheet xmlns="'+XU_M+'" xmlns:r="'+XU_R+'">'+spr+'<dimension ref="A1:'+last+'"/>'
     +'<sheetViews><sheetView rightToLeft="1"'+(first?' tabSelected="1"':'')+(sh.nogrid?' showGridLines="0"':'')+' workbookViewId="0">'+pane+'</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>'+cols+'<sheetData>'+body.join('')+'</sheetData>'
-    +(sh.protect?'<sheetProtection sheet="1" objects="1" scenarios="1" autoFilter="0" sort="0" formatColumns="0" formatRows="0" insertRows="0" deleteRows="0" formatCells="0"/>':'')+(sh.filter?'<autoFilter ref="'+sh.filter+'"/>':'')+mg+cf+dv+(sh.print?'<printOptions horizontalCentered="1"/>':'')+'<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>'+(sh.print?'<pageSetup paperSize="9" orientation="'+(sh.print.landscape?'landscape':'portrait')+'" fitToWidth="1" fitToHeight="1"/>':'')+'<ignoredErrors><ignoredError sqref="A1:XFD1048576" numberStoredAsText="1"/></ignoredErrors>'+(drawRel?'<drawing r:id="'+drawRel+'"/>':'')+'</worksheet>';
+    +(sh.protect?'<sheetProtection sheet="1" objects="1" scenarios="1" autoFilter="0" sort="0" formatColumns="0" formatRows="0" insertRows="0" deleteRows="0" formatCells="0"/>':'')+(sh.filter?'<autoFilter ref="'+sh.filter+'"/>':'')+mg+cf+dv+(sh.print?'<printOptions horizontalCentered="1"/>':'')+'<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>'+(sh.print?'<pageSetup paperSize="9" orientation="'+(sh.print.landscape?'landscape':'portrait')+'" fitToWidth="1" fitToHeight="'+(sp_tall(sh)?0:1)+'"/>':'')+'<ignoredErrors><ignoredError sqref="A1:XFD1048576" numberStoredAsText="1"/></ignoredErrors>'+(drawRel?'<drawing r:id="'+drawRel+'"/>':'')+'</worksheet>';
   return {xml,dyn};
 }
 function xuChartXml(ch,n){
@@ -4969,11 +4970,78 @@ function gapBody(base,W){
   const t3=`<div class="tw" style="max-height:52vh"><table><thead><tr><th>إجراء الاستشاري</th><th>إجراء المقاول</th><th>الترتيب في الرحلة</th><th>العدد</th><th>الحكم</th><th>الإجراء المطلوب</th></tr></thead><tbody>${PK.map(k=>{ const X=PG[k], x0=X[0], ov=(S.gap.cfg||{})[k];
      return `<tr><td>${esc(olName(x0.a))}</td><td>${esc(olNameK(x0.c))}</td><td class="${x0.rel==='ahead'?'late':''}">${GAP_REL[x0.rel]}</td><td>${lk(X,olName(x0.a)+' ← '+olNameK(x0.c))}</td><td>${adm?`<select data-gw="${esc(k)}">${['own','con',''].map(w=>`<option value="${w}" ${x0.who===w?'selected':''}>${GAP_WHO[w]}</option>`).join('')}</select>${ov?' <span class="muted" title="عدّله المدير">✎</span>':''}`:esc(GAP_WHO[x0.who])}</td><td>${adm?`<input data-gn="${esc(k)}" value="${esc(x0.need)}" style="width:100%;min-width:230px">`:esc(x0.need)}</td></tr>`; }).join('')}</tbody></table></div>`;
   return `<div class="bar"><b>تعارض الإجراءات بين المقاول والاستشاري — من أولاب</b><span class="sp"></span><span class="muted">مضى على آخر إجراء أكثر من</span><input id="gapd" type="number" min="0" value="${D.lim}" style="width:64px"><span class="muted">يوماً</span>
-    <button id="gapx">⬇ ملف التصعيد الشامل</button><button id="gapxo">⬇ ملف لكل مكتب</button><button id="gapm">✉ نص بريد PDC</button></div>
+    <button id="gapx">⬇ ملف التصعيد الشامل</button><button id="gapxo">⬇ ملف لكل مكتب</button><button id="gapm">✉ نص بريد PDC</button>${S.gap.can?'<button id="gapmom" class="pri">📋 محاضر الاجتماع الأسبوعي</button>':''}</div>
    <div class="muted" style="margin:2px 2px 8px">الانتظار بالأيام التقويمية من «تاريخ آخر إجراء مقاول» حتى اليوم ${esc(S.B.today)}، وإن غاب فمن تاريخ إجراء الاستشاري. اضغط أي رقم لفتح أوامره وتصديرها.${S.gap.err?` <span class="err">${esc(S.gap.err)}</span>`:''}</div>
    <div class="card"><b>① واقف عند المالك — يُصعَّد إلى PDC</b> <span class="muted">المقاول سجّل إجراءه ولم يُسجَّل الإجراء المقابل على النظام</span>${t1}</div>
    <div class="card" style="margin-top:10px"><b>② على المقاول</b> <span class="muted">الخطوة التالية عند المقاول</span>${t2}</div>
    <details class="card" style="margin-top:10px" ${W.gp?'open':''} id="gapp"><summary><b>③ أزواج الإجراءات وحكم كل زوج</b> <span class="muted">${adm?'عدّل الحكم أو الإجراء المطلوب فيُحفظ ويُطبَّق على الأرقام والملفات':'يعدّلها المدير'}</span></summary>${t3}</details>`; }
+// ---- محاضر الاجتماع الأسبوعي مع المقاولين (المالك 18-11): ملف Excel لكل مقاول بأربعة تبويبات — المحضر، المطلوب من المقاول، بانتظار الجهة المالكة، ملخص.
+// للمدير وحده. الأرقام من بيانات أولاب المستوردة وأحكام «تعارض الإجراءات» لكل المكاتب (لا تتأثر بفلتر المكتب). لا قيم مالية في المحضر.
+const momWeek=d=>{ const t=new Date(d+'T00:00:00Z'); if(isNaN(t)) return ''; const n=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-n+3); const y=new Date(Date.UTC(t.getUTCFullYear(),0,4)); return 1+Math.round(((t-y)/864e5-3+((y.getUTCDay()+6)%7))/7); };
+const momDmy=d=>String(d||'').slice(0,10).split('-').reverse().join('-');
+function momData(W){ const sv=[W.off,W.con,W.q]; W.off=W.con=W.q=''; let base; try{ base=whBase(); }finally{ W.off=sv[0]; W.con=sv[1]; W.q=sv[2]; }
+  const D=gapData(base,W), G={}, g=k=>G[k]||(G[k]={k,name:'',con:[],own:[],all:0}); base.forEach(o=>{ const k=gapNm(o.contractor); if(!k) return; const x=g(k); x.all++; if(!x.name||String(o.contractor).length>x.name.length) x.name=String(o.contractor); });
+  D.con.forEach(x=>{ const k=gapNm(x.o.contractor); if(k) g(k).con.push(x); }); D.own.forEach(x=>{ const k=gapNm(x.o.contractor); if(k) g(k).own.push(x); });
+  return {lim:D.lim,G,keys:Object.keys(G).sort((a,b)=>(G[b].con.length+G[b].own.length)-(G[a].con.length+G[a].own.length)||a.localeCompare(b,'ar'))}; }
+function momBook(X,M,P,lim){ const NAVY='1F3864',GREY='D9D9D9',LIGHT='F2F2F2', st=o=>Object.assign({bd:1,bc:'000000',sz:10,va:'center',wrap:1,rtl:1},o);
+  const R=st({al:'right'}), C=st({al:'center'}), RB=st({al:'right',b:1}), CB=st({al:'center',b:1}), LG=st({al:'right',b:1,fill:LIGHT}), LC=st({al:'center',b:1,fill:LIGHT}), GG=st({al:'right',b:1,fill:GREY}), GC=st({al:'center',b:1,fill:GREY}), HD=st({al:'center',b:1,fc:'FFFFFF',fill:NAVY}), TOP=st({al:'right',va:'top',fill:LIGHT}), S9=st({al:'right',sz:9}), C9=st({al:'center',sz:9}), D9=st({al:'center',sz:9,nf:'yyyy-mm-dd'});
+  const T1={b:1,sz:12,fc:NAVY,al:'right',va:'center',rtl:1}, T2={b:1,sz:10,fc:'C55A11',al:'right',va:'center',rtl:1,wrap:1};
+  const mk=()=>{ const rows=[], mg=[], hts={}; const put=(r,c1,c2,v,s,r2,rich)=>{ r2=r2||r; for(let i=r;i<=r2;i++){ rows[i]=rows[i]||[]; for(let c=c1;c<=c2;c++) rows[i][c]={v:'',st:s}; } rows[r][c1]={v:v==null?'':v,st:s}; if(rich){ rows[r][c1].rich=rich; rows[r][c1].v=rich.map(q=>q.t).join(''); } if(c2>c1||r2>r) mg.push(xuCol(c1)+(r+1)+':'+xuCol(c2)+(r2+1)); }; return {rows,mg,hts,put}; };
+  const nm=X.name||X.k, day=momDmy(P.date), cno=(()=>{ const c=(M.ctr||[]).find(c=>gapNm(c.name)===X.k||gapNm(c.full)===X.k||c.name===nm||c.full===nm); return c?c.no:''; })();
+  const fill=t=>String(t||'').replace(/\{م\}/g,X.con.length).replace(/\{ج\}/g,X.own.length);
+  // ① المحضر
+  const A=mk(); let r=0; A.hts[0]=48; A.put(0,2,6,'محضر اجتماع',{b:1,sz:18,al:'center',va:'center',rtl:1});
+  A.put(1,0,8,'بيانات أوامر العمل من نظام أولاب — آخر استيراد: '+(String(M.olap_at||'').slice(0,16)||'غير مسجَّل')+(M.olap_day?' — تاريخ الملف '+M.olap_day:''),{sz:8,fc:'7F7F7F',al:'center',va:'center',rtl:1});
+  r=2; A.put(r,0,3,'محضر اجتماع – متابعة دورية',GG); A.put(r,4,5,'موضوع الاجتماع',GG); A.put(r,6,8,'متابعة أوامر العمل مع المقاول',RB);
+  r++; A.put(r,0,1,'مكان الاجتماع',LG); A.put(r,2,3,P.place,R); A.put(r,4,5,'تاريخ الاجتماع',LG); A.put(r,6,6,day+' م',C); A.put(r,7,7,'رقم الأسبوع',LG); A.put(r,8,8,P.week===''?'':+P.week||P.week,CB);
+  r++; A.hts[r]=28; A.put(r,0,1,'الاستشاري',LG); A.put(r,2,3,'شركة أرابتك جردانة للاستشارات الهندسية',R); A.put(r,4,5,'رقم العقد',LG); A.put(r,6,8,P.contract,C);
+  r++; A.put(r,0,1,'المقاول',LG); A.put(r,2,3,nm,RB); A.put(r,4,5,'رقم عقد المقاول',LG); A.put(r,6,8,cno,C);
+  ['عدد أوامر العمل "تحت التنفيذ"','عدد مشاريع تحسين الشبكة','عدد مشاريع الايصال'].forEach(l=>{ r++; A.put(r,0,3,l,LG); A.put(r,4,6,'',C); A.put(r,7,8,'أمر عمل',C); });
+  r++; A.hts[r]=28; A.put(r,0,2,'عدد الفصولات المجدولة للأسبوع السابق',LG); A.put(r,3,3,'',C); A.put(r,4,6,'عدد الفصولات الملغية للأسبوع السابق',LG); A.put(r,7,8,'',C);
+  r++; const r0=r; A.put(r,1,4,'الاسم',GC); A.put(r,5,6,'الشركة',GC); A.put(r,7,8,'التوقيع',GC);
+  const att=(P.att||[]).map(n=>[n,'AJI']).concat([['',nm]]); while(att.length<5) att.push(['','']);
+  att.forEach((a,i)=>{ r++; A.hts[r]=22; A.put(r,1,1,i+1,C); A.put(r,2,4,a[0],R); A.put(r,5,6,a[1],C); A.put(r,7,8,'',R); }); A.put(r0,0,0,'المشاركون',LC,r);
+  r+=2; A.put(r,0,2,'النقطة',HD); A.put(r,3,5,'الإجراء المتفق عليه',HD); A.put(r,6,6,'موعد الإنجاز',HD); A.put(r,7,8,'إفادة المقاول',HD);
+  (P.pts||[]).forEach((p,n)=>{ r++; A.hts[r]=52; const d=fill(p.d); A.put(r,0,2,'',TOP,r,[{t:(n+1)+'. '+p.t,c:NAVY}].concat(d?[{t:'\n'+d}]:[])); A.put(r,3,5,'',R); A.put(r,6,6,'',C); A.put(r,7,8,'',R); });
+  r+=2; A.put(r,0,8,'توصيات إضافية',GG); for(let i=0;i<4;i++){ r++; A.hts[r]=22; A.put(r,0,0,i+1,C); A.put(r,1,8,'',R); }
+  r++; A.put(r,0,1,'معد المحضر',LG); A.put(r,2,4,P.by,R); A.put(r,5,6,'تاريخ إعداد المحضر',LG); A.put(r,7,8,day+' م',C);
+  r++; A.put(r,0,1,'وقت انتهاء الاجتماع',LG); A.put(r,2,4,'',R); A.put(r,5,6,'تاريخ الاجتماع التالي',LG); A.put(r,7,8,'',C);
+  const E=9525, L=M.logos||{}, imgs=[]; if(L.aji) imgs.push({b64:L.aji,ext:'png',key:'aji',from:{c:0,r:0,co:20000,ro:40000},to:{c:0,r:0,co:20000+71*E,ro:40000+54*E}}); if(L.pdc) imgs.push({b64:L.pdc,ext:'png',key:'pdc',from:{c:7,r:0,co:30000,ro:110000},to:{c:8,r:0,co:30000+103*E-89*E,ro:110000+40*E}});
+  const sh1={name:'محضر الاجتماع',color:NAVY,rows:A.rows,merges:A.mg,hts:A.hts,widths:[14,6,16,12,10,10,12,12,10],nogrid:1,print:{},images:imgs};
+  // ② و③ جدولا الأوامر
+  const list=(name,title,sub,heads,W,L,cell,empty)=>{ const B=mk(), n=heads.length; B.hts[0]=24; B.put(0,0,n-1,title+' — '+nm,T1); B.put(1,0,n-1,L.length?sub:empty,T2); heads.forEach((h,i)=>B.put(2,i,i,h,HD)); B.hts[2]=30;
+    L.forEach((x,i)=>{ const v=cell(x,i); B.hts[3+i]=26; v.forEach((c,j)=>{ B.rows[3+i]=B.rows[3+i]||[]; B.rows[3+i][j]={v:c[0],st:c[1]}; }); });
+    return {name,color:NAVY,rows:B.rows,merges:B.mg,hts:B.hts,widths:W,nogrid:1,freeze:[0,3],filter:'A3:'+xuCol(n-1)+Math.max(3,3+L.length),print:{landscape:1,tall:1}}; };
+  const dt=v=>{ const d=xuSer(String(v||'').slice(0,10)); return d==null?['',C9]:[d,D9]; }, cnt=L=>{ const m={}; L.forEach(x=>m[x.need]=(m[x.need]||0)+1); return Object.keys(m).sort((a,b)=>m[b]-m[a]).map(k=>k+': '+m[k]).join('، '); };
+  const row=(x,i,tail)=>{ const o=x.o; return [[i+1,C9],[olVal(o,'wo'),C9],[o.type||'',C9],[o.office||'',C9],[o.district||'',S9],[olVal(o,'eng'),S9],[olVal(o,'act_con'),S9],dt(o.last_action_con_date),[olVal(o,'act'),S9],dt(o.last_action_date),[x.w===''?'':x.w,C9],[x.need||'',S9]].concat(tail.map(()=>['',S9])); };
+  const H0=['م','أمر العمل','النوع','المكتب','الحي','المهندس','آخر إجراء للمقاول','تاريخه','آخر إجراء للاستشاري','تاريخه','أيام الانتظار'], W0=[5,14,7,10,20,24,30,12,30,12,9];
+  const sh2=list('المطلوب من المقاول','أوامر العمل المطلوب من المقاول إنهاء إجرائها حتى '+day,'العدد '+X.con.length+' — مضى على آخر إجراء فيها أكثر من '+lim+' أيام تقويمية — '+cnt(X.con),H0.concat(['الإجراء المطلوب','موعد الإنجاز','إفادة المقاول']),W0.concat([34,13,30]),X.con,(x,i)=>row(x,i,[1,1]),'لا أوامر متأخرة على المقاول بهذه الشروط.');
+  const sh3=list('بانتظار الجهة المالكة','أوامر سجّل فيها المقاول إجراءه وتنتظر الإجراء المقابل على النظام حتى '+day,'العدد '+X.own.length+' — للعلم، ولا تُحسب على المقاول — '+cnt(X.own),H0.concat(['الإجراء المطلوب على النظام','ملاحظات']),W0.concat([34,30]),X.own,(x,i)=>row(x,i,[1]),'لا أوامر لهذا المقاول بانتظار الجهة المالكة بهذه الشروط.');
+  // ④ ملخص
+  const Z=mk(), offs=[...new Set(X.con.concat(X.own).map(x=>x.o.office||'بلا مكتب'))].sort(), mx=L=>L.reduce((m,x)=>Math.max(m,x.w||0),0), of=(L,o)=>L.filter(x=>(x.o.office||'بلا مكتب')===o), lk=(sheet,n,s)=>({f:'HYPERLINK("#\''+sheet+'\'!A1",'+n+')',v:n,st:Object.assign({},s,{fc:'0563C1',u:1})});
+  Z.hts[0]=24; Z.put(0,0,5,'ملخص أوامر العمل موضوع الاجتماع حتى '+day+' — '+nm,T1); Z.put(1,0,5,'أوامر المقاول المفتوحة في البرنامج: '+X.all+' — المطلوب منه '+X.con.length+' — بانتظار الجهة المالكة '+X.own.length,T2);
+  r=3; ['المكتب','المطلوب من المقاول','منها أكثر من 30 يوماً','أقدم انتظار (يوم)','بانتظار الجهة المالكة','أقدم انتظار (يوم)'].forEach((h,i)=>Z.put(r,i,i,h,HD)); Z.hts[r]=30; const f0=r+2;
+  offs.forEach(o=>{ r++; const a=of(X.con,o), b=of(X.own,o); Z.put(r,0,0,o,R); Z.put(r,1,1,a.length,C); Z.put(r,2,2,a.filter(x=>x.w>30).length,C); Z.put(r,3,3,mx(a),C); Z.put(r,4,4,b.length,C); Z.put(r,5,5,mx(b),C); });
+  r++; Z.put(r,0,0,'الإجمالي',GG); if(offs.length){ Z.rows[r][1]=lk('المطلوب من المقاول',X.con.length,GC); Z.rows[r][2]={f:'SUM(C'+f0+':C'+r+')',v:X.con.filter(x=>x.w>30).length,st:GC}; Z.rows[r][3]={f:'MAX(D'+f0+':D'+r+')',v:mx(X.con),st:GC}; Z.rows[r][4]=lk('بانتظار الجهة المالكة',X.own.length,GC); Z.rows[r][5]={f:'MAX(F'+f0+':F'+r+')',v:mx(X.own),st:GC}; } else [1,2,3,4,5].forEach(i=>Z.put(r,i,i,0,GC));
+  const sec=(title,L)=>{ r+=2; Z.put(r,0,3,title,HD); Z.put(r,4,4,'العدد',HD); Z.put(r,5,5,'أقدم انتظار (يوم)',HD); const m={}; L.forEach(x=>(m[x.need]=m[x.need]||[]).push(x)); const K=Object.keys(m).sort((a,b)=>m[b].length-m[a].length); K.forEach(k=>{ r++; Z.put(r,0,3,k,R); Z.put(r,4,4,m[k].length,C); Z.put(r,5,5,mx(m[k]),C); }); if(!K.length){ r++; Z.put(r,0,5,'لا أوامر',C); } };
+  sec('الإجراء المطلوب من المقاول',X.con); sec('الإجراء المطلوب على النظام من الجهة المالكة',X.own);
+  const sh4={name:'ملخص',color:'C55A11',rows:Z.rows,merges:Z.mg,hts:Z.hts,widths:[22,18,18,16,20,16],nogrid:1,print:{tall:1}};
+  return [sh1,sh2,sh3,sh4]; }
+async function momFile(X,M,P,lim){ const blob=await xuZip(xuParts({author:S.B.user.name,sheets:momBook(X,M,P,lim)})), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='محضر اجتماع - '+String(X.k).replace(/[\\\/:*?"<>|]+/g,' ').trim()+' - '+momDmy(P.date)+'.xlsx'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),60000); }
+async function momForm(W){ let M; try{ M=S.mom||(S.mom=await api('momGet',S.tok)); }catch(e){ return toast(e.message); }
+  const D=momData(W), c=M.cfg||{}, act=D.keys.filter(k=>D.G[k].con.length+D.G[k].own.length), ptsTxt=p=>(p||[]).map(x=>x.t+(x.d?' | '+x.d:'')).join('\n');
+  modal(`<h3 style="margin-top:0">محاضر الاجتماع الأسبوعي مع المقاولين</h3>
+   <div class="muted" style="margin-bottom:8px">ملف Excel لكل مقاول بأربعة تبويبات: المحضر، المطلوب من المقاول، بانتظار الجهة المالكة، ملخص. الأرقام من آخر استيراد لأولاب: <b>${esc(String(M.olap_at||'').slice(0,16)||'غير مسجَّل')}</b> — لكل المكاتب، ولما مضى عليه أكثر من ${D.lim} أيام تقويمية. إن كان الاستيراد قديماً فاستورد ملف أولاب أولاً.</div>
+   <div class="f"><label>تاريخ الاجتماع<input type="date" id="momd" value="${esc(S.B.today)}"></label><label>رقم الأسبوع<input id="momw" value="${momWeek(S.B.today)}" style="width:80px"></label><label>مكان الاجتماع<input id="momp" value="${esc(c.place||'')}"></label><label>رقم العقد<input id="momc" value="${esc(c.contract||'')}"></label></div>
+   <div class="f"><label style="flex:1">المشاركون من الاستشاري — اسم في كل سطر<textarea id="moma" rows="3" style="width:100%">${esc((c.att&&c.att.length?c.att:[S.B.user.name]).join('\n'))}</textarea></label></div>
+   <div class="f"><label style="flex:1">نقاط المحضر — نقطة في كل سطر بصيغة: العنوان | الوصف. في الوصف {م} عدد المطلوب من المقاول و{ج} عدد ما ينتظر الجهة المالكة<textarea id="momt" rows="10" style="width:100%">${esc(ptsTxt(c.pts))}</textarea></label></div>
+   <div class="f"><label>المقاول<select id="momk"><option value="">كل المقاولين الذين لهم أوامر (${act.length})</option>${D.keys.map(k=>`<option value="${esc(k)}">${esc(k)} — المطلوب ${D.G[k].con.length}، عند المالك ${D.G[k].own.length}</option>`).join('')}</select></label></div>
+   <div class="bar"><button class="pri" id="momx">⬇ إخراج المحاضر</button><button id="moms">حفظ النقاط والبيانات كإعداد دائم</button><span class="muted" id="momm"></span></div>`,true);
+  const read=()=>({pts:$('#momt').value.split('\n').map(l=>{ const i=l.indexOf('|'); return {t:(i<0?l:l.slice(0,i)).trim(),d:i<0?'':l.slice(i+1).trim()}; }).filter(p=>p.t),place:$('#momp').value.trim(),contract:$('#momc').value.trim(),att:$('#moma').value.split('\n').map(x=>x.trim()).filter(Boolean)});
+  $('#momd').onchange=()=>{ $('#momw').value=momWeek($('#momd').value); };
+  $('#moms').onclick=async()=>{ try{ S.mom=M=await api('momSave',S.tok,read()); $('#momm').textContent='✓ حُفظ'; }catch(e){ $('#momm').textContent=e.message; } };
+  $('#momx').onclick=async()=>{ const P=Object.assign(read(),{date:$('#momd').value||S.B.today,week:$('#momw').value.trim(),by:S.B.user.name}); if(!P.pts.length) return toast('اكتب نقطة واحدة على الأقل'); const one=$('#momk').value, K=one?[one]:act; if(!K.length) return toast('لا مقاولين لهم أوامر بهذه الشروط');
+    $('#momx').disabled=true; try{ for(let i=0;i<K.length;i++){ $('#momm').textContent='جارٍ الإخراج '+(i+1)+' من '+K.length+'…'; await momFile(D.G[K[i]],M,P,D.lim); if(K.length>1) await new Promise(r=>setTimeout(r,500)); } $('#momm').textContent='✓ أُخرج '+K.length+' ملفاً'+(K.length>1?' — إن طلب المتصفح الإذن بتنزيل عدة ملفات فاسمح به':''); }catch(e){ $('#momm').textContent='تعذّر الإخراج: '+e.message; } $('#momx').disabled=false; }; }
 function gapShow(title,X){ const L=gapOrders(X), C=GAP_C.filter(k=>k!=='g_note');
   modal(`<h3 style="margin-top:0">${esc(title)} <span class="muted" style="font-size:13px">(${L.length})</span></h3><div class="bar"><button id="gaplx">⬇ تصدير Excel</button><span class="muted">الانتظار بالأيام التقويمية</span></div>
    <div class="tw" style="max-height:calc(100vh - 170px)"><table><thead><tr>${C.map(k=>`<th>${esc(gapLbl(k))}</th>`).join('')}</tr></thead><tbody>${L.slice(0,800).map(o=>`<tr data-wk="${esc(o.key)}">${C.map(k=>{ const v=gapVal(o,k); return k==='wo'?`<td style="color:var(--acc);font-weight:500">${esc(v)}</td>`:`<td>${esc(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>${L.length>800?'<div class="muted">يُعرض أول 800 — التصدير يشمل الكل.</div>':''}`,true);
@@ -5002,6 +5070,7 @@ function gapWire(base,W,re){ const D=S.gapD; if(!D) return; const offs=[...new S
   document.querySelectorAll('[data-gl]').forEach(a=>a.onclick=()=>{ const g=(S.gapL||{})[a.dataset.gl]; if(g) gapShow(g.t,g.X); });
   if($('#gapd')) $('#gapd').onchange=e=>{ const n=Math.round(+e.target.value); W.gd=n>=0?n:5; re(); };
   if($('#gapp')) $('#gapp').ontoggle=()=>{ W.gp=$('#gapp').open; };
+  if($('#gapmom')) $('#gapmom').onclick=()=>momForm(W);
   const allX=()=>gapXlsx('تعارض الإجراءات - التصعيد'+(W.off?' - '+W.off:''),[['للتصعيد',D.own]].concat([...new Set(D.own.map(x=>x.need))].map(n=>[n,D.own.filter(x=>x.need===n)]),[['على المقاول',D.con],['كل ما سبق فيه المقاول',ahead]]),gapSum(D,offs));
   if($('#gapx')) $('#gapx').onclick=allX;
   if($('#gapxo')) $('#gapxo').onclick=async()=>{ for(const o of offs){ const own=D.own.filter(x=>x.o.office===o), con=D.con.filter(x=>x.o.office===o); if(!own.length&&!con.length) continue; const D2={own,con};
