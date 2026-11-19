@@ -5039,10 +5039,19 @@ function gapBody(base,W){
 // للمدير وحده. الأرقام من بيانات أولاب المستوردة وأحكام «تعارض الإجراءات» لكل المكاتب (لا تتأثر بفلتر المكتب). لا قيم مالية في المحضر.
 const momWeek=d=>{ const t=new Date(d+'T00:00:00Z'); if(isNaN(t)) return ''; const n=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-n+3); const y=new Date(Date.UTC(t.getUTCFullYear(),0,4)); return 1+Math.round(((t-y)/864e5-3+((y.getUTCDay()+6)%7))/7); };
 const momDmy=d=>String(d||'').slice(0,10).split('-').reverse().join('-');
+// المالك 19-11: «تحت التنفيذ» = موقع الأمر بآخر إجراء للمقاول (لمحاسبته) من 101 حتى 209 في رحلة أمر العمل؛ بلا إجراء للمقاول يُؤخذ إجراء الاستشاري؛ وما بلغ 300 خارج العدّ.
+// «تحسين الشبكة» = جهة التنفيذ في أولاب تبدأ بـ«مجموعة المشاريع»، والبقية «إيصال»، وما لا جهة تنفيذ له لا يدخل في أيٍّ منهما. العدّان من «تحت التنفيذ» فقط.
+const momAr=t=>String(t||'').normalize('NFKC').replace(/[\u064B-\u0652ـ]/g,'').replace(/[أإآ]/g,'ا').replace(/\s+/g,' ').trim();
+function momUE(o){ const cd=v=>(/^\s*(\d{2,4})/.exec(String(v==null?'':v))||[])[1]||''; if(cd(o.last_action)==='300') return false; const c=olKeyK(o)||cd(o.last_action); if(!c) return false;
+  const J=S.B.journey||[], at=k=>J.map((x,i)=>x.kind==='إجراء'&&String(x.code)===k?i:-1).filter(i=>i>=0), a=at('101'), b=at('209'), me=at(c); if(!a.length||!b.length) return c!=='230'&&c!=='300';
+  if(!me.length) return true;   /* رمز للمقاول ليس في الرحلة (مثل 201 و204): إجراء تنفيذ لم يكتمل */
+  const lo=a[0], hi=b[b.length-1]; return me.some(i=>i>=lo&&i<=hi); }
 function momData(W){ const sv=[W.off,W.con,W.q]; W.off=W.con=W.q=''; let base; try{ base=whBase(); }finally{ W.off=sv[0]; W.con=sv[1]; W.q=sv[2]; }
-  const D=gapData(base,W), G={}, g=k=>G[k]||(G[k]={k,name:'',con:[],own:[],all:0}); base.forEach(o=>{ const k=gapNm(o.contractor); if(!k) return; const x=g(k); x.all++; if(!x.name||String(o.contractor).length>x.name.length) x.name=String(o.contractor); });
+  const D=gapData(base,W), G={}, g=k=>G[k]||(G[k]={k,name:'',con:[],own:[],all:0,ue:0,net:0,cnn:0,nog:0}), X=olapIx(), gh=X?Object.keys(X.hi).find(h=>String(h).replace(/[أإآ]/g,'ا').replace(/\s+/g,' ').trim()==='جهة التنفيذ'):null;
+  base.forEach(o=>{ const k=gapNm(o.contractor); if(!k) return; const x=g(k); x.all++; if(!x.name||String(o.contractor).length>x.name.length) x.name=String(o.contractor);
+    if(!momUE(o)) return; x.ue++; if(gh==null) return; const r=olapRowOf(o), gv=r?String(r[X.hi[gh]]==null?'':r[X.hi[gh]]).replace(/\s+/g,' ').trim():''; if(!gv) x.nog++; else if(/^مجموع[ةه] المشاريع/.test(momAr(gv))) x.net++; else x.cnn++; });
   D.con.forEach(x=>{ const k=gapNm(x.o.contractor); if(k) g(k).con.push(x); }); D.own.forEach(x=>{ const k=gapNm(x.o.contractor); if(k) g(k).own.push(x); });
-  return {lim:D.lim,G,keys:Object.keys(G).sort((a,b)=>(G[b].con.length+G[b].own.length)-(G[a].con.length+G[a].own.length)||a.localeCompare(b,'ar'))}; }
+  return {lim:D.lim,G,grp:gh!=null,keys:Object.keys(G).sort((a,b)=>(G[b].con.length+G[b].own.length)-(G[a].con.length+G[a].own.length)||a.localeCompare(b,'ar'))}; }
 function momBook(X,M,P,lim){ const NAVY='1F3864',GREY='D9D9D9',LIGHT='F2F2F2', st=o=>Object.assign({bd:1,bc:'000000',sz:10,va:'center',wrap:1,rtl:1},o);
   const R=st({al:'right'}), C=st({al:'center'}), RB=st({al:'right',b:1}), CB=st({al:'center',b:1}), LG=st({al:'right',b:1,fill:LIGHT}), LC=st({al:'center',b:1,fill:LIGHT}), GG=st({al:'right',b:1,fill:GREY}), GC=st({al:'center',b:1,fill:GREY}), HD=st({al:'center',b:1,fc:'FFFFFF',fill:NAVY}), TOP=st({al:'right',va:'top',fill:LIGHT}), S9=st({al:'right',sz:9}), C9=st({al:'center',sz:9}), D9=st({al:'center',sz:9,nf:'yyyy-mm-dd'});
   const T1={b:1,sz:12,fc:NAVY,al:'right',va:'center',rtl:1}, T2={b:1,sz:10,fc:'C55A11',al:'right',va:'center',rtl:1,wrap:1};
@@ -5056,7 +5065,7 @@ function momBook(X,M,P,lim){ const NAVY='1F3864',GREY='D9D9D9',LIGHT='F2F2F2', s
   r++; A.put(r,0,1,'مكان الاجتماع',LG); A.put(r,2,3,P.place,R); A.put(r,4,5,'تاريخ الاجتماع',LG); A.put(r,6,6,day+' م',C); A.put(r,7,7,'رقم الأسبوع',LG); A.put(r,8,8,P.week===''?'':+P.week||P.week,CB);
   r++; A.hts[r]=28; A.put(r,0,1,'الاستشاري',LG); A.put(r,2,3,'شركة أرابتك جردانة للاستشارات الهندسية',R); A.put(r,4,5,'رقم العقد',LG); A.put(r,6,8,P.contract,C);
   r++; A.put(r,0,1,'المقاول',LG); A.put(r,2,3,nm,RB); A.put(r,4,5,'رقم عقد المقاول',LG); A.put(r,6,8,cno,C);
-  ['عدد أوامر العمل "تحت التنفيذ"','عدد مشاريع تحسين الشبكة','عدد مشاريع الايصال'].forEach(l=>{ r++; A.put(r,0,3,l,LG); A.put(r,4,6,'',C); A.put(r,7,8,'أمر عمل',C); });
+  [['عدد أوامر العمل "تحت التنفيذ"',X.ue],['عدد مشاريع تحسين الشبكة',P.grp?X.net:''],['عدد مشاريع الايصال',P.grp?X.cnn:'']].forEach(l=>{ r++; A.put(r,0,3,l[0],LG); A.put(r,4,6,l[1],CB); A.put(r,7,8,'أمر عمل',C); });
   r++; A.hts[r]=28; A.put(r,0,2,'عدد الفصولات المجدولة للأسبوع السابق',LG); A.put(r,3,3,'',C); A.put(r,4,6,'عدد الفصولات الملغية للأسبوع السابق',LG); A.put(r,7,8,'',C);
   r++; const r0=r; A.put(r,1,4,'الاسم',GC); A.put(r,5,6,'الشركة',GC); A.put(r,7,8,'التوقيع',GC);
   const att=(P.att||[]).map(n=>[n,'AJI']).concat([['',nm]]); while(att.length<5) att.push(['','']);
@@ -5080,6 +5089,7 @@ function momBook(X,M,P,lim){ const NAVY='1F3864',GREY='D9D9D9',LIGHT='F2F2F2', s
   // ④ ملخص
   const Z=mk(), offs=[...new Set(X.con.concat(X.own).map(x=>x.o.office||'بلا مكتب'))].sort(), mx=L=>L.reduce((m,x)=>Math.max(m,x.w||0),0), of=(L,o)=>L.filter(x=>(x.o.office||'بلا مكتب')===o), lk=(sheet,n,s)=>({f:'HYPERLINK("#\''+sheet+'\'!A1",'+n+')',v:n,st:Object.assign({},s,{fc:'0563C1',u:1})});
   Z.hts[0]=24; Z.put(0,0,5,'ملخص أوامر العمل موضوع الاجتماع حتى '+day+' — '+nm,T1); Z.put(1,0,5,'أوامر المقاول المفتوحة في البرنامج: '+X.all+' — المطلوب منه '+X.con.length+' — بانتظار الجهة المالكة '+X.own.length,T2);
+  Z.hts[2]=30; Z.put(2,0,5,'تحت التنفيذ (بآخر إجراء للمقاول من 101 حتى 209): '+X.ue+(P.grp?' — تحسين الشبكة '+X.net+' — الإيصال '+X.cnn+(X.nog?' — بلا جهة تنفيذ في أولاب '+X.nog+' (لا تدخل في العدّين)':''):' — تعذّر تحميل أولاب فلم يُفرز تحسين الشبكة والإيصال'),{sz:10,al:'right',va:'center',rtl:1,wrap:1});
   r=3; ['المكتب','المطلوب من المقاول','منها أكثر من 30 يوماً','أقدم انتظار (يوم)','بانتظار الجهة المالكة','أقدم انتظار (يوم)'].forEach((h,i)=>Z.put(r,i,i,h,HD)); Z.hts[r]=30; const f0=r+2;
   offs.forEach(o=>{ r++; const a=of(X.con,o), b=of(X.own,o); Z.put(r,0,0,o,R); Z.put(r,1,1,a.length,C); Z.put(r,2,2,a.filter(x=>x.w>30).length,C); Z.put(r,3,3,mx(a),C); Z.put(r,4,4,b.length,C); Z.put(r,5,5,mx(b),C); });
   r++; Z.put(r,0,0,'الإجمالي',GG); if(offs.length){ Z.rows[r][1]=lk('المطلوب من المقاول',X.con.length,GC); Z.rows[r][2]={f:'SUM(C'+f0+':C'+r+')',v:X.con.filter(x=>x.w>30).length,st:GC}; Z.rows[r][3]={f:'MAX(D'+f0+':D'+r+')',v:mx(X.con),st:GC}; Z.rows[r][4]=lk('بانتظار الجهة المالكة',X.own.length,GC); Z.rows[r][5]={f:'MAX(F'+f0+':F'+r+')',v:mx(X.own),st:GC}; } else [1,2,3,4,5].forEach(i=>Z.put(r,i,i,0,GC));
@@ -5089,6 +5099,7 @@ function momBook(X,M,P,lim){ const NAVY='1F3864',GREY='D9D9D9',LIGHT='F2F2F2', s
   return [sh1,sh2,sh3,sh4]; }
 async function momFile(X,M,P,lim){ const blob=await xuZip(xuParts({author:S.B.user.name,sheets:momBook(X,M,P,lim)})), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='محضر اجتماع - '+String(X.k).replace(/[\\\/:*?"<>|]+/g,' ').trim()+' - '+momDmy(P.date)+'.xlsx'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),60000); }
 async function momForm(W){ let M; try{ M=S.mom||(S.mom=await api('momGet',S.tok)); }catch(e){ return toast(e.message); }
+  if(!S.olap){ try{ S.olap=await api('listOlap',S.tok); }catch(e){} }   /* جهة التنفيذ لفرز تحسين الشبكة والإيصال */
   const D=momData(W), c=M.cfg||{}, act=D.keys.filter(k=>D.G[k].con.length+D.G[k].own.length), ptsTxt=p=>(p||[]).map(x=>x.t+(x.d?' | '+x.d:'')).join('\n');
   modal(`<h3 style="margin-top:0">محاضر الاجتماع الأسبوعي مع المقاولين</h3>
    <div class="muted" style="margin-bottom:8px">ملف Excel لكل مقاول بأربعة تبويبات: المحضر، المطلوب من المقاول، بانتظار الجهة المالكة، ملخص. الأرقام من آخر استيراد لأولاب: <b>${esc(String(M.olap_at||'').slice(0,16)||'غير مسجَّل')}</b> — لكل المكاتب، ولما مضى عليه أكثر من ${D.lim} أيام تقويمية. إن كان الاستيراد قديماً فاستورد ملف أولاب أولاً.</div>
@@ -5100,7 +5111,7 @@ async function momForm(W){ let M; try{ M=S.mom||(S.mom=await api('momGet',S.tok)
   const read=()=>({pts:$('#momt').value.split('\n').map(l=>{ const i=l.indexOf('|'); return {t:(i<0?l:l.slice(0,i)).trim(),d:i<0?'':l.slice(i+1).trim()}; }).filter(p=>p.t),place:$('#momp').value.trim(),contract:$('#momc').value.trim(),att:$('#moma').value.split('\n').map(x=>x.trim()).filter(Boolean)});
   $('#momd').onchange=()=>{ $('#momw').value=momWeek($('#momd').value); };
   $('#moms').onclick=async()=>{ try{ S.mom=M=await api('momSave',S.tok,read()); $('#momm').textContent='✓ حُفظ'; }catch(e){ $('#momm').textContent=e.message; } };
-  $('#momx').onclick=async()=>{ const P=Object.assign(read(),{date:$('#momd').value||S.B.today,week:$('#momw').value.trim(),by:S.B.user.name}); if(!P.pts.length) return toast('اكتب نقطة واحدة على الأقل'); const one=$('#momk').value, K=one?[one]:act; if(!K.length) return toast('لا مقاولين لهم أوامر بهذه الشروط');
+  $('#momx').onclick=async()=>{ const P=Object.assign(read(),{date:$('#momd').value||S.B.today,week:$('#momw').value.trim(),by:S.B.user.name,grp:D.grp}); if(!P.pts.length) return toast('اكتب نقطة واحدة على الأقل'); const one=$('#momk').value, K=one?[one]:act; if(!K.length) return toast('لا مقاولين لهم أوامر بهذه الشروط');
     $('#momx').disabled=true; try{ for(let i=0;i<K.length;i++){ $('#momm').textContent='جارٍ الإخراج '+(i+1)+' من '+K.length+'…'; await momFile(D.G[K[i]],M,P,D.lim); if(K.length>1) await new Promise(r=>setTimeout(r,500)); } $('#momm').textContent='✓ أُخرج '+K.length+' ملفاً'+(K.length>1?' — إن طلب المتصفح الإذن بتنزيل عدة ملفات فاسمح به':''); }catch(e){ $('#momm').textContent='تعذّر الإخراج: '+e.message; } $('#momx').disabled=false; }; }
 function gapShow(title,X){ const L=gapOrders(X), C=GAP_C.filter(k=>k!=='g_note');
   modal(`<h3 style="margin-top:0">${esc(title)} <span class="muted" style="font-size:13px">(${L.length})</span></h3><div class="bar"><button id="gaplx">⬇ تصدير Excel</button><span class="muted">الانتظار بالأيام التقويمية</span></div>
