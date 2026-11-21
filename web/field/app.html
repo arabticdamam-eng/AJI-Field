@@ -1643,6 +1643,8 @@ async function qdUploadFiles(C,V,slot,files,cam){ const ref=V.ctx.key; if(!files
   if(V2){ qdApply(V2); if($('#mdl')&&$('.qdm')) qdDraw(C,V2); toast('تم الرفع'); } }
 function qdHdrVal(V,k,f){ const o=V.ctx.o, h=(f&&f.hdr)||{}; if(k==='location'){ const v=String(h[k]||(V.d.hdr&&V.d.hdr[k])||'').trim(); return v&&v!==String(o.district||'').trim()&&v!==String(o.station||'').trim()?v:(V.geo||''); } if(h[k]) return h[k]; if(V.d.hdr&&V.d.hdr[k]) return V.d.hdr[k]; if(k==='equip_no'&&o.station) return o.station;
   if(k==='date') return S.B.today; if(k==='time') return nowHM(); if(k==='location') return V.geo||''; return ''; }
+// المالك 21-11: العربية بجانب الإنجليزية في القائمة فقط؛ المحفوظ والمطبوع في نموذج الشركة يبقى الإنجليزي كما هو
+const OPT_AR={'L V METER INSTALLATION':'عداد جهد منخفض مباشر','M/E METER':'عداد ميكانيكي','CT METER':'عداد بمحولات تيار'};
 function qdForm(C,V,code){ const F=C.forms[code], f=(V.d.f||{})[code]||{}, ed=V.ctx.canEdit||(V.ctx.canEditS&&(code==='SEC21'||code==='SEC22')), isDef=!(f.a&&Object.keys(f.a).length), a=Object.assign({},qdAns(C,V,code)), nt=Object.assign({},f.nt||{}), o=V.ctx.o;
   const H=['date','time','location'].concat(F.hdr||[]), HL=Object.assign({date:'التاريخ',time:'الوقت',location:'الموقع'},C.hdr), R=ed?'':'disabled';
   const opts=k=>C.opts&&C.opts[k];
@@ -1650,7 +1652,7 @@ function qdForm(C,V,code){ const F=C.forms[code], f=(V.d.f||{})[code]||{}, ed=V.
   const btns=(i)=>['y','n'].concat(F.ans==='ynx'?['x']:[]).map(v=>`<button type="button" class="qa qa-${v} ${a[i]===v?'on':''}" data-i="${i}" data-v="${v}" ${R}>${v==='y'?'نعم':v==='n'?'لا':'لا ينطبق'}</button>`).join('');
   modal(`<div class="qdm qdf"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">${esc(F.name)}</h3><small class="muted">${esc(F.no||'')}</small><span class="sp"></span><button id="qfback">رجوع</button></div>
    <div class="kv"><div><span>${V.ctx.d9?'إشعار D9':'أمر العمل'}:</span> ${esc(o.wo)}${o.type?'-'+esc(o.type):''}</div><div><span>المكتب:</span> ${esc(o.office||'')}</div><div><span>المقاول:</span> ${esc(o.contractor||'')}</div></div>
-   <div class="f" style="margin:8px 0">${H.map(k=>{ const v=qdHdrVal(V,k,f), O=opts(k); return `<label>${esc(HL[k]||k)}${O?`<select data-h="${k}" ${R}><option></option>${O.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('')}</select>`:`<input data-h="${k}" value="${esc(v)}" ${k==='date'?'type="date"':k==='time'?'type="time"':''} ${R}>`}</label>`; }).join('')}</div>
+   <div class="f" style="margin:8px 0">${H.map(k=>{ const v=qdHdrVal(V,k,f), O=opts(k); return `<label>${esc(HL[k]||k)}${O?`<select data-h="${k}" ${R}><option></option>${O.map(x=>`<option value="${esc(x)}" ${x===v?'selected':''}>${esc(x)}${OPT_AR[x]?' — '+OPT_AR[x]:''}</option>`).join('')}</select>`:`<input data-h="${k}" value="${esc(v)}" ${k==='date'?'type="date"':k==='time'?'type="time"':''} ${R}>`}</label>`; }).join('')}</div>
    ${ed?`<div class="bar" style="position:sticky;top:0;background:var(--card,#fff);z-index:2;padding:6px 0"><button class="pri" id="qall">✓ الكل نعم</button><span id="qcnt" class="muted"></span><span class="sp"></span><button class="pri" id="qfsave">حفظ</button></div>`:''}
    <div class="qdis">${F.items.map((x,i)=>x.h?`<div class="qdih">${esc(x.t)}${x.e?` <small>${esc(x.e)}</small>`:''}</div>`:`<div class="qdi" data-row="${i}"><div class="qdn">${esc(x.n||'')}</div><div class="qdtx">${esc(x.t)}${x.e?`<small>${esc(x.e)}</small>`:''}<input class="qdnt" data-nt="${i}" placeholder="ملاحظة" value="${esc(nt[i]||'')}" ${R} style="${(F.notes||a[i]==='n'||nt[i])?'':'display:none'}"></div><div class="qdab">${btns(i)}</div></div>`).join('')}</div>
    <label style="display:block;margin-top:8px">ملاحظات<textarea id="qrm" rows="2" style="width:100%" ${R}>${esc(f.rm||'')}</textarea></label>
@@ -3462,12 +3464,14 @@ function vProject(){
     catch(e){ if($('#pje')){ $('#pje').textContent=e.message; $('#pjs').disabled=false; } else toast(e.message); } };
   const fh=document.createElement('div'); fh.id='fhc'; fh.className='card'; fh.style.marginTop='12px'; fh.innerHTML='<div class="loading">جارٍ قراءة حالة الملف…</div>'; $('#usub').appendChild(fh); fileHealth();
 }
+// المالك 21-11: «آخر خطأ» يبقى محفوظاً بعد زواله، فكان يبدو مشكلة قائمة. يُعرض فقط إن كان أحدث من آخر مزامنة ناجحة (أو لم يُعرف وقته).
+function mirErrLive(M){ if(!M||!M.err) return false; const e=String(M.err), a=/^(\d{4})-(\d\d)-(\d\d)[ T](\d\d:\d\d(?::\d\d)?)/.exec(e), b=/^(\d\d)-(\d\d)-(\d{4})[ T](\d\d:\d\d(?::\d\d)?)/.exec(e), t=a?a[1]+'-'+a[2]+'-'+a[3]+' '+a[4]:b?b[3]+'-'+b[2]+'-'+b[1]+' '+b[4]:''; if(!t||!M.at) return true; return t>String(M.at).replace('T',' '); }
 // مرآة Google ووضع الطوارئ (07-11)
 function mirHtml(M){ if(!M) return ''; const o=M.out||{}, ag=M.at?Math.round((Date.now()-new Date(String(M.at).replace(' ','T')+'+03:00').getTime())/60000):null;
   return `<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--line)"><h3 style="margin:0 0 6px">🛟 النسخة الاحتياطية في Google</h3>
    ${M.emg?`<div class="err" style="margin:6px 0">⚠ وضع الطوارئ مفعّل منذ ${esc(M.emg)}: البرنامج كله يعمل من Google الآن.</div>`:`<div class="muted" style="line-height:1.9">كل 10 دقائق تُنسخ التغييرات من Supabase إلى ملف Google، وكل ملف مرفوع يُنسخ إلى Drive — فيبقى Google نسخة كاملة يعمل منها البرنامج عند أي مشكلة في Supabase.</div>`}
    ${!M.on&&!M.emg?'<div class="err" style="margin:6px 0">المزامنة الدورية غير مفعّلة بعد (mirrorInstall).</div>':''}
-   ${M.err?`<div class="err" style="margin:6px 0;font-size:12px">آخر خطأ: ${esc(M.err)}</div>`:''}
+   ${mirErrLive(M)?`<div class="err" style="margin:6px 0;font-size:12px">آخر خطأ: ${esc(M.err)}</div>`:''}
    <div class="kpis" style="margin:8px 0"><div class="kpi">آخر مزامنة<b style="font-size:13px">${M.at?esc(String(M.at).slice(0,16))+(ag!=null?' <small>(قبل '+ag+' د)</small>':''):'—'}</b></div><div class="kpi">آخرها<b style="font-size:13px">${o.sheets||0} ورقة · ${o.appended||0} صف جديد · ${o.files||0} ملف${o.more?' · <span class="late">يكمل</span>':''}</b></div></div>
    <div class="bar">${M.emg?'<button class="pri" id="mr_off">↩ العودة إلى Supabase</button>':'<button id="mr_now">زامن الآن</button><button id="mr_on" style="color:var(--bad,#b3261e)">⚠ تحويل إلى Google (طوارئ)</button>'}</div></div>`; }
 function mirWire(box,M){ const b=id=>box.querySelector(id);
