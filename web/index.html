@@ -4935,18 +4935,19 @@ async function vBoq(){
 // UDS BOQ file: title «263018895 - 801», header «رمز البند | الأعمال/المواد | كمية تقديرية | كمية فعلية | سعر فعلى».
 // Works: 9-digit codes; materials: shorter codes. Repeated rows are summed column by column.
 function udsParse(wb,fname){ const N=x=>String(x==null?'':x).replace(/ـ/g,'').replace(/\s+/g,' ').trim();
-  for(const sn of wb.SheetNames){ const A=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''}); let wo='', sec='', ci=-1, pi=-1, di=-1, ni=-1; const W={}, M={};
+  for(const sn of wb.SheetNames){ const A=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''}); let wo='', sec='', ci=-1, pi=-1, di=-1, ni=-1; const W={}, M={}, WA={};
     for(let i=0;i<A.length;i++){ const r=A[i].map(N), ne=r.filter(Boolean);
-      if(!wo){ const t=ne.map(x=>x.match(/^(\d{9})\s*-\s*(\d{3})$/)).find(Boolean); if(t){ wo=t[1]+'-'+t[2]; continue; } }
+      if(!wo){ const t=ne.map(x=>x.match(/^(\d{9})\s*-\s*(\d{3})$/)).find(Boolean); if(t){ wo=t[1]+'-'+t[2]; if(!(r.some(x=>/^رمز البند$/.test(x))&&r.some(x=>/كمية تقديرية/.test(x)))) continue; } } // رقم الأمر قد يكون داخل سطر الرؤوس نفسه — المالك 21-11
       const hc=r.findIndex(x=>/^رمز البند$/.test(x));
       if(hc>=0&&r.some(x=>/كمية تقديرية/.test(x))){ ci=hc; pi=r.findIndex(x=>/كمية تقديرية/.test(x)); di=r.findIndex(x=>/كمية فعلية/.test(x)); ni=r.findIndex((x,j)=>j!==ci&&j!==pi&&j!==di&&/^(الأعمال|المواد)$/.test(x)); if(ni<0) ni=ci+1; sec=/المواد/.test(r[ni]||'')?'m':'w'; continue; }
       if(ne.length===1&&/^(الأعمال|المواد)$/.test(ne[0])){ sec=ne[0]==='المواد'?'m':'w'; continue; }
       if(ci<0) continue; const c=r[ci].replace(/\.0+$/,''); if(!/^\d{5,12}$/.test(c)) continue;
-      const kind=c.length===9?'w':c.length<9?'m':sec, T=kind==='m'?M:W, x=T[c]||(T[c]={c,n:r[ni]||'',p:0,d:0}), num=v=>{ const n=+String(v).replace(/,/g,''); return isFinite(n)?n:0; };
+      // سطور «عمل استشارى» هي أعمالنا: إن وُجدت في الملف سُجّلت وحدها مع المواد وتُركت أعمال المقاول — المالك 21-11
+      const aji=/^عمل استشار[ىي]/.test(r[ni]||''), kind=aji?'a':c.length===9?'w':c.length<9?'m':sec, T=kind==='a'?WA:kind==='m'?M:W, x=T[c]||(T[c]={c,n:r[ni]||'',p:0,d:0}), num=v=>{ const n=+String(v).replace(/,/g,''); return isFinite(n)?n:0; };
       x.p+=num(A[i][pi]); x.d+=di>=0?num(A[i][di]):0; }
     // رقم الأمر والرمز غير موجودين داخل الملف: من اسم الملف (مثل 254632152-801.xlsx) — المالك 07-11
     let byName=false; if(!wo&&fname){ const t=String(fname).replace(/\.[^.]+$/,'').match(/(?:^|\D)(\d{9})(?:\s*[-_ ]\s*(\d{3}))?(?!\d)/); if(t){ wo=t[2]?t[1]+'-'+t[2]:t[1]; byName=true; } }
-    if(wo&&ci>=0&&(Object.keys(W).length||Object.keys(M).length)) return {wo,byName,works:Object.values(W).map(({c,p,d})=>({c,p,d})),mats:Object.values(M)}; }
+    if(wo&&ci>=0&&(Object.keys(W).length||Object.keys(WA).length||Object.keys(M).length)) return {wo,byName,works:Object.values(Object.keys(WA).length?WA:W).map(({c,p,d})=>({c,p,d})),mats:Object.values(M)}; }
   return null; }
 async function udsRead(fs){ const U=[]; let other=0; for(const f of fs){ const u=udsParse(XLSX.read(await f.arrayBuffer(),{type:'array'}),f.name); if(u){ u.file=f.name; U.push(u); } else other++; }
   if(!U.length) return null; if(other) throw new Error(other+' من الملفات المختارة ليست بشكل اليو دي إس. اختر ملفات اليو دي إس وحدها، أو ملفاً واحداً بالشكل الآخر.'); return U; }
