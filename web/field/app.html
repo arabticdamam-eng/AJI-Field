@@ -3243,10 +3243,10 @@ function fmPrintHtml(f,o,M,sg){
        <tr>${K('(حسب جدول تصنيف المخالفات) رقم ونص المخالفة','Violation Reference and statement (as per violation Classification table)')}${K('قيمة المخالفة','Violation Cost')}</tr>
        <tr style="height:52px">${V(e(it.text||''))}${V(num(it.price))}</tr>
        <tr>${K('(حسب جدول تصنيف الجزاءات) رقم ونص المخالفة','Violation Reference and statement (as per Penalties Classification table)')}${K('التكرار','Repetition')}</tr>
-       <tr style="height:44px">${V('')}${V('')}</tr>
+       <tr style="height:44px">${V(e(it.text||''))}${V('1')}</tr>
        <tr style="height:44px">${K('(حسب جدول تصنيف الغرامات) فئة الغرامة','Fine category (as per fines classifications table)')}${V(e(it.cat||''))}</tr>
        <tr>${K('الجزاء (حسب التصنيفات والتكرار)','')}${K('إجمالي قيمة الغرامة (حسب التصنيفات والتكرار)','')}</tr>
-       <tr style="height:44px">${V('')}${V(num(t))}</tr></table>
+       <tr style="height:44px">${V('1')}${V(num(t))}</tr></table>
        <table><tr style="height:92px"><td style="vertical-align:top"><div style="display:flex;justify-content:space-between"><b>وصف المخالفة:</b><b class="blu" style="direction:ltr">Violation description:</b></div><div style="white-space:pre-wrap;margin-top:6px;text-align:center">${e(d.desc)}</div></td></tr></table>
        <table class="au"><colgroup><col style="width:24%"><col style="width:26%"><col style="width:22%"><col style="width:28%"></colgroup>
        <tr><td colspan="2" class="k b" style="text-align:right;font-size:12px">المصادقة</td><td colspan="2" class="k b" style="text-align:left;direction:ltr;font-size:12px">:Authentication :</td></tr>
