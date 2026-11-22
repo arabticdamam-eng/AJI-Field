@@ -3179,7 +3179,10 @@ async function printForm(f,o){
   if(pdfs.length) setTimeout(()=>{ toast(pdfs.length+' مرفق PDF يُطبع من نافذته'); pdfs.forEach(x=>window.open(phView(x.id),'_blank','noopener')); },600);
 }
 // بيانات المقاول الثابتة للمحضر، واسم ملف المخالفة عند الطباعة (المالك 13-11): رقم الأمر أو الإشعار - المقاول - نوع المخالفة ورقمها لدى المقاول
-function fmCtOf(M,c){ c=String(c||'').trim(); if(!c) return null; const L=(M&&M.contracts)||[], full=FULLC(c); return L.find(x=>x.short===c||x.name===c||x.name===full)||null; }
+// المالك 22-11: الاسم قد يكون محفوظاً بصيغة أخرى («شركة مستورة»، «شركة عباجه») — يُطابَق بعد إسقاط «شركة/مؤسسة» وتوحيد الهمزات والتاء المربوطة
+const fmCtKey=s=>String(s||'').replace(/\s+/g,' ').trim().replace(/^(شرك[ةه]|م[ؤو]سس[ةه])\s+/,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[\s_\-.]+/g,'');
+function fmCtOf(M,c){ c=String(c||'').trim(); if(!c) return null; const L=(M&&M.contracts)||[], full=FULLC(c); const x=L.find(x=>x.short===c||x.name===c||x.name===full); if(x) return x;
+  const k=fmCtKey(c); if(k.length<4) return null; let H=L.filter(x=>fmCtKey(x.short)===k||fmCtKey(x.name)===k); if(H.length!==1) H=L.filter(x=>[fmCtKey(x.short),fmCtKey(x.name)].some(y=>y.length>=4&&(y.indexOf(k)===0||k.indexOf(y)===0))); return H.length===1?H[0]:null; }
 function fmFileName(f,o){ if(f.kind!=='safety'&&f.kind!=='quality') return ''; const d=f.data||{}, isMt=d.src==='maint'||!!(o&&o.maint)||/^D9:/.test(String(f.wo||'')), w=isMt?'إشعار '+String(f.wo||(o&&o.wo)||'').replace(/^D9:/,'').replace(/~.*$/,''):String((o&&o.wo)||woNum(f.wo)||'')+(o&&o.type?'-'+o.type:'');
   return [w,FULLC(d.contractor||''),'مخالفة '+(f.kind==='safety'?'سلامة':'جودة')+' '+(f.cno||f.seq||'')].filter(x=>String(x).trim()).join(' - ').replace(/[\\\/:*?"<>|]/g,'_'); }
 function printNamed(nm){ const t0=document.title; if(nm){ document.title=nm; const back=()=>{ document.title=t0; removeEventListener('afterprint',back); }; addEventListener('afterprint',back); setTimeout(back,120000); } window.print(); }
