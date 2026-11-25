@@ -1535,13 +1535,13 @@ function apWire(ref,again){ const E=m=>{ if($('#aperr')) $('#aperr').textContent
     $('#apno').onclick=re; $('#apgo').onclick=b=>{ const to=$('#apto').value; if(!to) return E('اختر المهندس المعتمد'); run(b.target,'engApSend',[to,$('#apnote').value.trim()],'أُرسلت النماذج إلى '+to); }; }; }
 // شريط صغير أسفل الصفحة: ما ينتظر اعتمادي وما أُعيد إليّ
 function apPoll(){ if(!S.tok) return; api('engApMine',S.tok).then(M=>{ S.apM=M; apBadge(); }).catch(()=>{}); }
-function apBadge(){ const M=S.apM||{wait:[],ret:[]}, n=M.wait.length+(M.forms||[]).length, r=M.ret.length+(M.fret||[]).length; let b=$('#apbn'); if(!n&&!r){ if(b) b.remove(); return; }
+function apBadge(){ const M=S.apM||{wait:[],ret:[]}, n=M.wait.length+(M.fnote||[]).length, r=M.ret.length+(M.fret||[]).length; let b=$('#apbn'); if(!n&&!r){ if(b) b.remove(); return; }
   if(!b){ b=document.createElement('button'); b.id='apbn'; b.style.cssText='position:fixed;bottom:14px;inset-inline-start:14px;z-index:40;padding:8px 12px;border-radius:20px;background:var(--warn,#B9741B);color:#fff;border:0;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:700'; document.body.appendChild(b); }
   b.textContent='📨 '+[n?'بانتظار اعتمادك '+n:'',r?'أُعيد إليك '+r:''].filter(Boolean).join(' · '); b.onclick=apListModal; }
-function apListModal(){ const M=S.apM||{wait:[],ret:[]}, frow=(x,w)=>`<tr><td><b>${esc((x.kind==='safety'?'مخالفة سلامة ':'مخالفة جودة ')+x.seq)}</b><div class="muted" style="font-size:12px">${esc([x.wo,x.office,x.contractor].filter(Boolean).join(' · '))}</div></td><td>${w?'أدخلها '+esc(x.by):'رفضها '+esc(x.to)}<div class="muted" style="font-size:12px">${esc(String(x.at).slice(0,16))}</div></td><td class="wrap">${esc(w?x.sum:x.note)}</td><td><button data-apf="${esc(x.id)}">فتح</button>${w?` <button class="pri" data-apfo="${esc(x.id)}">✓ اعتماد وتوقيع</button> <button data-apfn="${esc(x.id)}">↩ رفض</button>`:''}</td></tr>`, row=(x,w)=>`<tr><td><b>${esc(x.wo)}${x.type?'-'+esc(x.type):''}</b><div class="muted" style="font-size:12px">${esc([x.office,x.district,x.contractor].filter(Boolean).join(' · '))}</div></td><td>${w?'من '+esc(x.by):'أعادها '+esc(x.to)}<div class="muted" style="font-size:12px">${esc(String(x.at).slice(0,16))}</div></td><td class="wrap">${esc(x.note||'')}</td><td><button class="pri" data-apo="${esc(x.key)}">فتح</button></td></tr>`;
+function apListModal(){ const M=S.apM||{wait:[],ret:[]}, frow=(x,w)=>`<tr><td><b>${esc((x.kind==='safety'?'مخالفة سلامة ':'مخالفة جودة ')+x.seq)}</b><div class="muted" style="font-size:12px">${esc([x.wo,x.office,x.contractor].filter(Boolean).join(' · '))}</div></td><td>${w?'أدخلها '+esc(x.by):'رفضها '+esc(x.to)}<div class="muted" style="font-size:12px">${esc(String(x.at).slice(0,16))}</div></td><td class="wrap">${esc(w?x.sum:x.note)}</td><td><button data-apf="${esc(x.id)}">فتح</button>${w?` <button class="pri" data-apfo="${esc(x.id)}">علمت</button>`:''}</td></tr>`, row=(x,w)=>`<tr><td><b>${esc(x.wo)}${x.type?'-'+esc(x.type):''}</b><div class="muted" style="font-size:12px">${esc([x.office,x.district,x.contractor].filter(Boolean).join(' · '))}</div></td><td>${w?'من '+esc(x.by):'أعادها '+esc(x.to)}<div class="muted" style="font-size:12px">${esc(String(x.at).slice(0,16))}</div></td><td class="wrap">${esc(x.note||'')}</td><td><button class="pri" data-apo="${esc(x.key)}">فتح</button></td></tr>`;
   modal(`<div style="display:flex;gap:8px;align-items:center"><h3 style="margin:0">📨 اعتماد المهندس المعتمد</h3><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>
-    ${M.wait.length?`<h4>بانتظار اعتمادك وتوقيعك (${M.wait.length})</h4><div class="tw"><table><tbody>${M.wait.map(x=>row(x,1)).join('')}</tbody></table></div>`:''}${M.ret.length?`<h4>أُعيدت إليك (${M.ret.length})</h4><div class="tw"><table><tbody>${M.ret.map(x=>row(x,0)).join('')}</tbody></table></div>`:''}${(M.forms||[]).length?`<h4>محاضر مخالفات باسمك بانتظار اعتمادك وتوقيعك (${M.forms.length})</h4><div class="tw"><table><tbody>${M.forms.map(x=>frow(x,1)).join('')}</tbody></table></div>`:''}${(M.fret||[]).length?`<h4>محاضر أدخلتها ورُفضت (${M.fret.length})</h4><div class="tw"><table><tbody>${M.fret.map(x=>frow(x,0)).join('')}</tbody></table></div>`:''}`);
-  document.querySelectorAll('[data-apf]').forEach(b=>b.onclick=async()=>{ try{ const f=await api('getForm',S.tok,b.dataset.apf,true); formEditor(f,fmOrder(f.wo,f),apListModal); }catch(e){ toast(e.message); } }); document.querySelectorAll('[data-apfo]').forEach(b=>b.onclick=()=>fmApDo(b.dataset.apfo,true,apListModal)); document.querySelectorAll('[data-apfn]').forEach(b=>b.onclick=()=>fmApDo(b.dataset.apfn,false,apListModal));
+    ${M.wait.length?`<h4>بانتظار اعتمادك وتوقيعك (${M.wait.length})</h4><div class="tw"><table><tbody>${M.wait.map(x=>row(x,1)).join('')}</tbody></table></div>`:''}${M.ret.length?`<h4>أُعيدت إليك (${M.ret.length})</h4><div class="tw"><table><tbody>${M.ret.map(x=>row(x,0)).join('')}</tbody></table></div>`:''}${(M.fnote||[]).length?`<h4>🔔 إعلام: مخالفات حُررت باسمك ووُقّعت بتوقيعك (${M.fnote.length})</h4><div class="tw"><table><tbody>${M.fnote.map(x=>frow(x,1)).join('')}</tbody></table></div>`:''}${(M.fret||[]).length?`<h4>محاضر أدخلتها ورُفضت (${M.fret.length})</h4><div class="tw"><table><tbody>${M.fret.map(x=>frow(x,0)).join('')}</tbody></table></div>`:''}`);
+  document.querySelectorAll('[data-apf]').forEach(b=>b.onclick=async()=>{ try{ const f=await api('getForm',S.tok,b.dataset.apf,true); formEditor(f,fmOrder(f.wo,f),apListModal); }catch(e){ toast(e.message); } }); document.querySelectorAll('[data-apfo]').forEach(b=>b.onclick=()=>fmApDo(b.dataset.apfo,apListModal));
   document.querySelectorAll('[data-apo]').forEach(b=>b.onclick=()=>qdModal(b.dataset.apo)); }
 async function qdModal(ref){ modal('<div class="loading">جارٍ فتح ملف الجودة…</div>');
   let C,V; try{ C=await qdCat(); V=await api('qdGet',S.tok,ref); }catch(e){ return modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); }
@@ -1850,12 +1850,26 @@ async function licAdmin(){ let L; try{ L=await api('listLicenses',S.tok); }catch
    <div class="card" style="margin-bottom:8px"><b>رفع جماعي</b><div class="muted">اسم كل ملف = اسم المهندس كما في البرنامج، مثل «محمد المبارك عمر.jpg».</div><input type="file" id="lcb" accept="application/pdf,image/jpeg,image/png" multiple></div>
    <div class="card" style="margin-bottom:8px"><b>رفع إجازة واحدة</b><div class="bar"><input id="lcn" list="lcdl" placeholder="اسم المهندس" style="min-width:220px"><input type="file" id="lc1" accept="application/pdf,image/jpeg,image/png"><button class="pri" id="lcup">رفع</button></div><datalist id="lcdl">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
    <div id="lcst" class="muted"></div><div class="err" id="lcerr"></div>
-   <div class="tw"><table><thead><tr><th>المهندس</th><th>الملف</th><th>آخر تحديث</th><th></th></tr></thead><tbody>${L.map(x=>`<tr><td>${esc(x.name)}</td><td>${/pdf$/.test(x.mime||'')?'PDF':'صورة'}</td><td>${esc(String(x.updated_at||'').slice(0,16))}</td><td><button data-lcd="${esc(x.name)}">حذف</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">لا توجد إجازات بعد</td></tr>'}</tbody></table></div>`);
+   <div class="bar" style="margin:8px 0;flex-wrap:wrap"><input id="lcq" placeholder="🔍 بحث بالاسم" style="min-width:200px"><select id="lcft"><option value="">كل الأنواع</option><option value="img">صورة</option><option value="pdf">PDF</option></select><label class="muted" style="font-size:12px">من <input type="date" id="lcfa"></label><label class="muted" style="font-size:12px">إلى <input type="date" id="lcfz"></label><label style="font-size:13px"><input type="checkbox" id="lcfu"> بلا مستخدم مطابق</label><button id="lcfx">مسح الفلاتر</button><span class="sp"></span><span class="muted" id="lccn"></span><button id="lcdel" style="color:var(--dan);border-color:var(--dan)" disabled>🗑 حذف المحدد</button></div>
+   <div class="tw" style="max-height:48vh"><table><thead><tr><th style="width:34px"><input type="checkbox" id="lcall" title="تحديد كل الظاهر"></th><th>المهندس</th><th>الملف</th><th>آخر تحديث</th><th></th></tr></thead><tbody id="lctb"></tbody></table></div>`);
+  // بحث وفلترة وحذف جماعي (المالك 25-11): التحديد يبقى عند تغيير الفلتر، و«تحديد الكل» للظاهر فقط
+  const nk=x=>String(x||'').replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/[ىئ]/g,'ي').replace(/ؤ/g,'و').replace(/\s+/g,' ').trim().toLowerCase(), SEL=new Set();
+  const shown=()=>{ const q=nk($('#lcq').value).split(' ').filter(Boolean), ft=$('#lcft').value, a=$('#lcfa').value, z=$('#lcfz').value, nu=$('#lcfu').checked; return L.filter(x=>{ const pdf=/pdf$/.test(x.mime||''), d=String(x.updated_at||'').slice(0,10), k=nk(x.name); return q.every(w=>k.indexOf(w)>=0)&&(!ft||(ft==='pdf')===pdf)&&(!a||d>=a)&&(!z||(d&&d<=z))&&(!nu||!x.user); }); };
+  const draw=()=>{ const V=shown(); $('#lctb').innerHTML=V.map(x=>`<tr><td><input type="checkbox" data-lcs="${esc(x.name)}" ${SEL.has(x.name)?'checked':''}></td><td>${esc(x.name)}${x.user?'':' <span class="pill p-w" title="لا يطابق اسم أي مستخدم في البرنامج">بلا مستخدم</span>'}</td><td>${/pdf$/.test(x.mime||'')?'PDF':'صورة'}</td><td>${esc(String(x.updated_at||'').slice(0,16))}</td><td><button data-lcd="${esc(x.name)}">حذف</button></td></tr>`).join('')||`<tr><td colspan="5" class="muted">${L.length?'لا نتائج مطابقة':'لا توجد إجازات بعد'}</td></tr>`;
+    $('#lccn').textContent=`الظاهر ${V.length} من ${L.length} · المحدد ${SEL.size}`; $('#lcdel').disabled=!SEL.size; $('#lcall').checked=!!V.length&&V.every(x=>SEL.has(x.name));
+    document.querySelectorAll('[data-lcs]').forEach(c=>c.onchange=()=>{ c.checked?SEL.add(c.dataset.lcs):SEL.delete(c.dataset.lcs); draw(); });
+    document.querySelectorAll('[data-lcd]').forEach(b=>b.onclick=async()=>{ if(!confirm('حذف إجازة '+b.dataset.lcd+'؟')) return; try{ await api('deleteLicense',S.tok,b.dataset.lcd); licAdmin(); }catch(e){ toast(e.message); } }); };
+  ['lcq','lcft','lcfa','lcfz','lcfu'].forEach(id=>{ $('#'+id).oninput=draw; $('#'+id).onchange=draw; });
+  $('#lcfx').onclick=()=>{ $('#lcq').value=''; $('#lcft').value=''; $('#lcfa').value=''; $('#lcfz').value=''; $('#lcfu').checked=false; draw(); };
+  $('#lcall').onchange=()=>{ const on=$('#lcall').checked; shown().forEach(x=>on?SEL.add(x.name):SEL.delete(x.name)); draw(); };
+  $('#lcdel').onclick=async()=>{ const N=[...SEL]; if(!N.length) return; if(!confirm('حذف '+N.length+' إجازة حذفاً نهائياً لا يُسترجع؟\n\n'+N.slice(0,25).join('\n')+(N.length>25?'\n… و'+(N.length-25)+' أخرى':''))) return;
+    $('#lcdel').disabled=true; try{ const r=await api('deleteLicenses',S.tok,N); toast('حُذفت '+r.n+' إجازة'); licAdmin(); }catch(e){ $('#lcdel').disabled=false; $('#lcerr').textContent=e.message; } };
+  draw();
   const one=async(name,f)=>{ const {b64,mime}=await licB64(f); return api('uploadLicense',S.tok,name,b64,mime); };
   $('#lcup').onclick=async()=>{ const n=$('#lcn').value.trim(), f=$('#lc1').files[0]; if(!n||!f) return $('#lcerr').textContent='اكتب الاسم واختر الملف'; try{ await one(n,f); toast('رُفعت الإجازة'); licAdmin(); }catch(e){ $('#lcerr').textContent=e.message; } };
   $('#lcb').onchange=async()=>{ const fs=[...$('#lcb').files]; let k=0, bad=[]; for(const f of fs){ k++; $('#lcst').textContent='جارٍ الرفع '+k+' من '+fs.length+'…'; const n=f.name.replace(/\.[^.]+$/,'').replace(/^\d+\s{0,9}-\s{0,9}/,'').trim(); try{ await one(n,f); }catch(e){ bad.push(f.name+': '+e.message); } }
     toast('اكتمل الرفع'); await licAdmin(); if(bad.length&&$('#lcerr')) $('#lcerr').textContent=bad.join(' | '); };
-  document.querySelectorAll('[data-lcd]').forEach(b=>b.onclick=async()=>{ if(!confirm('حذف إجازة '+b.dataset.lcd+'؟')) return; try{ await api('deleteLicense',S.tok,b.dataset.lcd); licAdmin(); }catch(e){ toast(e.message); } }); }
+ }
 async function vQdCat(){ let C; try{ C=await qdCat(); }catch(e){ $('#usub').innerHTML=`<div class="err">${esc(e.message)}</div>`; return; }
   // الإنشاءات بأرقامها (وأسماؤها المعروفة) ثم الصيانة والطوارئ بأنواعها (المالك 11-11)
   const MTK=Object.keys(C.mtTypes||{}), isMt=t=>MTK.includes(t)||/^MT_/.test(t);
@@ -3044,15 +3058,15 @@ function formMode(kind,o,back,then){
 }
 const fmNewForm=(kind,o,back)=>formMode(kind,o,back,up=>formEditor({kind,wo:o.key||o.wo,data:up?{src:'upload'}:{}},o,back));
 
-// ── محرر المخالفة المختار واعتماده (المالك 24-11): المحضر باسم مهندس آخر يُطبع بلا توقيعه حتى يعتمده من حسابه ──
-const fmNoSig=f=>{ const a=((f&&f.data)||{}).ap; return !!(a&&a.st==='wait'); }, FM_NOSG={sig:'',emp_no:''};
-function fmApBar(f){ const a=((f&&f.data)||{}).ap; if(!a||!f.id) return ''; const me=String(S.B.user.name||'').replace(/\s+/g,' ').trim(), mine=a.st==='wait'&&String(a.to||'').replace(/\s+/g,' ').trim()===me, t=x=>esc(String(x||'').slice(0,16));
-  if(a.st==='wait') return `<div class="card" id="fapbox" style="margin:8px 0;border-color:var(--warn,#B9741B)">📨 ${mine?`أدخل <b>${esc(a.by)}</b> هذا المحضر باسمك — راجعه ثم اعتمده ووقّعه، أو ارفضه`:`المحضر باسم <b>${esc(a.to)}</b> وبانتظار اعتماده وتوقيعه — يُطبع بلا توقيع حتى يعتمد`} <span class="muted">${t(a.at)}</span>${mine?'<div class="bar" style="margin-top:6px"><button class="pri" id="fapok" style="background:var(--ok);border-color:var(--ok)">✓ اعتماد وتوقيع</button><button id="fapno">↩ رفض</button></div>':''}<div class="err" id="faperr"></div></div>`;
+// ── محرر المخالفة المختار (المالك 24-11، ثم 25-11): المحضر باسم مهندس آخر يُوقَّع بتوقيعه فوراً (تفويض ورقي) ويصله إعلام فقط ──
+const fmNoSig=f=>false, FM_NOSG={sig:'',emp_no:''};
+function fmApBar(f){ const a=((f&&f.data)||{}).ap; if(!a||!f.id) return ''; const nz=x=>String(x||'').replace(/\s+/g,' ').trim(), mine=nz(a.to)===nz(S.B.user.name), t=x=>esc(String(x||'').slice(0,16));
+  if(a.st==='wait'||a.st==='note') return `<div class="card" id="fapbox" style="margin:8px 0;border-color:var(--warn,#B9741B)">🔔 ${mine?`حرّر <b>${esc(a.by)}</b> هذا المحضر باسمك ووُقّع بتوقيعك — إعلام فقط`:`حُرر باسم <b>${esc(a.to)}</b> ووُقّع بتوقيعه مباشرة، ${a.seen?'وقد علم بذلك '+t(a.seen):'وأُرسل له إعلام'}`} <span class="muted">${t(a.at)}</span>${mine&&!a.seen?'<div class="bar" style="margin-top:6px"><button id="fapok">علمت</button></div>':''}<div class="err" id="faperr"></div></div>`;
   if(a.st==='ok') return `<div class="card" style="margin:8px 0;border-color:var(--ok)">✓ اعتمد المحضر ووقّعه <b>${esc(a.to)}</b> <span class="muted">${t(a.ok_at)} — أدخله ${esc(a.by)}</span></div>`;
   if(a.st==='ret') return `<div class="card" style="margin:8px 0;border-color:var(--bad,#B3261E)">↩ رفض <b>${esc(a.to)}</b> أن يكون محرر هذا المحضر: ${esc(a.rnote||'')} <span class="muted">— عاد باسم من أدخله. غيّر «محرر المحضر» إن أردت ثم احفظ.</span></div>`;
   return ''; }
-async function fmApDo(id,ok,after){ let note=''; if(ok){ if(!confirm('اعتماد هذا المحضر وتوقيعه باسمك؟')) return; } else { note=(prompt('سبب الرفض:')||'').trim(); if(!note) return; }
-  try{ await api(ok?'formApOk':'formApBack',S.tok,id,note); S.fmList=null; toast(ok?'اعتُمد المحضر ووُقّع باسمك':'رُفض المحضر وعاد إلى من أدخله'); try{ S.apM=await api('engApMine',S.tok); apBadge(); }catch(e){} if(after) after(); }catch(e){ if($('#faperr')) $('#faperr').textContent=e.message; else toast(e.message); } }
+async function fmApDo(id,after){
+  try{ await api('formApSeen',S.tok,id); try{ S.apM=await api('engApMine',S.tok); apBadge(); }catch(e){} if(after) after(); }catch(e){ if($('#faperr')) $('#faperr').textContent=e.message; else toast(e.message); } }
 async function formEditor(f,o,back){
   let M; try{ M=await fmMeta(); }catch(e){ return toast(e.message); }
   const kind=f.kind, K=FK[kind], isNew=!f.id, ro=!isNew&&!f.can, d=JSON.parse(JSON.stringify(f.data||{}));
@@ -3098,7 +3112,7 @@ async function formEditor(f,o,back){
      <div id="fsc" class="phs"></div>
      ${ro?'':'<label class="upl">📷 تصوير النسخة<input type="file" id="fscc" data-img="1" data-cam="1" style="display:none"></label> <label class="upl">📎 رفع ملف (PDF أو صورة)<input type="file" id="fscf" accept="application/pdf,image/*" multiple style="display:none"></label> <span id="fscp" class="muted"></span>'}</div>
    ${fmApBar(f)}
-   <div class="f"><label>${kind==='meeting'?'ممثل الاستشاري':kind==='site'?'ممثل الاستشاري (محرر البطاقة)':'محرر المحضر (الاستشاري)'}<input data-d="author" list="dlsig" value="${esc(d.author||'')}" ${R}><span id="fsig" class="muted" style="font-size:12px"></span>${kind==='safety'||kind==='quality'?'<span class="muted" style="font-size:12px">للمدير وقائد المكتب ومهندس السلامة ومسؤول الجودة: باسمك يُوقَّع المحضر مباشرة، وباسم مهندس آخر يُرسل له ليعتمده ويوقّعه (يُطبع بلا توقيع حتى يعتمد). اتركه فارغاً لمهندس الأمر المسند.</span>':''}</label>
+   <div class="f"><label>${kind==='meeting'?'ممثل الاستشاري':kind==='site'?'ممثل الاستشاري (محرر البطاقة)':'محرر المحضر (الاستشاري)'}<input data-d="author" list="dlsig" value="${esc(d.author||'')}" ${R}><span id="fsig" class="muted" style="font-size:12px"></span>${kind==='safety'||kind==='quality'?'<span class="muted" style="font-size:12px">للمدير وقائد المكتب ومهندس السلامة ومسؤول الجودة: اكتب اسمك أو اسم أي مهندس: يُوقَّع المحضر بتوقيعه مباشرة، وإن كان غيرك وصله إعلام. اتركه فارغاً لمهندس الأمر المسند.</span>':''}</label>
      <label style="flex-direction:row;align-items:center;gap:6px;margin-top:18px;${kind==='quality'?'display:none':''}"><input type="checkbox" id="fstamp" ${d.stamp!=='0'?'checked':''} ${ro?'disabled':''}> إظهار ختم الاستشاري عند الطباعة</label></div></div>
    <datalist id="dlct">${CONTR().map(c=>`<option value="${esc(c)}">`).join('')}</datalist><datalist id="dlsig">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
    <datalist id="dlact"><option value="غرامة مالية"><option value="إنذار"><option value="انتقال المخالفة من التصنيف C إلى B"><option value="انتقال المخالفة من التصنيف B إلى A"><option value="25000 ريال وإيقاف إسناد الأعمال لمدة ثلاثة أشهر"></datalist>
@@ -3107,7 +3121,7 @@ async function formEditor(f,o,back){
   const sigNote=()=>{ const a=($('[data-d="author"]').value||'').trim(), nm=x=>x.replace(/\s+/g,' ').trim(), f3=x=>nm(x).split(' ').slice(0,3).join(' '), s=M.sigs.find(x=>nm(x.name)===nm(a))||(nm(a).split(' ').length>=3?M.sigs.find(x=>f3(x.name)===f3(a)):null);
     $('#fsig').innerHTML=a?(s?'✓ توقيعه محفوظ'+(s.emp_no?' · الرقم الوظيفي '+esc(s.emp_no):''):'<span style="color:var(--warn)">لا يوجد توقيع محفوظ لهذا الاسم</span>'):''; };
   $('[data-d="author"]').oninput=sigNote; sigNote();
-  if($('#fapok')) $('#fapok').onclick=()=>fmApDo(f.id,true,()=>{ closeModal(); if(back) back(); }); if($('#fapno')) $('#fapno').onclick=()=>fmApDo(f.id,false,()=>{ closeModal(); if(back) back(); });
+  if($('#fapok')) $('#fapok').onclick=()=>fmApDo(f.id,()=>{ const x=$('#fapbox'); if(x) x.remove(); });
   const ctIn=$('[data-d="contractor"]'); if(ctIn&&kind==='safety'&&!ro) ctIn.onchange=()=>{ const c=fmCtOf(M,ctIn.value); $('[data-d="contract_no"]').value=c?c.no:''; $('[data-d="safety_rep"]').value=c?c.rep:''; };
   const drawItems=()=>{ if(kind==='meeting'||kind==='site') return; let tot=0;
     $('#fit').innerHTML=d.items.map((it,i)=>{ const n=(kind==='safety'?1:(+it.qty||0)), t=n*(+it.price||0); tot+=t;
@@ -4758,7 +4772,7 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
   .sk-ov button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}.sk-top button{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.3)}.sk-top button.pri{background:#FFD400;color:#14263F;border-color:#FFD400;font-weight:700}
   .sk-tools{display:flex;gap:5px;overflow-x:auto;padding:6px 8px;border-bottom:1px solid #e3e6ea;background:#F6F7F9;flex:0 0 auto}.sk-tools button{display:flex;flex-direction:column;align-items:center;gap:2px;width:76px;flex:0 0 76px;font-size:10.5px;line-height:1.2;padding:4px 3px;white-space:normal;text-align:center}
   .sk-tools svg{width:34px;height:22px}.sk-sep{width:1px;background:#cfd5dd;margin:0 3px;flex:0 0 1px}
-  .sk-main{flex:1;position:relative;overflow:hidden;touch-action:none;background:#fff}.sk-main svg{width:100%;height:100%;display:block;user-select:none}
+  .sk-main{flex:1;position:relative;overflow:hidden;touch-action:none;background:#fff}.sk-main svg{width:100%;height:100%;display:block;user-select:none}.sk-main svg#sk-map{position:absolute;inset:0;pointer-events:none}.sk-main svg#sk-svg{position:relative}.sk-osm{position:absolute;left:58px;bottom:6px;font-size:10px;color:#5B6B7F;background:rgba(255,255,255,.8);padding:0 4px;border-radius:4px;pointer-events:none;direction:ltr}
   .sk-zoom{position:absolute;left:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}.sk-zoom button{width:40px;height:40px;font-size:20px;padding:0}
   .sk-north{position:absolute;right:12px;top:10px;width:54px;height:54px;border-radius:50%;background:#fff;border:1px solid #cfd5dd;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .sk-hint{pointer-events:none;position:absolute;right:10px;bottom:10px;background:rgba(20,38,63,.88);color:#fff;border-radius:8px;padding:6px 10px;font-size:13px;max-width:70%}
@@ -4771,21 +4785,44 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
     return `<svg viewBox="-2.2 -1.4 4.4 2.8">${pt(t, t === 'plot' ? '25' : t === 'txt' ? 'نص' : '')}</svg>`; }
   const bbox = sh => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; sh.forEach(s => { const k = (+s.k || 1) * 1.6; (s.pts || [[s.x, s.y]]).forEach(p => { x0 = Math.min(x0, p[0] - (s.pts ? 0 : k)); y0 = Math.min(y0, p[1] - (s.pts ? 0 : k)); x1 = Math.max(x1, p[0] + (s.pts ? 0 : k)); y1 = Math.max(y1, p[1] + (s.pts ? 0 : k)); }); }); return [x0, y0, x1, y1]; };
   // the drawing as a picture, with a header (order, place, engineer, date) and the names of the symbols used
-  function toPng(data, meta) {
+  // ---- خريطة موقع أمر العمل تحت المخطط (المالك 25-11): بلاطات OpenStreetMap بنفس مقياس الرسم (المتر على الرسم = متر على الأرض) ----
+  // D.g = {lat,lng,on,op}: الإحداثيات التي تقابل نقطة الأصل (0,0) في الرسم. الشمال يتبع D.n فتدور الخريطة مع سهم الشمال.
+  const EARTH = 40075016.686, geoOk = g => !!g && isFinite(+g.lat) && isFinite(+g.lng) && Math.abs(+g.lat) <= 85 && Math.abs(+g.lng) <= 180 && !!(+g.lat || +g.lng);
+  const geoParse = t => { const m = String(t || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).match(/(-?\d{1,2}\.\d{3,})\s*[,،\s]\s*(-?\d{1,3}\.\d{3,})/), g = m ? { lat: +m[1], lng: +m[2] } : null; return geoOk(g) ? g : null; };
+  const mercY = lat => (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2;
+  const rot = (p, deg) => { const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; };
+  // the place lying e metres east and s metres south of g
+  const geoAt = (g, e, s) => { const C = EARTH * Math.cos(g.lat * Math.PI / 180), y = mercY(+g.lat) + s / C; return { lat: Math.round(Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI * 1e7) / 1e7, lng: Math.round((+g.lng + e / C * 360) * 1e7) / 1e7 }; };
+  // the tiles covering box [x0,y0,w,h] of the drawing; pxm = picture pixels per metre; never more than max tiles (a lower zoom is taken instead)
+  function tiles(g, n, box, pxm, max) { const C = EARTH * Math.cos(g.lat * Math.PI / 180); let z = Math.max(3, Math.min(19, Math.round(Math.log2(Math.max(pxm, 1e-6) * C / 256))));
+    const cs = [[box[0], box[1]], [box[0] + box[2], box[1]], [box[0], box[1] + box[3]], [box[0] + box[2], box[1] + box[3]]].map(p => rot(p, -n)), e0 = Math.min(...cs.map(p => p[0])), e1 = Math.max(...cs.map(p => p[0])), s0 = Math.min(...cs.map(p => p[1])), s1 = Math.max(...cs.map(p => p[1]));
+    for (; ; z--) { const N = Math.pow(2, z), tm = C / N, X0 = (+g.lng + 180) / 360 * N, Y0 = mercY(+g.lat) * N, a = Math.floor(X0 + e0 / tm), b = Math.floor(X0 + e1 / tm), c = Math.max(0, Math.floor(Y0 + s0 / tm)), d = Math.min(N - 1, Math.floor(Y0 + s1 / tm));
+      if ((b - a + 1) * (d - c + 1) > max && z > 3) continue; const list = [];
+      for (let x = a; x <= b; x++) for (let y = c; y <= d; y++) { const xx = ((x % N) + N) % N; list.push({ k: z + '/' + x + '/' + y, u: 'https://' + 'abc'[(xx + y) % 3] + '.tile.openstreetmap.org/' + z + '/' + xx + '/' + y + '.png', x: r2((x - X0) * tm), y: r2((y - Y0) * tm), w: r2(tm * 1.004) }); }
+      return { z, list }; } }
+  const tileImg = (t, href) => `<image href="${href}" x="${t.x}" y="${t.y}" width="${t.w}" height="${t.w}" preserveAspectRatio="none"/>`;
+  // the map for the saved picture: every tile is fetched and embedded, since a picture built from SVG may not load outside files. No internet = no map, the picture is still made
+  async function pngMap(data, box, pxm) { const g = data.g; if (!geoOk(g) || !g.on || typeof fetch !== 'function') return '';
+    const one = t => new Promise(ok => { const tm = setTimeout(() => ok(''), 9000); fetch(t.u).then(r => r.ok ? r.blob() : Promise.reject()).then(b => { const fr = new FileReader(); fr.onload = () => { clearTimeout(tm); ok(tileImg(t, fr.result)); }; fr.onerror = () => { clearTimeout(tm); ok(''); }; fr.readAsDataURL(b); }).catch(() => { clearTimeout(tm); ok(''); }); });
+    const got = (await Promise.all(tiles(g, data.n || 0, box, pxm, 36).list.map(one))).filter(Boolean); if (!got.length) return '';
+    return `<g transform="rotate(${data.n || 0})" opacity="${+g.op || .75}">${got.join('')}</g>`; }
+  async function toPng(data, meta) {
     const sh = data.s || []; let [x0, y0, x1, y1] = bbox(sh);
     if (x0 > x1) { x0 = 0; y0 = 0; x1 = 20; y1 = 14; }
-    x0 -= 3; y0 -= 6; x1 += 7; y1 += 3; let w = x1 - x0, h = y1 - y0; if (w < 20) { x0 -= (20 - w) / 2; w = 20; } if (h < 12) { y0 -= (12 - h) / 2; h = 12; }
+    const mpad = geoOk(data.g) && data.g.on ? 15 : 0;   // مع الخريطة: هامش أوسع ليظهر محيط الموقع
+    x0 -= 3 + mpad; y0 -= 6 + mpad; x1 += 7 + mpad; y1 += 3 + mpad; let w = x1 - x0, h = y1 - y0; if (w < 20) { x0 -= (20 - w) / 2; w = 20; } if (h < 12) { y0 -= (12 - h) / 2; h = 12; }
     const used = ORDER.filter(t => !SYM[t].ref && sh.some(s => s.t === t)), px = Math.max(8, Math.min(60, 1500 / w)), W = Math.round(w * px), Hm = Math.round(h * px), top = 110, rows = Math.ceil(used.length / 3), bottom = used.length ? 50 + rows * 34 : 20, H = top + Hm + bottom;
     const grid = []; for (let gx = Math.ceil(x0); gx <= x1; gx++) grid.push(`<line x1="${gx}" y1="${y0}" x2="${gx}" y2="${y1}" stroke="${gx % 5 ? '#F1F3F6' : '#E1E5EA'}" stroke-width="${gx % 5 ? .03 : .05}"/>`);
     for (let gy = Math.ceil(y0); gy <= y1; gy++) grid.push(`<line x1="${x0}" y1="${gy}" x2="${x1}" y2="${gy}" stroke="${gy % 5 ? '#F1F3F6' : '#E1E5EA'}" stroke-width="${gy % 5 ? .03 : .05}"/>`);
     const cw = (W - 40) / 3, leg = used.map((t, i) => { const c = i % 3, r = Math.floor(i / 3), x = W - 20 - c * cw, y = top + Hm + 46 + r * 34;
       return `<svg x="${x - 60}" y="${y - 20}" width="56" height="28" viewBox="${SYM[t].k === L ? '-3 -1.2 6 2.4' : '-2.2 -1.4 4.4 2.8'}">${SYM[t].k === L ? lineSvg({ t, pts: [[-2.6, 0], [2.6, 0]] }, false) : pt(t, '')}</svg><text x="${x - 68}" y="${y}" font-size="15" direction="rtl" text-anchor="start" fill="#1b1f27">${esc(SYM[t].n)}</text>`; }).join('');
+    const mapG = await pngMap(data, [x0, y0, w, h], px);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#fff"/>
       <rect width="${W}" height="${top - 10}" fill="#14263F"/>${meta.logo ? `<image href="${meta.logo}" x="16" y="12" width="76" height="76"/>` : ''}
       <text x="${W - 20}" y="42" font-size="26" font-weight="700" fill="#fff" direction="rtl" text-anchor="start">مخطط الموقع — أمر العمل ${esc(meta.wo)}</text>
       <text x="${W - 20}" y="78" font-size="16" fill="#FFD400" direction="rtl" text-anchor="start">${esc([meta.office, meta.district, meta.eng, meta.date].filter(Boolean).join(' · '))}</text>
-      <svg x="0" y="${top}" width="${W}" height="${Hm}" viewBox="${x0} ${y0} ${w} ${h}" font-family="Arial">${grid.join('')}${sh.map((s, i) => shapeSvg(s, i, false)).join('')}
-      <g transform="translate(${x1 - 2.5} ${y0 + 3}) rotate(${data.n || 0})"><path d="M0 -1.6L.7 1.2L0 .7L-.7 1.2Z" fill="#14263F"/><text y="-1.9" font-size=".8" font-weight="700" text-anchor="middle" fill="#14263F">N</text></g></svg>
+      <svg x="0" y="${top}" width="${W}" height="${Hm}" viewBox="${x0} ${y0} ${w} ${h}" font-family="Arial">${mapG}${mapG ? '' : grid.join('')}${sh.map((s, i) => shapeSvg(s, i, false)).join('')}
+      <g transform="translate(${x1 - 2.5} ${y0 + 3}) rotate(${data.n || 0})"><path d="M0 -1.6L.7 1.2L0 .7L-.7 1.2Z" fill="#14263F"/><text y="-1.9" font-size=".8" font-weight="700" text-anchor="middle" fill="#14263F">N</text></g></svg>${mapG ? `<text x="8" y="${top + Hm - 6}" font-size="11" fill="#5B6B7F" font-family="Arial">© OpenStreetMap</text>` : ''}
       ${used.length ? `<line x1="20" y1="${top + Hm + 10}" x2="${W - 20}" y2="${top + Hm + 10}" stroke="#D9DEE5"/>${leg}` : ''}</svg>`;
     return new Promise((ok, no) => { const im = new Image(); im.onload = () => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(im, 0, 0); ok(cv.toDataURL('image/png').split(',')[1]); };
       im.onerror = () => no(new Error('تعذّر تجهيز صورة المخطط')); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
@@ -4793,7 +4830,20 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
   function open(o) {
     css(); const items = o.items || {}, meta = o.meta || {}, ro = !!o.ro;
     let D = JSON.parse(JSON.stringify(o.data || { v: 1, n: 0, s: [] })); D.s = D.s || []; D.n = D.n || 0;
-    const hist = []; let tool = 'sel', sel = -1, vb = null, dirty = false, drag = null, pins = {}, lp = null;
+    const hist = []; let tool = 'sel', sel = -1, vb = null, dirty = false, drag = null, pins = {}, lp = null, mk = {}, mkey = '', mapOff = null, ready = false;
+    const hintG = geoParse(o.geo), mapOn = () => geoOk(D.g) && !!D.g.on, maxW = () => mapOn() ? 20000 : 400, SVGNS = 'http://www.w3.org/2000/svg';
+    if (!ro && !D.g && !D.s.length && hintG) D.g = { lat: hintG.lat, lng: hintG.lng, on: 1, op: .75, c: 1 };   // مخطط جديد والأمر له موقع معروف: تُقترح خريطته (c = تُوسَّط عند أول رسم). المخططات القديمة لا تُمَس حتى يضيفها المهندس
+    // the place g is put under the drawing point p (the middle of the view when adding a map)
+    const geoPut = (g, p) => { const m = rot(p, -D.n), q = geoAt(g, -m[0], -m[1]); D.g = { lat: q.lat, lng: q.lng, on: 1, op: (D.g && +D.g.op) || .75 }; };
+    function mapDraw() { const mp = $('#sk-map'), G = D.g; $('#sk-osm').style.display = mapOn() ? '' : 'none';
+      if (!mapOn()) { if (mp.firstChild) mp.innerHTML = ''; mk = {}; mkey = ''; return; }
+      if (G.c) { if (!ready) return; delete G.c; if (vb[2] < 120) { const c = [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2], k = 120 / vb[2]; vb = [c[0] - 60, c[1] - vb[3] * k / 2, 120, vb[3] * k]; $('#sk-svg').setAttribute('viewBox', vb.join(' ')); } geoPut(G, [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2]); }
+      mp.setAttribute('viewBox', vb.join(' ')); const r = main().getBoundingClientRect(), T = tiles(D.g, D.n, mapOff ? [vb[0] - mapOff[0], vb[1] - mapOff[1], vb[2], vb[3]] : vb, (r.width || 360) / vb[2], 42);
+      let g = mp.firstChild; if (!g) { g = document.createElementNS(SVGNS, 'g'); mp.appendChild(g); }
+      g.setAttribute('transform', (mapOff ? `translate(${mapOff[0]} ${mapOff[1]}) ` : '') + `rotate(${D.n})`); g.setAttribute('opacity', +D.g.op || .75);
+      const key = T.z + '|' + D.g.lat + '|' + D.g.lng; if (key !== mkey) { g.innerHTML = ''; mk = {}; mkey = key; }
+      const want = {}; T.list.forEach(t => { want[t.k] = 1; if (mk[t.k]) return; const im = document.createElementNS(SVGNS, 'image'); im.setAttribute('href', t.u); im.setAttribute('x', t.x); im.setAttribute('y', t.y); im.setAttribute('width', t.w); im.setAttribute('height', t.w); im.setAttribute('preserveAspectRatio', 'none'); g.appendChild(im); mk[t.k] = im; });
+      Object.keys(mk).forEach(k => { if (!want[k]) { mk[k].remove(); delete mk[k]; } }); }
     const ov = document.createElement('div'); ov.className = 'sk-ov'; document.body.appendChild(ov);
     const main = () => ov.querySelector('.sk-main');
     const fit = () => { let [x0, y0, x1, y1] = bbox(D.s); const box = main().getBoundingClientRect(), ar = (box.width || 360) / (box.height || 400);
@@ -4803,7 +4853,7 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
       return L2.map(c => `<option value="${c}" ${c === cur ? 'selected' : ''}>${c} — ${esc(((items[c] || [])[0] || '').replace(/^\s*الاشراف على\s*/, '').slice(0, 70))}</option>`).join(''); };
     ov.innerHTML = `<div class="sk-top"><b>مخطط الموقع — أمر ${esc(meta.wo || '')}</b>${ro ? '' : '<button id="sk-un" title="تراجع">↶</button><button class="pri" id="sk-sv">حفظ</button>'}<button id="sk-x">إغلاق</button></div>
       ${ro ? '' : `<div class="sk-tools"><button data-t="sel" class="on">✋<span>تحديد / تحريك</span></button><span class="sk-sep"></span>${ORDER.map(t => `<button data-t="${t}" title="${esc(SYM[t].n)}">${icon(t)}<span>${esc(SYM[t].n)}</span></button>`).join('')}</div>`}
-      <div class="sk-main"><svg id="sk-svg"></svg><div class="sk-north" id="sk-n" title="اتجاه الشمال: اضغط للتدوير"></div><div class="sk-zoom"><button id="sk-zi">+</button><button id="sk-zo">−</button><button id="sk-fit" style="font-size:13px">⤢</button></div><div class="sk-hint" id="sk-h"></div></div>
+      <div class="sk-main"><svg id="sk-map"></svg><svg id="sk-svg"></svg><div class="sk-osm" id="sk-osm" style="display:none">© OpenStreetMap</div><div class="sk-north" id="sk-n" title="اتجاه الشمال: اضغط للتدوير"></div><div class="sk-zoom"><button id="sk-zi">+</button><button id="sk-zo">−</button><button id="sk-fit" style="font-size:13px">⤢</button></div><div class="sk-hint" id="sk-h"></div></div>
       <div class="sk-panel" id="sk-p"></div>`;
     const $ = s => ov.querySelector(s), svg = $('#sk-svg');
     const hint = t => { $('#sk-h').style.display = t ? '' : 'none'; $('#sk-h').textContent = t || ''; };
@@ -4811,8 +4861,9 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
     function draw(keepPanel) {
       if (!vb) fit(); svg.setAttribute('viewBox', vb.join(' '));
       const [x0, y0, w, h] = vb, g = [], step = w > 120 ? 5 : 1, sw = Math.max(1, w / 40);
-      for (let x = Math.floor(x0 / step) * step; x <= x0 + w; x += step) g.push(`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + h}" stroke="${x % 5 ? '#EEF1F4' : '#D3D9E1'}" stroke-width="${(x % 5 ? .025 : .05) * sw}"/>`);
-      for (let y = Math.floor(y0 / step) * step; y <= y0 + h; y += step) g.push(`<line x1="${x0}" y1="${y}" x2="${x0 + w}" y2="${y}" stroke="${y % 5 ? '#EEF1F4' : '#D3D9E1'}" stroke-width="${(y % 5 ? .025 : .05) * sw}"/>`);
+      mapDraw();
+      if (w <= 600) for (let x = Math.floor(x0 / step) * step; x <= x0 + w; x += step) g.push(`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + h}" stroke="${x % 5 ? '#EEF1F4' : '#D3D9E1'}" stroke-width="${(x % 5 ? .025 : .05) * sw}"/>`);
+      if (w <= 600) for (let y = Math.floor(y0 / step) * step; y <= y0 + h; y += step) g.push(`<line x1="${x0}" y1="${y}" x2="${x0 + w}" y2="${y}" stroke="${y % 5 ? '#EEF1F4' : '#D3D9E1'}" stroke-width="${(y % 5 ? .025 : .05) * sw}"/>`);
       svg.innerHTML = g.join('') + D.s.map((s, i) => shapeSvg(s, i, i === sel)).join('') + (live && live.pts.length > 1 ? lineSvg(live, false) : '');
       $('#sk-n').innerHTML = `<svg viewBox="-2 -2 4 4" width="44" height="44" style="transform:rotate(${D.n}deg)"><path d="M0 -1.5L.6 1.1L0 .65L-.6 1.1Z" fill="#14263F"/><text y="-1.55" font-size=".7" font-weight="700" text-anchor="middle" fill="#B3261E" font-family="Arial">N</text></svg>`;
       if (!keepPanel) panel();   // the phone keyboard resizes the window: rebuilding the panel then would drop the field being typed in
@@ -4833,21 +4884,33 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
           if ($('#sk-c2')) $('#sk-c2').onchange = e => { push(); s.c2 = e.target.value; draw(); };
           $('#sk-l').onchange = e => { push(); s.lab = e.target.value.slice(0, 60); draw(); }; }
         return; }
-      p.innerHTML = `<div style="color:#5B6B7F">${ro ? 'عرض فقط.' : 'الخطوط: اختر نوع الخط ثم اسحب بإصبعك من البداية إلى النهاية فيُرسم خط مستقيم. للانعطاف ابدأ خطاً جديداً من نهاية الخط السابق فيتصل به. الرموز: اختر الرمز ثم اضغط مكانه. اضغط مطوّلاً على أي عنصر ثم اسحبه لتحريكه، واضغط عليه لتعديل حجمه وطوله وبنده. كل مربع = 1 متر تقريباً.'}</div>`;
+      const has = geoOk(D.g), gps = !!navigator.geolocation;
+      const mrow = ro ? '' : `<div class="sk-row" style="border-bottom:1px solid #eef0f3;padding-bottom:6px;margin-bottom:6px"><b>🗺 خريطة الموقع</b>${has ? `<label><input type="checkbox" id="sk-mon" ${D.g.on ? 'checked' : ''}> إظهار</label>${D.g.on ? `<span>الوضوح</span><input type="range" id="sk-mop" min="20" max="100" step="5" value="${Math.round((+D.g.op || .75) * 100)}" style="width:110px"><button id="sk-mmv" class="${tool === 'map' ? 'on' : ''}">↔ تحريك الخريطة تحت الرسم</button>` : ''}` : (hintG ? '<button id="sk-mh">أضف خريطة موقع الأمر</button>' : '<span style="color:#5B6B7F">لا موقع مسجلاً لهذا الأمر:</span>')}${gps ? '<button id="sk-mg">📍 موقعي الآن</button>' : ''}<button id="sk-mc">إحداثيات…</button>${has && hintG ? '<button id="sk-mh">موقع الأمر المسجل</button>' : ''}${has ? '<button id="sk-mx" style="color:#B3261E">إزالة الخريطة</button>' : ''}${navigator.onLine === false ? '<span style="color:#B3261E">لا اتصال: الخريطة لا تظهر الآن</span>' : ''}</div>`;
+      p.innerHTML = mrow + `<div style="color:#5B6B7F">${ro ? 'عرض فقط.' : 'الخطوط: اختر نوع الخط ثم اسحب بإصبعك من البداية إلى النهاية فيُرسم خط مستقيم. للانعطاف ابدأ خطاً جديداً من نهاية الخط السابق فيتصل به. الرموز: اختر الرمز ثم اضغط مكانه. اضغط مطوّلاً على أي عنصر ثم اسحبه لتحريكه، واضغط عليه لتعديل حجمه وطوله وبنده. كل مربع = 1 متر تقريباً.'}</div>`;
+      if (!ro) { const mid2 = () => [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2], setG = g => { push(); geoPut(g, mid2()); if (vb[2] < 60) { const c = mid2(), k = 120 / vb[2]; vb = [c[0] - 60, c[1] - vb[3] * k / 2, 120, vb[3] * k]; } draw(); };
+        const on = (id, f) => { const b = $(id); if (b) b.onclick = f; };
+        if ($('#sk-mon')) $('#sk-mon').onchange = e => { push(); D.g.on = e.target.checked ? 1 : 0; if (!D.g.on && tool === 'map') tool = 'sel'; draw(); };
+        if ($('#sk-mop')) $('#sk-mop').oninput = e => { D.g.op = Math.min(1, Math.max(.2, +e.target.value / 100)); dirty = true; mapDraw(); };
+        on('#sk-mmv', () => setTool(tool === 'map' ? 'sel' : 'map'));
+        on('#sk-mh', () => setG(hintG));
+        on('#sk-mx', () => { if (!window.confirm('إزالة الخريطة من هذا المخطط؟ الرسم نفسه لا يتغير.')) return; push(); delete D.g; if (tool === 'map') tool = 'sel'; if (vb[2] > 400) vb = null; draw(); });
+        on('#sk-mc', () => { const v = window.prompt('الإحداثيات (خط العرض، خط الطول) — مثل 26.39412, 50.11276، أو الصق رابط خرائط فيه الإحداثيات', has ? D.g.lat + ', ' + D.g.lng : ''); if (v == null) return; const g = geoParse(v); if (!g) return window.alert('إحداثيات غير صحيحة — اكتبها مثل 26.39412, 50.11276'); setG(g); });
+        on('#sk-mg', () => { const b = $('#sk-mg'); b.disabled = true; b.textContent = 'جارٍ تحديد موقعك…'; navigator.geolocation.getCurrentPosition(q => setG({ lat: q.coords.latitude, lng: q.coords.longitude }), er => { b.disabled = false; b.textContent = '📍 موقعي الآن'; window.alert(er && er.code === 1 ? 'لم يُسمح للبرنامج بمعرفة الموقع' : 'تعذّر تحديد الموقع الآن'); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }); }); }
     }
     const toM = e => { const r = svg.getBoundingClientRect(); return [vb[0] + (e.clientX - r.left) / r.width * vb[2], vb[1] + (e.clientY - r.top) / r.height * vb[3]]; };
     const snap = p => [Math.round(p[0] * 4) / 4, Math.round(p[1] * 4) / 4];
     const hitOf = e => { const t = e.target.closest && e.target.closest('[data-i]'); return t ? +t.dataset.i : -1; };
     function setTool(t) { tool = t; sel = -1; ov.querySelectorAll('.sk-tools button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
-      hint(t === 'sel' ? 'اضغط على عنصر لتعديله، أو اسحب الشبكة لتحريكها' : SYM[t].k === L ? 'اسحب من بداية ' + SYM[t].n + ' إلى نهايته — وللانعطاف ابدأ من نهاية الخط' : 'اضغط مكان ' + SYM[t].n + ' على الشبكة'); draw(); }
+      hint(t === 'map' ? 'اسحب الخريطة حتى تطابق مكان الرسم — الرسم ثابت. اضغط «تحريك الخريطة» مرة أخرى للانتهاء' : t === 'sel' ? 'اضغط على عنصر لتعديله، أو اسحب الشبكة لتحريكها' : SYM[t].k === L ? 'اسحب من بداية ' + SYM[t].n + ' إلى نهايته — وللانعطاف ابدأ من نهاية الخط' : 'اضغط مكان ' + SYM[t].n + ' على الشبكة'); draw(); }
     ov.querySelectorAll('.sk-tools button').forEach(b => b.onclick = () => setTool(b.dataset.t));
     const startMove = (i, m) => { sel = i; drag = { mv: 1, m, orig: JSON.stringify(D.s[i]), pre: JSON.stringify(D) }; live = null; try { navigator.vibrate && navigator.vibrate(30); } catch (e) {} hint('اسحب العنصر إلى مكانه'); draw(); };
     svg.addEventListener('pointerdown', e => { svg.setPointerCapture(e.pointerId); pins[e.pointerId] = [e.clientX, e.clientY]; e.preventDefault();
       const ids = Object.keys(pins);
-      if (ids.length === 2) { clearTimeout(lp); live = null; const a = pins[ids[0]], b = pins[ids[1]], d0 = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (ids.length === 2) { clearTimeout(lp); live = null; if (drag && drag.mapmv) { mapOff = null; drag = null; } const a = pins[ids[0]], b = pins[ids[1]], d0 = Math.hypot(a[0] - b[0], a[1] - b[1]);
         drag = drag && drag.el != null ? { pinchEl: drag.el, d0, k0: +D.s[drag.el].k || 1, pre: JSON.stringify(D) } : (sel >= 0 && drag && drag.onSel ? { pinchEl: sel, d0, k0: +D.s[sel].k || 1, pre: JSON.stringify(D) } : { pinch: d0, vb: vb.slice() }); return; }
       const m = toM(e), hit = hitOf(e); clearTimeout(lp);
       if (!ro && hit >= 0) lp = setTimeout(() => { if (drag && !drag.moved) startMove(hit, drag.m0); }, 450);
+      if (!ro && tool === 'map') { clearTimeout(lp); drag = { mapmv: 1, m0: m, c: [e.clientX, e.clientY] }; return; }
       if (ro || tool === 'sel') { drag = { pan: 1, c: [e.clientX, e.clientY], vb: vb.slice(), m0: m, tapHit: hit, el: hit >= 0 ? hit : null, onSel: hit >= 0 && hit === sel }; return; }
       if (SYM[tool].k === L) { // a straight line from here; starting at the end of a line of the same kind continues it
         const tol = Math.max(.8, vb[2] / 14); let join = null, st = [r2(m[0]), r2(m[1])];
@@ -4859,8 +4922,9 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
       if (drag.pinchEl != null && ids.length === 2) { const a = pins[ids[0]], b = pins[ids[1]], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (!drag.moved) { hist.push(drag.pre); dirty = true; drag.moved = 1; }
         D.s[drag.pinchEl].k = Math.round(Math.min(6, Math.max(.3, drag.k0 * d / Math.max(drag.d0, 1))) * 100) / 100; sel = drag.pinchEl; draw(); return; }
       if (drag.pinch && ids.length === 2) { const a = pins[ids[0]], b = pins[ids[1]], d = Math.hypot(a[0] - b[0], a[1] - b[1]); const k = drag.pinch / Math.max(d, 1), cx = drag.vb[0] + drag.vb[2] / 2, cy = drag.vb[1] + drag.vb[3] / 2;
-        const w = Math.min(400, Math.max(6, drag.vb[2] * k)), h = drag.vb[3] * w / drag.vb[2]; vb = [cx - w / 2, cy - h / 2, w, h]; draw(); return; }
+        const w = Math.min(maxW(), Math.max(6, drag.vb[2] * k)), h = drag.vb[3] * w / drag.vb[2]; vb = [cx - w / 2, cy - h / 2, w, h]; draw(); return; }
       const far = drag.c && Math.hypot(e.clientX - drag.c[0], e.clientY - drag.c[1]) > 8;
+      if (drag.mapmv) { if (!far && !drag.moved) return; drag.moved = 1; const m = toM(e); mapOff = [m[0] - drag.m0[0], m[1] - drag.m0[1]]; mapDraw(); return; }
       if (drag.mv) { const m = toM(e), dx = Math.round((m[0] - drag.m[0]) * 4) / 4, dy = Math.round((m[1] - drag.m[1]) * 4) / 4; if (!dx && !dy && !drag.moved) return;
         if (!drag.moved) { hist.push(drag.pre); dirty = true; drag.moved = 1; } const s = D.s[sel], o2 = JSON.parse(drag.orig);
         if (o2.pts) s.pts = o2.pts.map(p => [r2(p[0] + dx), r2(p[1] + dy)]); else { s.x = o2.x + dx; s.y = o2.y + dy; } draw(); return; }
@@ -4870,6 +4934,7 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
         live.pts[1] = [r2(a[0] + dx), r2(a[1] + dy)]; draw(); return; }
       if (drag.pan && far) { const r = svg.getBoundingClientRect(); vb[0] = drag.vb[0] - (e.clientX - drag.c[0]) / r.width * vb[2]; vb[1] = drag.vb[1] - (e.clientY - drag.c[1]) / r.height * vb[3]; draw(); } });
     const up = e => { delete pins[e.pointerId]; if (Object.keys(pins).length) return; clearTimeout(lp); const was = drag; drag = null; if (!was) return;
+      if (was.mapmv) { const f = mapOff; mapOff = null; if (f && was.moved && mapOn()) { push(); const m = rot(f, -D.n), q = geoAt(D.g, -m[0], -m[1]); D.g.lat = q.lat; D.g.lng = q.lng; } draw(true); return; }
       if (was.mv) { hint(''); if (!was.moved) draw(); return; }
       if (was.pinchEl != null || was.pinch) return;
       if (was.line) { const s = live; live = null; if (s && segLen(s.pts) >= .4) { push();
@@ -4883,8 +4948,8 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
         D.s.push(s); draw(); } };
     svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
     svg.addEventListener('contextmenu', e => e.preventDefault());
-    svg.addEventListener('wheel', e => { e.preventDefault(); const m = toM(e), k = e.deltaY > 0 ? 1.15 : 1 / 1.15, w = Math.min(400, Math.max(6, vb[2] * k)), f = w / vb[2]; vb = [m[0] - (m[0] - vb[0]) * f, m[1] - (m[1] - vb[1]) * f, w, vb[3] * f]; draw(); }, { passive: false });
-    const zoom = k => { const cx = vb[0] + vb[2] / 2, cy = vb[1] + vb[3] / 2, w = Math.min(400, Math.max(6, vb[2] * k)), h = vb[3] * w / vb[2]; vb = [cx - w / 2, cy - h / 2, w, h]; draw(); };
+    svg.addEventListener('wheel', e => { e.preventDefault(); const m = toM(e), k = e.deltaY > 0 ? 1.15 : 1 / 1.15, w = Math.min(maxW(), Math.max(6, vb[2] * k)), f = w / vb[2]; vb = [m[0] - (m[0] - vb[0]) * f, m[1] - (m[1] - vb[1]) * f, w, vb[3] * f]; draw(); }, { passive: false });
+    const zoom = k => { const cx = vb[0] + vb[2] / 2, cy = vb[1] + vb[3] / 2, w = Math.min(maxW(), Math.max(6, vb[2] * k)), h = vb[3] * w / vb[2]; vb = [cx - w / 2, cy - h / 2, w, h]; draw(); };
     $('#sk-zi').onclick = () => zoom(1 / 1.4); $('#sk-zo').onclick = () => zoom(1.4); $('#sk-fit').onclick = () => { vb = null; draw(); };
     $('#sk-n').onclick = () => { if (ro) return; push(); D.n = (D.n + 45) % 360; draw(); };
     const close = () => { window.removeEventListener('resize', rs); ov.remove(); };
@@ -4896,7 +4961,7 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
       $('#sk-sv').onclick = async () => { const b = $('#sk-sv'); b.disabled = true; b.textContent = 'جارٍ الحفظ…';
         try { const png = D.s.length ? await toPng(D, meta) : ''; await o.onSave(D, png); dirty = false; close(); } catch (er) { b.disabled = false; b.textContent = 'حفظ'; window.alert(er.message || er); } };
     }
-    hint(ro ? '' : 'اختر رمزاً أو نوع خط من الشريط في الأعلى'); draw(); setTimeout(() => { vb = null; draw(); }, 50);
+    hint(ro ? '' : 'اختر رمزاً أو نوع خط من الشريط في الأعلى'); draw(); setTimeout(() => { vb = null; ready = true; draw(); }, 50);
     return { close };
   }
   window.Sketch = { open, SYM, toPng };
@@ -4971,7 +5036,7 @@ async function boqModal(key){
         udsAfter(r); toast('سُجّل ملف اليو دي إس'+(r.noItem.length?' — بنود غير موجودة في جدول الأسعار: '+r.noItem.join('، '):'')); boqModal(key); }
       catch(er){ $('#bqerr').textContent=er.message; } };
     $('#bqdr').onclick=()=>{ const items={}; Object.values(I.m).forEach(x=>items[x[0]]=[x[1],x[2]]);
-      Sketch.open({ data:B.draw, items, ro:!ed, meta:{wo:o.wo+(o.type?'-'+o.type:''),office:o.office,district:o.district,eng:o.site_engineer||S.B.user.name,date:S.B.today},
+      Sketch.open({ data:B.draw, items, ro:!ed, geo:B.geo||'', meta:{wo:o.wo+(o.type?'-'+o.type:''),office:o.office,district:o.district,eng:o.site_engineer||S.B.user.name,date:S.B.today},
         onSave:async(d,png)=>{ const keep=dirty?L:null; B=await api('boqDraw',S.tok,key,d,png); L=keep||B.lines.map(l=>Object.assign({},l)); boqSync(key,B); toast('حُفظ المخطط'); draw(); } }); };
   };
   draw();
