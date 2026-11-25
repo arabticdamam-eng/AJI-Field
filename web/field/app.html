@@ -4742,26 +4742,58 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
     }
     return '';
   }
-  // a line: its points as drawn by hand; the length is written by the engineer (s.len), nothing is measured
+  // a line (المالك 25-11): its corners s.pts; s.b[i] bends part i into a circular arc (the height of the arc in metres, 0 = straight); s.r rounds the corners.
+  // s.al = the length follows the drawing (s.len is rewritten whenever the line changes); a length typed by hand drops s.al and is never touched again.
+  // A trench (dig/asph/tile) with a width s.w is drawn as a band of that width, with its cables inside: s.mvn / s.lvn of them, items s.mvc / s.lvc, cable length s.cl (else the trench length).
+  const TR = { dig: { w: .6, f: '#E9D6BC' }, asph: { w: .5, f: '#767C86' }, tile: { w: .6, f: '#DDE2E8' } }, CAB = { mv: '#B3261E', lv: '#0E7C86' };
+  let ZMIN = 0;   // the thinnest a trench is drawn, so that it does not vanish when the view is far out
+  const r1 = x => Math.round(x * 10) / 10, cnt = x => Math.max(0, Math.min(6, Math.round(+x || 0)));
+  function arcPts(A, B, b) { const c = Math.hypot(B[0] - A[0], B[1] - A[1]); if (!b || c < 1e-6) return [A, B];
+    const nx = -(B[1] - A[1]) / c, ny = (B[0] - A[0]) / c, ap = [(A[0] + B[0]) / 2 + nx * b, (A[1] + B[1]) / 2 + ny * b], R = (c * c / 4 + b * b) / (2 * Math.abs(b)), sg = b > 0 ? 1 : -1, C = [ap[0] - nx * sg * R, ap[1] - ny * sg * R];
+    const a0 = Math.atan2(A[1] - C[1], A[0] - C[0]); let h = Math.atan2(ap[1] - C[1], ap[0] - C[0]) - a0; while (h > Math.PI) h -= 2 * Math.PI; while (h <= -Math.PI) h += 2 * Math.PI;
+    const sw = 2 * h, n = Math.max(6, Math.min(48, Math.ceil(Math.abs(sw) * R / .4))), out = []; for (let k = 0; k <= n; k++) { const a = a0 + sw * k / n; out.push([C[0] + R * Math.cos(a), C[1] + R * Math.sin(a)]); } out[0] = A; out[n] = B; return out; }
+  // the path really drawn: p = its points, v[i] = where corner i lies in p
+  function flat(s) { const P = s.pts || [], n = P.length, B = s.b || [], r = +s.r || 0, out = [], v = [], cut = [];
+    if (r > 0) for (let i = 1; i < n - 1; i++) { if (B[i - 1] || B[i]) continue; const A = P[i - 1], V = P[i], C = P[i + 1], la = Math.hypot(A[0] - V[0], A[1] - V[1]), lc = Math.hypot(C[0] - V[0], C[1] - V[1]); if (la < 1e-6 || lc < 1e-6) continue;
+      const u1 = [(A[0] - V[0]) / la, (A[1] - V[1]) / la], u2 = [(C[0] - V[0]) / lc, (C[1] - V[1]) / lc], phi = Math.acos(Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1]))); if (phi < .05 || phi > Math.PI - .05) continue;
+      const tn = Math.tan(phi / 2), tl = Math.min(r / tn, la / 2, lc / 2), rr = tl * tn, bl = Math.hypot(u1[0] + u2[0], u1[1] + u2[1]) || 1, cd = rr / Math.sin(phi / 2), ctr = [V[0] + (u1[0] + u2[0]) / bl * cd, V[1] + (u1[1] + u2[1]) / bl * cd];
+      const T1 = [V[0] + u1[0] * tl, V[1] + u1[1] * tl], T2 = [V[0] + u2[0] * tl, V[1] + u2[1] * tl], a0 = Math.atan2(T1[1] - ctr[1], T1[0] - ctr[0]); let d = Math.atan2(T2[1] - ctr[1], T2[0] - ctr[0]) - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d <= -Math.PI) d += 2 * Math.PI;
+      const m = Math.max(4, Math.min(24, Math.ceil(Math.abs(d) * rr / .3))), arr = []; for (let k = 0; k <= m; k++) { const a = a0 + d * k / m; arr.push([ctr[0] + rr * Math.cos(a), ctr[1] + rr * Math.sin(a)]); } arr[0] = T1; arr[m] = T2; cut[i] = arr; }
+    for (let i = 0; i < n; i++) { if (cut[i]) { v.push(out.length + (cut[i].length >> 1)); cut[i].forEach(q => out.push(q)); } else { v.push(out.length); out.push(P[i]); }
+      if (i < n - 1 && B[i]) arcPts(P[i], P[i + 1], B[i]).slice(1, -1).forEach(q => out.push(q)); }
+    return { p: out, v }; }
+  const pathLen = s => segLen(flat(s).p);
+  const autoLen = s => { if (s && s.al && s.pts && SYM[s.t] && !SYM[s.t].ref) { const v = r1(pathLen(s)); if (v > 0) s.len = v; else delete s.len; } return s; };
+  const offs = (p, d) => p.map((q, i) => { const a = p[Math.max(0, i - 1)], b = p[Math.min(p.length - 1, i + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return r2(q[0] - (b[1] - a[1]) / l * d) + ',' + r2(q[1] + (b[0] - a[0]) / l * d); }).join(' ');
+  const cabTxt = s => [cnt(s.mvn) ? cnt(s.mvn) + ' × ج.متوسط' : '', cnt(s.lvn) ? cnt(s.lvn) + ' × ج.منخفض' : ''].filter(Boolean).join(' + ');
   const mid = p => { let t = segLen(p) / 2; for (let i = 1; i < p.length; i++) { const a = p[i - 1], b = p[i], d = Math.hypot(b[0] - a[0], b[1] - a[1]); if (t <= d && d > 0) { const f = t / d; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI]; } t -= d; } const a = p[0]; return [a[0], a[1], 0]; };
   function lineSvg(s, sel) {
-    const S = SYM[s.t] || SYM.ex, k = +s.k || 1, p = s.pts.map(q => q.join(',')).join(' '); if (s.pts.length < 2) return '';
-    const W = S.w * k; let g = '';
-    if (s.t === 'st') g += `<polyline points="${p}" fill="none" stroke="${S.col}" stroke-width="${W}" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.1 * k}" stroke-dasharray="${.8 * k} ${.6 * k}"/>`;
+    const S = SYM[s.t] || SYM.ex, k = +s.k || 1; if (s.pts.length < 2) return '';
+    const F = flat(s), fp = F.p, p = fp.map(q => r2(q[0]) + ',' + r2(q[1])).join(' '), tr = !!TR[s.t] && +s.w > 0, W = tr ? Math.max(+s.w, ZMIN) : S.w * k; let g = '';
+    if (tr) { const J = 'fill="none" stroke-linejoin="round"', nm = cnt(s.mvn), N = nm + cnt(s.lvn);
+      g += `<polyline points="${p}" ${J} stroke="${S.col}" stroke-width="${r2(W + Math.max(.08, W * .14))}"/><polyline points="${p}" ${J} stroke="${TR[s.t].f}" stroke-width="${r2(W)}"/>`;
+      if (!N) g += s.t === 'dig' ? `<polyline points="${p}" ${J} stroke="${S.col}" stroke-width="${r2(W * .12)}" stroke-dasharray="${r2(W * .9)} ${r2(W * .6)}"/>` : `<polyline points="${p}" ${J} stroke="#fff" stroke-opacity=".7" stroke-width="${r2(W * .6)}" stroke-dasharray="${S.hatch ? r2(W * .16) + ' ' + r2(W * .7) : r2(W * .5) + ' ' + r2(W * .5)}"/>`;
+      else { const cw = Math.min(.14, W / (N + 1) * .55); for (let i = 0; i < N; i++) { const q = offs(fp, -W / 2 + W * (i + 1) / (N + 1)); g += `<polyline points="${q}" ${J} stroke="#fff" stroke-width="${r2(cw * 1.7)}"/><polyline points="${q}" ${J} stroke="${i < nm ? CAB.mv : CAB.lv}" stroke-width="${r2(cw)}"/>`; } } }
+    else if (s.t === 'st') g += `<polyline points="${p}" fill="none" stroke="${S.col}" stroke-width="${W}" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.1 * k}" stroke-dasharray="${.8 * k} ${.6 * k}"/>`;
     else if (S.dbl) g += `<polyline points="${p}" fill="none" stroke="${S.col}" stroke-width="${.32 * k}" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.16 * k}" stroke-linejoin="round" stroke-linecap="round"/>`;
     else g += `<polyline points="${p}" fill="none" stroke="${S.col}" stroke-width="${W}" stroke-linejoin="round" stroke-linecap="round"${S.dash ? ` stroke-dasharray="${S.dash.split(' ').map(x => r2(x * k)).join(' ')}"` : ''}/>`;
-    if (S.hatch) g += `<polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.3 * k}" stroke-dasharray="${.08 * k} ${.35 * k}"/>`;
-    if (S.tiles) g += `<polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.25 * k}" stroke-dasharray="${.25 * k} ${.25 * k}"/>`;
+    if (!tr && S.hatch) g += `<polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.3 * k}" stroke-dasharray="${.08 * k} ${.35 * k}"/>`;
+    if (!tr && S.tiles) g += `<polyline points="${p}" fill="none" stroke="#fff" stroke-width="${.25 * k}" stroke-dasharray="${.25 * k} ${.25 * k}"/>`;
     if (s.t === 'hdd') { const a = s.pts[0], b = s.pts[s.pts.length - 1]; g += `<circle cx="${a[0]}" cy="${a[1]}" r="${.3 * k}" fill="${S.col}"/><circle cx="${b[0]}" cy="${b[1]}" r="${.3 * k}" fill="${S.col}"/>`; }
     if (sel) g = `<polyline points="${p}" fill="none" stroke="#FFD400" stroke-width="${Math.max(W, .2) + .6}" stroke-opacity=".55" stroke-linejoin="round" stroke-linecap="round"/>` + g;
-    if (s.len || s.lab) { const [mx, my, ang] = mid(s.pts), up = ang > 90 || ang < -90 ? ang + 180 : ang, fz = .6 * Math.max(1, Math.sqrt(k)), fc = s.t === 'st' || s.t === 'ex' ? '#5B6B7F' : S.col;
-      const T = (t, y, b) => `<text transform="translate(${r2(mx)} ${r2(my)}) rotate(${r2(up)})" y="${r2(y)}" font-size="${r2(fz)}"${b ? ' font-weight="700"' : ''} text-anchor="middle" direction="rtl" fill="${fc}" stroke="#fff" stroke-width=".12" paint-order="stroke">${esc(t)}</text>`;
-      if (s.len) g += T('\u200F' + s.len + ' م', -(.4 + W / 2), 1); if (s.lab) g += T(s.lab, .4 + W / 2 + fz * .8, 0); }
+    const parts = s.al && s.len && s.pts.length > 2, low = [tr && parts ? 'عرض ' + s.w + ' م' : '', tr ? cabTxt(s) : '', s.lab || ''].filter(Boolean).join(' · ');
+    if (s.len || low) { const fz = .6 * Math.max(1, Math.sqrt(k)), fc = s.t === 'st' || s.t === 'ex' ? '#5B6B7F' : S.col;
+      const T = (at, t, y, b) => { const up = at[2] > 90 || at[2] < -90 ? at[2] + 180 : at[2]; return `<text transform="translate(${r2(at[0])} ${r2(at[1])}) rotate(${r2(up)})" y="${r2(y)}" font-size="${r2(fz)}"${b ? ' font-weight="700"' : ''} text-anchor="middle" direction="rtl" fill="${fc}" stroke="#fff" stroke-width=".12" paint-order="stroke">${esc(t)}</text>`; };
+      if (parts) for (let i = 0; i < s.pts.length - 1; i++) { const sub = fp.slice(F.v[i], F.v[i + 1] + 1), l = r1(segLen(sub)); if (l > 0) g += T(mid(sub), '\u200F' + l + ' م', -(.4 + W / 2), 1); }
+      // ما يُكتب مرة واحدة يوضع على أطول جزء، بعيداً عن الزوايا
+      let at = mid(fp); if (s.pts.length > 2) { let best = -1; for (let i = 0; i < s.pts.length - 1; i++) { const sub = fp.slice(F.v[i], F.v[i + 1] + 1), l = segLen(sub); if (l > best) { best = l; at = mid(sub); } } }
+      if (!parts && s.len) g += T(at, '\u200F' + s.len + ' م' + (tr ? ' × ' + s.w + ' م' : ''), -(.4 + W / 2), 1);
+      if (low) g += T(at, low, .4 + W / 2 + fz * .8, 0); }
     return g;
   }
   function shapeSvg(s, i, sel) {
     const S = SYM[s.t]; if (!S) return '';
-    if (S.k === L) return `<g data-i="${i}">${lineSvg(s, sel)}<polyline points="${s.pts.map(q => q.join(',')).join(' ')}" fill="none" stroke="transparent" stroke-width="${Math.max(1.4, S.w * (+s.k || 1) + 1)}" data-i="${i}"/></g>`;
+    if (S.k === L) return `<g data-i="${i}">${lineSvg(s, sel)}<polyline points="${flat(s).p.map(q => r2(q[0]) + ',' + r2(q[1])).join(' ')}" fill="none" stroke="transparent" stroke-width="${Math.max(1.4, (TR[s.t] && +s.w > 0 ? +s.w : S.w * (+s.k || 1)) + 1)}" data-i="${i}"/></g>`;
     const k = +s.k || 1;
     return `<g data-i="${i}" transform="translate(${s.x} ${s.y}) scale(${k})">${sel ? '<circle r="1.5" fill="#FFD400" fill-opacity=".45"/>' : ''}${pt(s.t, s.lab)}${s.lab && s.t !== 'txt' && s.t !== 'plot' ? `<text y="1.35" font-size=".5" text-anchor="middle" fill="#14263F">${esc(s.lab)}</text>` : ''}<rect x="-1.3" y="-1.3" width="2.6" height="2.6" fill="transparent" data-i="${i}"/></g>`;
   }
@@ -4783,7 +4815,7 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
   function icon(t) { const S = SYM[t];
     if (S.k === L) return `<svg viewBox="-3 -1.2 6 2.4">${lineSvg({ t, pts: [[-2.6, .5], [2.6, -.5]] }, false)}</svg>`;
     return `<svg viewBox="-2.2 -1.4 4.4 2.8">${pt(t, t === 'plot' ? '25' : t === 'txt' ? 'نص' : '')}</svg>`; }
-  const bbox = sh => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; sh.forEach(s => { const k = (+s.k || 1) * 1.6; (s.pts || [[s.x, s.y]]).forEach(p => { x0 = Math.min(x0, p[0] - (s.pts ? 0 : k)); y0 = Math.min(y0, p[1] - (s.pts ? 0 : k)); x1 = Math.max(x1, p[0] + (s.pts ? 0 : k)); y1 = Math.max(y1, p[1] + (s.pts ? 0 : k)); }); }); return [x0, y0, x1, y1]; };
+  const bbox = sh => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; sh.forEach(s => { const k = (+s.k || 1) * 1.6; (s.pts ? flat(s).p : [[s.x, s.y]]).forEach(p => { x0 = Math.min(x0, p[0] - (s.pts ? 0 : k)); y0 = Math.min(y0, p[1] - (s.pts ? 0 : k)); x1 = Math.max(x1, p[0] + (s.pts ? 0 : k)); y1 = Math.max(y1, p[1] + (s.pts ? 0 : k)); }); }); return [x0, y0, x1, y1]; };
   // the drawing as a picture, with a header (order, place, engineer, date) and the names of the symbols used
   // ---- خريطة موقع أمر العمل تحت المخطط (المالك 25-11): بلاطات OpenStreetMap بنفس مقياس الرسم (المتر على الرسم = متر على الأرض) ----
   // D.g = {lat,lng,on,op}: الإحداثيات التي تقابل نقطة الأصل (0,0) في الرسم. الشمال يتبع D.n فتدور الخريطة مع سهم الشمال.
@@ -4811,7 +4843,7 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
     if (x0 > x1) { x0 = 0; y0 = 0; x1 = 20; y1 = 14; }
     const mpad = geoOk(data.g) && data.g.on ? 15 : 0;   // مع الخريطة: هامش أوسع ليظهر محيط الموقع
     x0 -= 3 + mpad; y0 -= 6 + mpad; x1 += 7 + mpad; y1 += 3 + mpad; let w = x1 - x0, h = y1 - y0; if (w < 20) { x0 -= (20 - w) / 2; w = 20; } if (h < 12) { y0 -= (12 - h) / 2; h = 12; }
-    const used = ORDER.filter(t => !SYM[t].ref && sh.some(s => s.t === t)), px = Math.max(8, Math.min(60, 1500 / w)), W = Math.round(w * px), Hm = Math.round(h * px), top = 110, rows = Math.ceil(used.length / 3), bottom = used.length ? 50 + rows * 34 : 20, H = top + Hm + bottom;
+    ZMIN = 0; const used = ORDER.filter(t => !SYM[t].ref && (sh.some(s => s.t === t) || (CAB[t] && sh.some(s => TR[s.t] && +s.w > 0 && cnt(s[t + 'n']))))), px = Math.max(8, Math.min(60, 1500 / w)), W = Math.round(w * px), Hm = Math.round(h * px), top = 110, rows = Math.ceil(used.length / 3), bottom = used.length ? 50 + rows * 34 : 20, H = top + Hm + bottom;
     const grid = []; for (let gx = Math.ceil(x0); gx <= x1; gx++) grid.push(`<line x1="${gx}" y1="${y0}" x2="${gx}" y2="${y1}" stroke="${gx % 5 ? '#F1F3F6' : '#E1E5EA'}" stroke-width="${gx % 5 ? .03 : .05}"/>`);
     for (let gy = Math.ceil(y0); gy <= y1; gy++) grid.push(`<line x1="${x0}" y1="${gy}" x2="${x1}" y2="${gy}" stroke="${gy % 5 ? '#F1F3F6' : '#E1E5EA'}" stroke-width="${gy % 5 ? .03 : .05}"/>`);
     const cw = (W - 40) / 3, leg = used.map((t, i) => { const c = i % 3, r = Math.floor(i / 3), x = W - 20 - c * cw, y = top + Hm + 46 + r * 34;
@@ -4825,7 +4857,7 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
       <g transform="translate(${x1 - 2.5} ${y0 + 3}) rotate(${data.n || 0})"><path d="M0 -1.6L.7 1.2L0 .7L-.7 1.2Z" fill="#14263F"/><text y="-1.9" font-size=".8" font-weight="700" text-anchor="middle" fill="#14263F">N</text></g></svg>${mapG ? `<text x="8" y="${top + Hm - 6}" font-size="11" fill="#5B6B7F" font-family="Arial">© OpenStreetMap</text>` : ''}
       ${used.length ? `<line x1="20" y1="${top + Hm + 10}" x2="${W - 20}" y2="${top + Hm + 10}" stroke="#D9DEE5"/>${leg}` : ''}</svg>`;
     return new Promise((ok, no) => { const im = new Image(); im.onload = () => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(im, 0, 0); ok(cv.toDataURL('image/png').split(',')[1]); };
-      im.onerror = () => no(new Error('تعذّر تجهيز صورة المخطط')); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+      im.onerror = () => no(new Error('تعذّر تجهيز صورة المخطط')); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace(/var\(--acc\)/g, '#0E7C86')); });   // لون البرنامج لا يُعرَّف داخل الصورة: يُكتب صريحاً وإلا اختفى كابل الجهد المنخفض منها
   }
   function open(o) {
     css(); const items = o.items || {}, meta = o.meta || {}, ro = !!o.ro;
@@ -4861,10 +4893,13 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
     function draw(keepPanel) {
       if (!vb) fit(); svg.setAttribute('viewBox', vb.join(' '));
       const [x0, y0, w, h] = vb, g = [], step = w > 120 ? 5 : 1, sw = Math.max(1, w / 40);
-      mapDraw();
+      mapDraw(); ZMIN = w / 260; const hs = [];
+      if (!ro && tool === 'sel' && sel >= 0 && D.s[sel] && D.s[sel].pts) { const s = D.s[sel], F = flat(s), hr = Math.max(.28, w / 60), C = (h2, q, rr, f) => `<circle data-h="${h2}" cx="${r2(q[0])}" cy="${r2(q[1])}" r="${r2(rr)}" fill="${f}" stroke="#14263F" stroke-width="${r2(rr * .22)}" style="cursor:move"/>`;
+        for (let i = 0; i < s.pts.length - 1; i++) hs.push(C('m' + i, mid(F.p.slice(F.v[i], F.v[i + 1] + 1)), hr * .72, '#FFD400'));   // أصفر: اسحبه جانباً فينحني الجزء قوساً
+        s.pts.forEach((q, i) => hs.push(C('v' + i, q, hr, '#fff'))); }                                                              // أبيض: اسحبه فيتغير ميلان الخط
       if (w <= 600) for (let x = Math.floor(x0 / step) * step; x <= x0 + w; x += step) g.push(`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + h}" stroke="${x % 5 ? '#EEF1F4' : '#D3D9E1'}" stroke-width="${(x % 5 ? .025 : .05) * sw}"/>`);
       if (w <= 600) for (let y = Math.floor(y0 / step) * step; y <= y0 + h; y += step) g.push(`<line x1="${x0}" y1="${y}" x2="${x0 + w}" y2="${y}" stroke="${y % 5 ? '#EEF1F4' : '#D3D9E1'}" stroke-width="${(y % 5 ? .025 : .05) * sw}"/>`);
-      svg.innerHTML = g.join('') + D.s.map((s, i) => shapeSvg(s, i, i === sel)).join('') + (live && live.pts.length > 1 ? lineSvg(live, false) : '');
+      svg.innerHTML = g.join('') + D.s.map((s, i) => shapeSvg(s, i, i === sel)).join('') + (live && live.pts.length > 1 ? lineSvg(live, false) : '') + hs.join('');
       $('#sk-n').innerHTML = `<svg viewBox="-2 -2 4 4" width="44" height="44" style="transform:rotate(${D.n}deg)"><path d="M0 -1.5L.6 1.1L0 .65L-.6 1.1Z" fill="#14263F"/><text y="-1.55" font-size=".7" font-weight="700" text-anchor="middle" fill="#B3261E" font-family="Arial">N</text></svg>`;
       if (!keepPanel) panel();   // the phone keyboard resizes the window: rebuilding the panel then would drop the field being typed in
     }
@@ -4872,21 +4907,32 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
       const p = $('#sk-p');
       if (sel >= 0 && D.s[sel]) { const s = D.s[sel], S = SYM[s.t];
         p.innerHTML = `<div class="sk-row"><b>${esc(S.n)}</b>${ro ? '' : `<span>الحجم</span><button id="sk-km" title="تصغير">－</button><b>${Math.round((+s.k || 1) * 100)}%</b><button id="sk-kp" title="تكبير">＋</button><span style="flex:1"></span><button id="sk-del" style="color:#B3261E">حذف</button>`}</div>
-          ${S.k === L && !S.ref ? `<div class="sk-row"><span>الطول (م)</span><input id="sk-len" type="number" step="0.1" min="0" inputmode="decimal" style="width:100px" value="${esc(s.len || '')}" placeholder="اكتب الطول" ${ro ? 'disabled' : ''}></div>` : ''}
+          ${S.k === L && !S.ref ? `<div class="sk-row"><span>الطول (م)</span><input id="sk-len" type="number" step="0.1" min="0" inputmode="decimal" style="width:100px" value="${esc(s.len || '')}" placeholder="اكتب الطول" ${ro ? 'disabled' : ''}><span style="color:#5B6B7F;font-size:12px">${s.al ? 'محسوب من الرسم — اكتب رقماً لتثبيته' : s.len ? 'مكتوب باليد — امسحه ليُحسب من الرسم' : ''}</span>${TR[s.t] ? `<span>العرض (م)</span><input id="sk-w" type="number" step="0.1" min="0" inputmode="decimal" style="width:80px" value="${esc(s.w || '')}" placeholder="${TR[s.t].w}" ${ro ? 'disabled' : ''}>` : ''}</div>` : ''}
+          ${TR[s.t] ? `<div class="sk-row"><b>الكابلات داخل الحفر</b><span>ج.منخفض</span><input id="sk-lvn" type="number" min="0" max="6" step="1" inputmode="numeric" style="width:60px" value="${cnt(s.lvn) || ''}" placeholder="0" ${ro ? 'disabled' : ''}><span>ج.متوسط</span><input id="sk-mvn" type="number" min="0" max="6" step="1" inputmode="numeric" style="width:60px" value="${cnt(s.mvn) || ''}" placeholder="0" ${ro ? 'disabled' : ''}>${cnt(s.lvn) + cnt(s.mvn) ? `<span>طول الكابل (م)</span><input id="sk-cl" type="number" step="0.1" min="0" inputmode="decimal" style="width:90px" value="${esc(s.cl || '')}" placeholder="${esc(s.len || '')}" ${ro ? 'disabled' : ''}>` : ''}</div>
+          ${cnt(s.lvn) ? `<div class="sk-row"><span>بند ج.منخفض</span><select id="sk-lvc" ${ro ? 'disabled' : ''}>${opts(SYM.lv.fam, s.lvc || SYM.lv.d)}</select></div>` : ''}${cnt(s.mvn) ? `<div class="sk-row"><span>بند ج.متوسط</span><select id="sk-mvc" ${ro ? 'disabled' : ''}>${opts(SYM.mv.fam, s.mvc || SYM.mv.d)}</select></div>` : ''}` : ''}
+          ${S.k === L && !ro ? `<div class="sk-row"><button id="sk-go">➕ أكمل الخط</button>${s.pts.length > 2 ? `<span>تدوير الزوايا: نصف القطر (م)</span><input id="sk-r" type="number" step="0.5" min="0" inputmode="decimal" style="width:80px" value="${esc(s.r || '')}" placeholder="0">` : ''}${s.r || (s.b && s.b.some(Boolean)) ? '<button id="sk-str">استقامة</button>' : ''}<span style="color:#5B6B7F;font-size:12px">الدوائر البيضاء: اسحبها لتغيير الميلان. الصفراء: اسحبها جانباً ليصير الجزء قوساً.</span></div>` : ''}
           ${S.fam ? `<div class="sk-row"><span>البند</span><select id="sk-c" ${ro ? 'disabled' : ''}>${opts(S.fam, s.c || S.d)}</select></div>` : ''}
           ${S.area ? `<div class="sk-row"><span>بند الإعادة</span><select id="sk-c2" ${ro ? 'disabled' : ''}>${opts(S.area.fam, s.c2 || S.area.d)}</select></div>` : ''}
           <div class="sk-row"><span>${s.t === 'txt' ? 'النص' : s.t === 'plot' ? 'رقم القطعة / المبنى' : s.t === 'st' ? 'اسم الشارع' : 'ملاحظة / مقاس'}</span><input id="sk-l" value="${esc(s.lab || '')}" style="flex:1;min-width:120px" ${ro ? 'disabled' : ''}></div>`;
         if (!ro) { $('#sk-del').onclick = () => { push(); D.s.splice(sel, 1); sel = -1; draw(); };
           const K = f => { push(); s.k = Math.round(Math.min(6, Math.max(.3, (+s.k || 1) * f)) * 100) / 100; draw(); };
           $('#sk-kp').onclick = () => K(1.25); $('#sk-km').onclick = () => K(.8);
-          if ($('#sk-len')) $('#sk-len').onchange = e => { push(); const v = +String(e.target.value).replace(',', '.'); if (v > 0) s.len = r2(v); else delete s.len; draw(); };
+          const num = e => +String(e.target.value).replace(',', '.') || 0;
+          if ($('#sk-len')) $('#sk-len').onchange = e => { push(); const v = num(e); if (v > 0) { s.len = r2(v); delete s.al; } else { s.al = 1; autoLen(s); } draw(); };
+          if ($('#sk-w')) $('#sk-w').onchange = e => { push(); const v = num(e); if (v > 0) s.w = r2(Math.min(10, v)); else delete s.w; draw(); };
+          ['lvn', 'mvn'].forEach(f => { if ($('#sk-' + f)) $('#sk-' + f).onchange = e => { push(); const v = cnt(num(e)); if (v) { s[f] = v; if (!(+s.w > 0)) s.w = TR[s.t].w; } else { delete s[f]; delete s[f === 'lvn' ? 'lvc' : 'mvc']; if (!cnt(s.lvn) && !cnt(s.mvn)) delete s.cl; } draw(); }; });
+          if ($('#sk-cl')) $('#sk-cl').onchange = e => { push(); const v = num(e); if (v > 0) s.cl = r2(v); else delete s.cl; draw(); };
+          ['lvc', 'mvc'].forEach(f => { if ($('#sk-' + f)) $('#sk-' + f).onchange = e => { push(); s[f] = e.target.value; draw(); }; });
+          if ($('#sk-r')) $('#sk-r').onchange = e => { push(); const v = num(e); if (v > 0) s.r = r2(Math.min(50, v)); else delete s.r; autoLen(s); draw(); };
+          if ($('#sk-str')) $('#sk-str').onclick = () => { push(); delete s.b; delete s.r; autoLen(s); draw(); };
+          if ($('#sk-go')) $('#sk-go').onclick = () => { const t0 = s.t; setTool(t0); hint('اسحب من إحدى نهايتي ' + SYM[t0].n + ' فيتصل الجزء الجديد به'); };
           if ($('#sk-c')) $('#sk-c').onchange = e => { push(); s.c = e.target.value; draw(); };
           if ($('#sk-c2')) $('#sk-c2').onchange = e => { push(); s.c2 = e.target.value; draw(); };
           $('#sk-l').onchange = e => { push(); s.lab = e.target.value.slice(0, 60); draw(); }; }
         return; }
       const has = geoOk(D.g), gps = !!navigator.geolocation;
       const mrow = ro ? '' : `<div class="sk-row" style="border-bottom:1px solid #eef0f3;padding-bottom:6px;margin-bottom:6px"><b>🗺 خريطة الموقع</b>${has ? `<label><input type="checkbox" id="sk-mon" ${D.g.on ? 'checked' : ''}> إظهار</label>${D.g.on ? `<span>الوضوح</span><input type="range" id="sk-mop" min="20" max="100" step="5" value="${Math.round((+D.g.op || .75) * 100)}" style="width:110px"><button id="sk-mmv" class="${tool === 'map' ? 'on' : ''}">↔ تحريك الخريطة تحت الرسم</button>` : ''}` : (hintG ? '<button id="sk-mh">أضف خريطة موقع الأمر</button>' : '<span style="color:#5B6B7F">لا موقع مسجلاً لهذا الأمر:</span>')}${gps ? '<button id="sk-mg">📍 موقعي الآن</button>' : ''}<button id="sk-mc">إحداثيات…</button>${has && hintG ? '<button id="sk-mh">موقع الأمر المسجل</button>' : ''}${has ? '<button id="sk-mx" style="color:#B3261E">إزالة الخريطة</button>' : ''}${navigator.onLine === false ? '<span style="color:#B3261E">لا اتصال: الخريطة لا تظهر الآن</span>' : ''}</div>`;
-      p.innerHTML = mrow + `<div style="color:#5B6B7F">${ro ? 'عرض فقط.' : 'الخطوط: اختر نوع الخط ثم اسحب بإصبعك من البداية إلى النهاية فيُرسم خط مستقيم. للانعطاف ابدأ خطاً جديداً من نهاية الخط السابق فيتصل به. الرموز: اختر الرمز ثم اضغط مكانه. اضغط مطوّلاً على أي عنصر ثم اسحبه لتحريكه، واضغط عليه لتعديل حجمه وطوله وبنده. كل مربع = 1 متر تقريباً.'}</div>`;
+      p.innerHTML = mrow + `<div style="color:#5B6B7F">${ro ? 'عرض فقط.' : 'الخطوط: اختر نوع الخط ثم اسحب من البداية إلى النهاية فيُرسم خط مستقيم ويُكتب طوله. للانعطاف ابدأ من نهاية الخط السابق فيتصل به، أو اضغط على الخط واسحب دوائره لتغيير ميلانه أو تقويسه. الحفر يُرسم بعرضه، وتُكتب كابلاته في لوحته. الرموز: اختر الرمز ثم اضغط مكانه. اضغط مطوّلاً على أي عنصر ثم اسحبه لتحريكه، واضغط عليه لتعديل حجمه وطوله وبنده. كل مربع = 1 متر تقريباً.'}</div>`;
       if (!ro) { const mid2 = () => [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2], setG = g => { push(); geoPut(g, mid2()); if (vb[2] < 60) { const c = mid2(), k = 120 / vb[2]; vb = [c[0] - 60, c[1] - vb[3] * k / 2, 120, vb[3] * k]; } draw(); };
         const on = (id, f) => { const b = $(id); if (b) b.onclick = f; };
         if ($('#sk-mon')) $('#sk-mon').onchange = e => { push(); D.g.on = e.target.checked ? 1 : 0; if (!D.g.on && tool === 'map') tool = 'sel'; draw(); };
@@ -4897,7 +4943,9 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
         on('#sk-mc', () => { const v = window.prompt('الإحداثيات (خط العرض، خط الطول) — مثل 26.39412, 50.11276، أو الصق رابط خرائط فيه الإحداثيات', has ? D.g.lat + ', ' + D.g.lng : ''); if (v == null) return; const g = geoParse(v); if (!g) return window.alert('إحداثيات غير صحيحة — اكتبها مثل 26.39412, 50.11276'); setG(g); });
         on('#sk-mg', () => { const b = $('#sk-mg'); b.disabled = true; b.textContent = 'جارٍ تحديد موقعك…'; navigator.geolocation.getCurrentPosition(q => setG({ lat: q.coords.latitude, lng: q.coords.longitude }), er => { b.disabled = false; b.textContent = '📍 موقعي الآن'; window.alert(er && er.code === 1 ? 'لم يُسمح للبرنامج بمعرفة الموقع' : 'تعذّر تحديد الموقع الآن'); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }); }); }
     }
-    const toM = e => { const r = svg.getBoundingClientRect(); return [vb[0] + (e.clientX - r.left) / r.width * vb[2], vb[1] + (e.clientY - r.top) / r.height * vb[3]]; };
+    // مكان الإصبع بالمتر: من تحويل الـSVG الفعلي، فيبقى صحيحاً حين تتغير مساحة الرسم (لوحة العنصر تكبر وتصغر) ولا تطابق نسبة العرض
+    const ctm = () => { try { const m = svg.getScreenCTM(); return m && m.a ? m : null; } catch (e) { return null; } };
+    const toM = e => { const m = ctm(); if (m) { const q = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()); return [q.x, q.y]; } const r = svg.getBoundingClientRect(); return [vb[0] + (e.clientX - r.left) / r.width * vb[2], vb[1] + (e.clientY - r.top) / r.height * vb[3]]; };
     const snap = p => [Math.round(p[0] * 4) / 4, Math.round(p[1] * 4) / 4];
     const hitOf = e => { const t = e.target.closest && e.target.closest('[data-i]'); return t ? +t.dataset.i : -1; };
     function setTool(t) { tool = t; sel = -1; ov.querySelectorAll('.sk-tools button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
@@ -4909,6 +4957,7 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
       if (ids.length === 2) { clearTimeout(lp); live = null; if (drag && drag.mapmv) { mapOff = null; drag = null; } const a = pins[ids[0]], b = pins[ids[1]], d0 = Math.hypot(a[0] - b[0], a[1] - b[1]);
         drag = drag && drag.el != null ? { pinchEl: drag.el, d0, k0: +D.s[drag.el].k || 1, pre: JSON.stringify(D) } : (sel >= 0 && drag && drag.onSel ? { pinchEl: sel, d0, k0: +D.s[sel].k || 1, pre: JSON.stringify(D) } : { pinch: d0, vb: vb.slice() }); return; }
       const m = toM(e), hit = hitOf(e); clearTimeout(lp);
+      { const hd = !ro && tool === 'sel' && e.target.getAttribute && e.target.getAttribute('data-h'); if (hd && sel >= 0 && D.s[sel] && D.s[sel].pts) { drag = { hd, i: +hd.slice(1), pre: JSON.stringify(D), c: [e.clientX, e.clientY] }; hint(hd[0] === 'v' ? 'اسحب النقطة لتغيير ميلان الخط' : 'اسحب جانباً ليصير الجزء قوساً، وأعده للوسط ليستقيم'); return; } }
       if (!ro && hit >= 0) lp = setTimeout(() => { if (drag && !drag.moved) startMove(hit, drag.m0); }, 450);
       if (!ro && tool === 'map') { clearTimeout(lp); drag = { mapmv: 1, m0: m, c: [e.clientX, e.clientY] }; return; }
       if (ro || tool === 'sel') { drag = { pan: 1, c: [e.clientX, e.clientY], vb: vb.slice(), m0: m, tapHit: hit, el: hit >= 0 ? hit : null, onSel: hit >= 0 && hit === sel }; return; }
@@ -4924,6 +4973,11 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
       if (drag.pinch && ids.length === 2) { const a = pins[ids[0]], b = pins[ids[1]], d = Math.hypot(a[0] - b[0], a[1] - b[1]); const k = drag.pinch / Math.max(d, 1), cx = drag.vb[0] + drag.vb[2] / 2, cy = drag.vb[1] + drag.vb[3] / 2;
         const w = Math.min(maxW(), Math.max(6, drag.vb[2] * k)), h = drag.vb[3] * w / drag.vb[2]; vb = [cx - w / 2, cy - h / 2, w, h]; draw(); return; }
       const far = drag.c && Math.hypot(e.clientX - drag.c[0], e.clientY - drag.c[1]) > 8;
+      if (drag.hd) { if (!far && !drag.moved) return; if (!drag.moved) { hist.push(drag.pre); dirty = true; drag.moved = 1; } const s = D.s[sel], m = toM(e), i = drag.i; if (!s || !s.pts) return;
+        if (drag.hd[0] === 'v') { let q = [m[0], m[1]]; [s.pts[i - 1], s.pts[i + 1]].forEach(o => { if (!o) return; const dx = q[0] - o[0], dy = q[1] - o[1], ln = Math.hypot(dx, dy); if (ln < .2) return; const ang = Math.atan2(dy, dx) * 180 / Math.PI, near = [-180, -90, 0, 90, 180].find(a => Math.abs(ang - a) <= 4); if (near !== undefined) { const r = near * Math.PI / 180; q = [o[0] + Math.round(Math.cos(r)) * ln, o[1] + Math.round(Math.sin(r)) * ln]; } }); s.pts[i] = [r2(q[0]), r2(q[1])]; }
+        else { const A = s.pts[i], B = s.pts[i + 1], c = Math.hypot(B[0] - A[0], B[1] - A[1]); if (c > .2) { let b = (m[0] - (A[0] + B[0]) / 2) * -(B[1] - A[1]) / c + (m[1] - (A[1] + B[1]) / 2) * (B[0] - A[0]) / c; if (Math.abs(b) < Math.max(.15, c * .03)) b = 0; b = Math.max(-c, Math.min(c, b));
+            const bb = s.pts.slice(1).map((_, n) => (s.b || [])[n] || 0); bb[i] = r2(b); if (bb.some(Boolean)) s.b = bb; else delete s.b; } }
+        autoLen(s); draw(true); return; }
       if (drag.mapmv) { if (!far && !drag.moved) return; drag.moved = 1; const m = toM(e); mapOff = [m[0] - drag.m0[0], m[1] - drag.m0[1]]; mapDraw(); return; }
       if (drag.mv) { const m = toM(e), dx = Math.round((m[0] - drag.m[0]) * 4) / 4, dy = Math.round((m[1] - drag.m[1]) * 4) / 4; if (!dx && !dy && !drag.moved) return;
         if (!drag.moved) { hist.push(drag.pre); dirty = true; drag.moved = 1; } const s = D.s[sel], o2 = JSON.parse(drag.orig);
@@ -4931,15 +4985,16 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
       if (far) { clearTimeout(lp); drag.moved = 1; }
       if (drag.line && live) { const m = toM(e), a = live.pts[0]; let dx = m[0] - a[0], dy = m[1] - a[1]; const len = Math.hypot(dx, dy), ang = Math.atan2(dy, dx) * 180 / Math.PI;
         const near = [-180, -90, 0, 90, 180].find(q => Math.abs(ang - q) <= 4); if (near !== undefined) { const r = near * Math.PI / 180; dx = Math.round(Math.cos(r)) * len; dy = Math.round(Math.sin(r)) * len; }
-        live.pts[1] = [r2(a[0] + dx), r2(a[1] + dy)]; draw(); return; }
-      if (drag.pan && far) { const r = svg.getBoundingClientRect(); vb[0] = drag.vb[0] - (e.clientX - drag.c[0]) / r.width * vb[2]; vb[1] = drag.vb[1] - (e.clientY - drag.c[1]) / r.height * vb[3]; draw(); } });
+        live.pts[1] = [r2(a[0] + dx), r2(a[1] + dy)]; if (!SYM[live.t].ref) { const lv2 = r1(segLen(live.pts)); if (lv2 > 0) live.len = lv2; else delete live.len; } draw(); return; }
+      if (drag.pan && far) { const r = svg.getBoundingClientRect(), m = ctm(), sx = m ? m.a : r.width / vb[2], sy = m ? m.d : r.height / vb[3]; vb[0] = drag.vb[0] - (e.clientX - drag.c[0]) / sx; vb[1] = drag.vb[1] - (e.clientY - drag.c[1]) / sy; draw(); } });
     const up = e => { delete pins[e.pointerId]; if (Object.keys(pins).length) return; clearTimeout(lp); const was = drag; drag = null; if (!was) return;
+      if (was.hd) { hint(''); draw(); return; }
       if (was.mapmv) { const f = mapOff; mapOff = null; if (f && was.moved && mapOn()) { push(); const m = rot(f, -D.n), q = geoAt(D.g, -m[0], -m[1]); D.g.lat = q.lat; D.g.lng = q.lng; } draw(true); return; }
       if (was.mv) { hint(''); if (!was.moved) draw(); return; }
       if (was.pinchEl != null || was.pinch) return;
       if (was.line) { const s = live; live = null; if (s && segLen(s.pts) >= .4) { push();
-          if (was.join && D.s[was.join.i]) { const x = D.s[was.join.i]; if (was.join.end) x.pts.push(s.pts[1]); else x.pts.unshift(s.pts[1]); sel = was.join.i; }
-          else { const n = { t: s.t, pts: s.pts }; if (SYM[s.t].lab) n.lab = SYM[s.t].lab; D.s.push(n); sel = D.s.length - 1; } }
+          if (was.join && D.s[was.join.i]) { const x = D.s[was.join.i]; if (x.b) { if (was.join.end) x.b.push(0); else x.b.unshift(0); } if (was.join.end) x.pts.push(s.pts[1]); else x.pts.unshift(s.pts[1]); autoLen(x); sel = was.join.i; }
+          else { const n = { t: s.t, pts: s.pts }; if (SYM[s.t].lab) n.lab = SYM[s.t].lab; if (!SYM[s.t].ref) n.al = 1; if (TR[s.t]) n.w = TR[s.t].w; autoLen(n); D.s.push(n); sel = D.s.length - 1; } }
         else if (was.el != null && !was.moved) sel = was.el; draw(); return; }
       if (was.pan) { if (!was.moved) { sel = was.tapHit; draw(); } return; }
       if (was.tap && !was.moved) { if (was.el != null) { sel = was.el; draw(); return; } const p = snap(was.m0); push(); const s = { t: tool, x: p[0], y: p[1] };
@@ -4952,9 +5007,10 @@ function cfBarWire(F,redraw){ document.querySelectorAll('[data-cfx]').forEach(b=
     const zoom = k => { const cx = vb[0] + vb[2] / 2, cy = vb[1] + vb[3] / 2, w = Math.min(maxW(), Math.max(6, vb[2] * k)), h = vb[3] * w / vb[2]; vb = [cx - w / 2, cy - h / 2, w, h]; draw(); };
     $('#sk-zi').onclick = () => zoom(1 / 1.4); $('#sk-zo').onclick = () => zoom(1.4); $('#sk-fit').onclick = () => { vb = null; draw(); };
     $('#sk-n').onclick = () => { if (ro) return; push(); D.n = (D.n + 45) % 360; draw(); };
-    const close = () => { window.removeEventListener('resize', rs); ov.remove(); };
+    let ro2 = null; const close = () => { window.removeEventListener('resize', rs); try { if (ro2) ro2.disconnect(); } catch (e) {} ov.remove(); };
     const rs = () => { const v = vb; vb = null; fit(); if (v) { const c = [v[0] + v[2] / 2, v[1] + v[3] / 2]; vb = [c[0] - v[2] / 2, c[1] - v[2] * vb[3] / vb[2] / 2, v[2], v[2] * vb[3] / vb[2]]; } draw(true); };
     window.addEventListener('resize', rs);
+    try { let bw = 0, bh = 0; ro2 = new ResizeObserver(() => { const b = main().getBoundingClientRect(); if (Math.abs(b.width - bw) < 2 && Math.abs(b.height - bh) < 2) return; bw = b.width; bh = b.height; if (vb && !drag) rs(); }); ro2.observe(main()); } catch (e) {}   // لوحة العنصر تغيّر ارتفاع مساحة الرسم: تُعاد مطابقة النسبة مع بقاء المركز والتكبير
     $('#sk-x').onclick = () => { if (dirty && !ro && !window.confirm('لم يُحفظ المخطط. إغلاق بدون حفظ؟')) return; close(); };
     if (!ro) {
       $('#sk-un').onclick = () => { const h = hist.pop(); if (h) { D = JSON.parse(h); sel = -1; draw(); } };
