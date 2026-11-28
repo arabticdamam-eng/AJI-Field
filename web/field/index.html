@@ -92,7 +92,7 @@ async function enqueue(op) { op.at = now(); const old = S.Q.find(x => SAME(x, op
 // ردّه {google} ← خادم Google كما كان (لم يُكتب شيء). الحفظ يحمل رقماً ثابتاً لكل عمل في قائمة الإرسال، فإعادته بعد انقطاع لا تكرره.
 const EDGE_URL = 'https://cnauqprdllsboiayfrgn.supabase.co/functions/v1/aji?forceFunctionRegion=eu-central-1';
 const EDGE_RD = /^(fieldCInvFiles|dutyZones|mapData|fieldPull|fieldFull|fieldProjects|fieldMyMaint|myProfile|qdMeta|qdGet|qdHtml|sfList|qdMyMaint|formsMeta|listForms|getForm|stampInfo|formSig|boqItems|boqGet|orderFiles)$/;
-const EDGE_NO = /^(qfArchive|uploadSignature|deleteSignature)$/;   // المالك 28-11: «إرسال للجودة» على الخادم الجديد؛ حفظ النسخة المعتمدة PDF وحده على Google   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
+const EDGE_NO = /^(qfArchive)$/;   // المالك 28-11: «إرسال للجودة» على الخادم الجديد؛ حفظ النسخة المعتمدة PDF وحده على Google   // الرفع أيضاً على الخادم الجديد (بند 2، 06-11)
 let RID = null; const BIG_ARG = 1400000, EDGE_UP = /^(sfUpload|qdUpload|uploadAttachment|uploadFormPhoto|uploadFormScan|fieldCInvPhoto|fieldMaintPhoto|uploadLicense)$/;
 async function edgeTry(fn, args) {
   // وضع الطوارئ (fieldPull.fc موجود): كل شيء على Google

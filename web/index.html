@@ -318,7 +318,7 @@ async function sbOrders(){ const t0=Date.now(); const r=await SB.rpc('list_order
 // القراءة: عند أي عطل ← Google. الحفظ: يحمل رقماً فريداً (rid)؛ عند انقطاع يُعاد إلى الخادم الجديد بنفس الرقم (لا يتكرر الحفظ)، ولا يُرسل إلى Google.
 // الإيقاف لهذا المتصفح: localStorage aji_edge = 0
 const EDGE_URL=SB_URL+'/functions/v1/aji?forceFunctionRegion=eu-central-1';
-const EDGE_NO=/^(stImport|logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|qfArchive|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|uploadSignature|deleteSignature|mirrorNow|emergencyOn|emergencyOff)/;
+const EDGE_NO=/^(stImport|logout|webTok|mig|attMatch|storageInfo|backupNow|archiveNow|setupTriggers|qfArchive|switchProject|fieldSwitchProject|createProject|newProjectCopy|makeFolders|moveOldFiles|exportForms|importPhotos|sigMoveOld|mirrorNow|emergencyOn|emergencyOff)/;
 const edgeOk=fn=>{ try{ return !!window.AJI_APP&&localStorage.getItem('aji_edge')!=='0'&&!pjCur()&&!EDGE_NO.test(fn); }catch(e){ return false; } };
 async function callX(fn,...a){ if(!READ_FN.test(fn)) acClear();
   if(edgeOk(fn)){ const rd=READ_FN.test(fn), t0=Date.now(), rid=rd?'':(Date.now().toString(36)+Math.random().toString(36).slice(2,10)); let j=null;
@@ -3482,13 +3482,15 @@ async function sigAdmin(){
   let L; try{ L=await api('listSignatures',S.tok); }catch(e){ return modal(`<div class="err">${esc(e.message)}</div><button onclick="closeModal()">إغلاق</button>`); }
   const draw=()=>{ const names=[...new Set(S.B.people.map(p=>p.name))];
     modal(`<div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0">توقيعات المهندسين</h3><span class="sp"></span><button onclick="closeModal()">إغلاق</button></div>
-     <div class="muted" style="margin:6px 0 10px">تُحفظ في مجلد خاص في Drive ولا تظهر إلا عند طباعة محضر كتبه صاحب التوقيع. صورة التوقيع يُفضّل أن تكون بخلفية بيضاء أو شفافة.</div>
+     <div class="muted" style="margin:6px 0 10px">تُحفظ في مخزن البرنامج ولا تظهر إلا عند طباعة محضر كتبه صاحب التوقيع. صورة التوقيع يُفضّل أن تكون بخلفية بيضاء أو شفافة.</div>
+     ${L.some(x=>x.drive)?`<div class="card" style="margin-bottom:10px;border-color:var(--warn,#B9741B)"><b>${L.filter(x=>x.drive).length} توقيعاً ما زال محفوظاً في Google Drive</b><div class="muted" style="margin:4px 0">كل طباعة فيها أحد هذه التواقيع تمر بخادم Google. انسخها إلى مخزن البرنامج مرة واحدة فلا تعود التواقيع تحتاج Google. الأصل في Drive يبقى.</div><button class="pri" id="sgmv">نقل التواقيع القديمة إلى المخزن</button> <span class="muted" id="sgmvm"></span></div>`:''}
      <div class="card" style="margin-bottom:10px"><h3>رفع جماعي</h3><div class="muted" style="margin-bottom:6px">اختر عدة صور دفعة واحدة. اسم كل صورة: <b>الرقم الوظيفي - اسم المهندس</b> مثل «4821 - محمد المبارك عمر حسب النبى محمد.png» (الرقم اختياري). الاسم يجب أن يطابق اسمه في البرنامج.</div>
       <input type="file" id="sgf" data-img="1" multiple> <span id="sgp" class="muted"></span></div>
      <div class="card" style="margin-bottom:10px"><h3>رفع توقيع واحد</h3><div class="bar"><input id="sgn" list="dlsg2" placeholder="اسم المهندس" style="min-width:240px"><input id="sge" placeholder="الرقم الوظيفي" style="width:110px"><input type="file" id="sg1" data-img="1"><button class="pri" id="sgup">رفع</button></div>
       <datalist id="dlsg2">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div><div class="err" id="sgerr"></div>
      <div class="tw" style="max-height:45vh"><table><thead><tr><th>الاسم</th><th>الرقم الوظيفي</th><th>آخر تحديث</th><th></th></tr></thead><tbody>${L.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.emp_no)}</td><td>${esc((x.updated_at||'').slice(0,10))}</td><td style="white-space:nowrap"><button data-sv="${esc(x.name)}">عرض</button> <button data-sd="${esc(x.name)}" style="color:var(--dan);border-color:var(--dan)">حذف</button></td></tr><tr class="sgv" data-for="${esc(x.name)}" style="display:none"><td colspan="4"></td></tr>`).join('')||'<tr><td colspan="4" class="muted">لا توجد توقيعات بعد.</td></tr>'}</tbody></table></div>`);
     const up=async(file,name,emp)=>{ const im=await shrinkImg(file,500,0,true); L=await api('uploadSignature',S.tok,name,emp,im.b64,im.mime); };
+    if($('#sgmv')) $('#sgmv').onclick=async()=>{ $('#sgmv').disabled=true; $('#sgmvm').textContent='جارٍ النقل… قد يستغرق دقائق'; try{ const r=await api('sigMoveOld',S.tok); L=r.list; S.meta=null; toast('نُقل '+r.moved+' توقيعاً'+(r.bad?' · تعذّر '+r.bad:'')+(r.left?' · بقي '+r.left+' — اضغط مرة أخرى':'')); draw(); }catch(e){ $('#sgmv').disabled=false; $('#sgmvm').textContent=e.message; } };
     $('#sgup').onclick=async()=>{ const f=$('#sg1').files[0], n=$('#sgn').value.trim(); if(!f||!n) return $('#sgerr').textContent='اكتب الاسم واختر صورة التوقيع';
       $('#sgup').disabled=true; try{ await up(f,n,$('#sge').value.trim()); S.meta=null; toast('تم رفع توقيع '+n); draw(); }catch(e){ $('#sgerr').textContent=e.message; $('#sgup').disabled=false; } };
     $('#sgf').onchange=async()=>{ const fs=[...$('#sgf').files]; let ok=0, bad=[];
